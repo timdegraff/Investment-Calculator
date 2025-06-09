@@ -149,16 +149,20 @@
         <!-- Display Current Net Worth & Net Investments - MOVED TO TOP -->
         <div class="mt-4 mb-8 p-6 bg-green-50 rounded-lg shadow-inner flex flex-col md:flex-row justify-around items-center text-center border border-green-200">
             <div class="mb-4 md:mb-0 md:mr-8">
-                <p class="text-xl font-bold text-gray-800">Current Net Worth:</p>
+                <p class="text-xl font-bold text-gray-800">Net Worth:</p>
                 <p id="currentNetWorth" class="text-3xl font-semibold text-green-700 mt-2">$0</p>
             </div>
             <div class="mb-4 md:mb-0 md:mr-8">
-                <p class="text-xl font-bold text-gray-800">Current Net Investments:</p>
+                <p class="text-xl font-bold text-gray-800">Net Investments:</p>
                 <p id="currentNetInvestments" class="text-3xl font-semibold text-blue-700 mt-2">$0</p>
             </div>
             <div class="mb-4 md:mb-0 md:mr-8">
                 <p class="text-xl font-bold text-gray-800">Annual Income:</p>
                 <p id="annualIncomeDisplay" class="text-3xl font-semibold text-purple-700 mt-2">$0</p>
+            </div>
+            <div class="mb-4 md:mb-0 md:mr-8">
+                <p class="text-xl font-bold text-gray-800">Annual Savings:</p>
+                <p id="annualSavingsDisplay" class="text-3xl font-semibold text-purple-700 mt-2">$0</p>
             </div>
             <div class="mb-4 md:mb-0 md:mr-8">
                 <p class="text-xl font-bold text-gray-800">Today's Draw:</p>
@@ -441,6 +445,7 @@
         const currentNetWorthDisplay = document.getElementById('currentNetWorth');
         const currentNetInvestmentsDisplay = document.getElementById('currentNetInvestments');
         const annualIncomeDisplay = document.getElementById('annualIncomeDisplay'); // New display element
+        const annualSavingsDisplay = document.getElementById('annualSavingsDisplay'); // New display element for Annual Savings
         const todaysDrawDisplay = document.getElementById('todaysDraw');
         const fortyFiveYODrawDisplay = document.getElementById('fortyFiveYODraw');
         const sixtyTwoYODrawDisplay = document.getElementById('sixtyTwoYODraw');
@@ -725,10 +730,14 @@
             const totalAnnualOtherIncome = totalOtherMonthlyIncome * 12;
             const totalAnnualIncome = baseSalary + annualBonusIncome + totalAnnualOtherIncome;
 
+            // Calculate Total Annual Savings
+            const totalAnnualSavings = annualRothContribution + (monthly529Contribution * 12) + (monthlyHSAContribution * 12);
+
             // Display current values using new formatting
             currentNetWorthDisplay.textContent = formatLargeCurrency(currentNetWorth);
             currentNetInvestmentsDisplay.textContent = formatLargeCurrency(currentNetInvestments);
             annualIncomeDisplay.textContent = formatLargeCurrency(totalAnnualIncome); // Display annual income
+            annualSavingsDisplay.textContent = formatLargeCurrency(totalAnnualSavings); // Display annual savings
 
             // Update the span elements with dynamically calculated and rounded values
             totalInvestmentsSummary.textContent = `(${formatLargeCurrency(totalInvestments)})`;
