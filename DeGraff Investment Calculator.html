@@ -1,0 +1,1126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tim's Retirement Plan Calculator</title>
+    <!-- Tailwind CSS CDN for styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- D3.js CDN for charting -->
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <!-- Firebase SDKs -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+        import { getFirestore, collection, addDoc, onSnapshot, query, orderBy } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+        // Global Firebase variables (will be initialized on DOMContentLoaded)
+        window.firebaseApp = null;
+        window.db = null;
+        window.auth = null;
+        window.currentUserId = null;
+        window.appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+
+        // Get references to all static input elements
+        const staticInputs = {
+            checkingAccount: document.getElementById('checkingAccount'),
+            homeValue: document.getElementById('homeValue'),
+            otherEquity: document.getElementById('otherEquity'),
+            currentAge: document.getElementById('currentAge'),
+            baseSalary: document.getElementById('baseSalary'),
+            bonusRate: document.getElementById('bonusRate'),
+            my401kContributionRate: document.getElementById('my401kContributionRate'),
+            company401kContributionRate: document.getElementById('company401kContributionRate'),
+            annualRothContribution: document.getElementById('annualRothContribution'),
+            monthly529Contribution: document.getElementById('monthly529Contribution'),
+            monthlyHSAContribution: document.getElementById('monthlyHSAContribution'),
+            annualSalaryRaise: document.getElementById('annualSalaryRaise'),
+            stockAppreciation: document.getElementById('stockAppreciation'),
+            housingAppreciation: document.getElementById('housingAppreciation'),
+            inflation: document.getElementById('inflation'),
+            retirementDrawRate: document.getElementById('retirementDrawRate'),
+            retirementYear: document.getElementById('retirementYear'),
+            monthlyPrincipalPayment: document.getElementById('monthlyPrincipalPayment')
+        };
+
+        // Get references to display elements
+        const currentNetWorthDisplay = document.getElementById('currentNetWorth');
+        const currentNetInvestmentsDisplay = document.getElementById('currentNetInvestments');
+        const todaysDrawDisplay = document.getElementById('todaysDraw');
+        const fortyFiveYODrawDisplay = document.getElementById('fortyFiveYODraw');
+        const sixtyTwoYODrawDisplay = document.getElementById('sixtyTwoYODraw');
+        const projectionTableBody = document.getElementById('projectionTableBody');
+        const investmentAccountsContainer = document.getElementById('investmentAccountsContainer');
+        const addInvestmentBtn = document.getElementById('addInvestmentBtn');
+        const liabilitiesContainer = document.getElementById('liabilitiesContainer');
+        const addLiabilityBtn = document.getElementById('addLiabilityBtn');
+        const otherIncomeContainer = document.getElementById('otherIncomeContainer');
+        const addOtherIncomeBtn = document.getElementById('addOtherIncomeBtn');
+        const chartContainer = document.getElementById('chart-container');
+        const recordInvestmentsBtn = document.getElementById('recordInvestmentsBtn');
+        const recordStatusMessage = document.getElementById('recordStatusMessage');
+        const historicalTableBody = document.getElementById('historicalTableBody');
+        const historicalChartContainer = document.getElementById('historicalChartContainer');
+
+        // References for the summary spans
+        const totalInvestmentsSummary = document.getElementById('totalInvestmentsSummary');
+        const totalOtherAssetsSummary = document.getElementById('totalOtherAssetsSummary');
+        const totalLiabilitiesSummary = document.getElementById('totalLiabilitiesSummary');
+
+
+        // Get references to slider input and value display pairs
+        const sliderPairs = [
+            { slider: document.getElementById('currentAge'), valueDisplay: document.getElementById('currentAgeValue'), unit: '' },
+            { slider: document.getElementById('bonusRate'), valueDisplay: document.getElementById('bonusRateValue'), unit: '%' },
+            { slider: document.getElementById('my401kContributionRate'), valueDisplay: document.getElementById('my401kContributionRateValue'), unit: '%' },
+            { slider: document.getElementById('company401kContributionRate'), valueDisplay: document.getElementById('company401kContributionRateValue'), unit: '%' },
+            { slider: document.getElementById('annualSalaryRaise'), valueDisplay: document.getElementById('annualSalaryRaiseValue'), unit: '%' },
+            { slider: document.getElementById('stockAppreciation'), valueDisplay: document.getElementById('stockAppreciationValue'), unit: '%' },
+            { slider: document.getElementById('housingAppreciation'), valueDisplay: document.getElementById('housingAppreciationValue'), unit: '%' },
+            { slider: document.getElementById('inflation'), valueDisplay: document.getElementById('inflationValue'), unit: '%' },
+            { slider: document.getElementById('retirementDrawRate'), valueDisplay: document.getElementById('retirementDrawRateValue'), unit: '%' },
+            { slider: document.getElementById('retirementYear'), valueDisplay: document.getElementById('retirementYearValue'), unit: '' }
+        ];
+
+        // Initial investment accounts data (exact values, not rounded)
+        const initialInvestmentAccounts = [
+            { name: "Tim Roth", value: 176236 },
+            { name: "Jess Roth", value: 155237 },
+            { name: "Tim 401K", value: 518829 },
+            { name: "529", value: 54923 },
+            { name: "HSA", value: 24956 },
+            { name: "eTrade", value: 0 },
+            { name: "Gold", value: 6600 },
+            { name: "Silver", value: 0 },
+            { name: "Bitcoin", value: 0 }
+        ];
+
+        // Initial liability accounts data (exact values, not rounded)
+        const initialLiabilities = [
+            { name: "Mortgage", value: 202212 },
+            { name: "Credit Cards", value: 0 },
+            { name: "HELOC", value: 0 },
+            { name: "Car Loan", value: 0 }
+        ];
+
+        // Initial other income data
+        const initialOtherIncome = [
+            { name: "Cell Tower Lease", value: 1200, escalationRate: 0.015 },
+            { name: "Rental Income", value: 1300, escalationRate: 0.04 }
+        ];
+
+        // Function to format numbers as currency, rounded to nearest thousand, without K/M (for table)
+        const formatTableCurrency = (amount) => {
+            const roundedAmount = Math.round(amount / 1000) * 1000;
+            return new Intl.NumberFormat('en-US', {
+                style: 'currency',
+                currency: 'USD',
+                minimumFractionDigits: 0,
+                maximumFractionDigits: 0
+            }).format(roundedAmount);
+        };
+
+        // Function to format numbers as currency with K/M and specified decimal places (for summary displays)
+        const formatLargeCurrency = (amount) => {
+            if (Math.abs(amount) >= 1000000) {
+                return `$${(amount / 1000000).toFixed(2)}M`;
+            }
+            if (Math.abs(amount) >= 1000) {
+                return `$${(amount / 1000).toFixed(0)}K`;
+            }
+            return new Intl.NumberFormat('en-US', {
+                style: 'currency',
+                currency: 'USD',
+                minimumFractionDigits: 0,
+                maximumFractionDigits: 0
+            }).format(amount);
+        };
+
+        // Function to update slider value display position
+        function updateSliderValueDisplay(slider, valueDisplay, unit) {
+            const min = parseFloat(slider.min);
+            const max = parseFloat(slider.max);
+            const val = parseFloat(slider.value);
+            const percentage = (val - min) / (max - min);
+
+            const thumbWidth = 24;
+            const sliderWidth = slider.offsetWidth;
+
+            const leftPosition = (percentage * (sliderWidth - thumbWidth)) + (thumbWidth / 2);
+
+            valueDisplay.style.left = `${leftPosition}px`;
+            valueDisplay.textContent = `${val.toFixed(slider.step === '0.1' || slider.step === '0.5' ? 1 : 0)}${unit}`;
+        }
+
+
+        // Function to add a new investment account input row
+        function addInvestmentAccountInput(account = { name: '', value: 0 }) {
+            const rowDiv = document.createElement('div');
+            rowDiv.classList.add('investment-row', 'flex', 'flex-wrap', 'items-center', 'mb-4', 'space-y-2', 'md:space-y-0', 'md:space-x-2');
+            rowDiv.innerHTML = `
+                <input type="text" placeholder="Account Name" value="${account.name}" class="input-field investment-name flex-1 min-w-[120px]">
+                <input type="number" placeholder="Value ($)" value="${account.value}" step="100" class="input-field investment-value flex-1 min-w-[100px]">
+                <button type="button" class="delete-item-btn text-red-500 hover:text-red-700 font-bold px-2 py-1 rounded-md transition duration-200 ease-in-out">X</button>
+            `;
+            investmentAccountsContainer.appendChild(rowDiv);
+
+            const deleteBtn = rowDiv.querySelector('.delete-item-btn');
+
+            rowDiv.querySelectorAll('input').forEach(input => {
+                input.addEventListener('input', calculateFinancials);
+            });
+            deleteBtn.addEventListener('click', () => {
+                rowDiv.remove();
+                calculateFinancials();
+            });
+        }
+
+        // Function to add a new liability input row
+        function addLiabilityInput(liability = { name: '', value: 0 }) {
+            const rowDiv = document.createElement('div');
+            rowDiv.classList.add('liability-row', 'flex', 'flex-wrap', 'items-center', 'mb-4', 'space-y-2', 'md:space-y-0', 'md:space-x-2');
+            rowDiv.innerHTML = `
+                <input type="text" placeholder="Liability Name" value="${liability.name}" class="input-field liability-name flex-1 min-w-[120px]">
+                <input type="number" placeholder="Value ($)" value="${liability.value}" step="100" class="input-field liability-value flex-1 min-w-[100px]">
+                <button type="button" class="delete-item-btn text-red-500 hover:text-red-700 font-bold px-2 py-1 rounded-md transition duration-200 ease-in-out">X</button>
+            `;
+            liabilitiesContainer.appendChild(rowDiv);
+
+            const deleteBtn = rowDiv.querySelector('.delete-item-btn');
+
+            rowDiv.querySelectorAll('input').forEach(input => {
+                input.addEventListener('input', calculateFinancials);
+            });
+            deleteBtn.addEventListener('click', () => {
+                rowDiv.remove();
+                calculateFinancials();
+            });
+        }
+
+        // Function to add a new other income input row
+        function addOtherIncomeInput(income = { name: '', value: 0, escalationRate: 0 }) {
+            const rowDiv = document.createElement('div');
+            rowDiv.classList.add('other-income-row', 'flex', 'flex-wrap', 'items-center', 'mb-4', 'space-y-2', 'md:space-y-0', 'md:space-x-2');
+            rowDiv.innerHTML = `
+                <input type="text" placeholder="Income Source" value="${income.name}" class="input-field income-name flex-1 min-w-[120px]">
+                <input type="number" placeholder="Monthly Value ($)" value="${income.value}" step="50" class="input-field income-value flex-1 min-w-[100px]">
+                <div class="flex items-center">
+                    <input type="number" placeholder="Escalation Rate" value="${(income.escalationRate * 100).toFixed(1)}" step="0.1" min="0" max="10" class="input-field income-escalation-rate w-24">
+                    <span class="ml-1 text-gray-700">%</span>
+                </div>
+                <button type="button" class="delete-item-btn text-red-500 hover:text-red-700 font-bold px-2 py-1 rounded-md transition duration-200 ease-in-out">X</button>
+            `;
+            otherIncomeContainer.appendChild(rowDiv);
+
+            const deleteBtn = rowDiv.querySelector('.delete-item-btn');
+
+            rowDiv.querySelectorAll('input').forEach(input => {
+                input.addEventListener('input', calculateFinancials);
+            });
+            deleteBtn.addEventListener('click', () => {
+                rowDiv.remove();
+                calculateFinancials();
+            });
+        }
+
+        // Main calculation function
+        function calculateFinancials() {
+            let totalInvestments = 0;
+            let totalLiabilities = 0;
+            let currentMortgageValue = 0;
+
+            // Read dynamic investment account values
+            document.querySelectorAll('.investment-row').forEach(row => {
+                const valueInput = row.querySelector('.investment-value');
+                const value = parseFloat(valueInput.value) || 0;
+                totalInvestments += value;
+            });
+
+            // Read dynamic liability values
+            document.querySelectorAll('.liability-row').forEach(row => {
+                const nameInput = row.querySelector('.liability-name');
+                const valueInput = row.querySelector('.liability-value');
+                const name = nameInput.value;
+                const value = parseFloat(valueInput.value) || 0;
+                totalLiabilities += value;
+
+                if (name.toLowerCase() === "mortgage") {
+                    currentMortgageValue = value;
+                }
+            });
+
+            // Read dynamic other income values
+            let currentOtherIncomesState = [];
+            document.querySelectorAll('.other-income-row').forEach(row => {
+                const name = row.querySelector('.income-name').value;
+                const value = parseFloat(row.querySelector('.income-value').value) || 0;
+                const escalationRate = parseFloat(row.querySelector('.income-escalation-rate').value) / 100 || 0;
+                currentOtherIncomesState.push({ name: name, value: value, escalationRate: escalationRate });
+            });
+
+
+            // Read static input values
+            const checkingAccount = parseFloat(staticInputs.checkingAccount.value) || 0;
+            let homeValue = parseFloat(staticInputs.homeValue.value) || 0;
+            const otherEquity = parseFloat(staticInputs.otherEquity.value) || 0;
+            const currentAge = parseFloat(staticInputs.currentAge.value) || 0;
+
+
+            let baseSalary = parseFloat(staticInputs.baseSalary.value) || 0;
+            const bonusRate = parseFloat(staticInputs.bonusRate.value) / 100 || 0;
+            const my401kContributionRate = parseFloat(staticInputs.my401kContributionRate.value) / 100 || 0;
+            const company401kContributionRate = parseFloat(staticInputs.company401kContributionRate.value) / 100 || 0;
+            const annualRothContribution = parseFloat(staticInputs.annualRothContribution.value) || 0;
+            const monthly529Contribution = parseFloat(staticInputs.monthly529Contribution.value) || 0;
+            const monthlyHSAContribution = parseFloat(staticInputs.monthlyHSAContribution.value) || 0;
+
+            const annualSalaryRaise = parseFloat(staticInputs.annualSalaryRaise.value) / 100 || 0;
+            const stockAppreciation = parseFloat(staticInputs.stockAppreciation.value) / 100 || 0;
+            const housingAppreciation = parseFloat(staticInputs.housingAppreciation.value) / 100 || 0;
+            const inflation = parseFloat(staticInputs.inflation.value) / 100 || 0;
+            const retirementDrawRate = parseFloat(staticInputs.retirementDrawRate.value) / 100 || 0;
+            const retirementYear = parseFloat(staticInputs.retirementYear.value) || 0;
+            const monthlyPrincipalPayment = parseFloat(staticInputs.monthlyPrincipalPayment.value) || 0;
+            const annualPrincipalPayment = monthlyPrincipalPayment * 12;
+
+            // Update min for retirementYear slider dynamically based on currentAge
+            staticInputs.retirementYear.min = currentAge;
+            if (retirementYear < currentAge) {
+                staticInputs.retirementYear.value = currentAge;
+            }
+
+
+            // Update slider value displays
+            sliderPairs.forEach(pair => {
+                updateSliderValueDisplay(pair.slider, pair.valueDisplay, pair.unit);
+            });
+
+            // Calculate current Net Worth and Net Investments
+            const currentTotalAssets = totalInvestments + checkingAccount + homeValue + otherEquity;
+            const currentNetWorth = currentTotalAssets - totalLiabilities;
+            const currentNetInvestments = totalInvestments;
+
+            // Display current values using new formatting
+            currentNetWorthDisplay.textContent = formatLargeCurrency(currentNetWorth);
+            currentNetInvestmentsDisplay.textContent = formatLargeCurrency(currentNetInvestments);
+
+            // Update the span elements with dynamically calculated and rounded values
+            totalInvestmentsSummary.textContent = `(${formatLargeCurrency(totalInvestments)})`;
+            totalOtherAssetsSummary.textContent = `(${formatLargeCurrency(checkingAccount + homeValue + otherEquity)})`;
+            totalLiabilitiesSummary.textContent = `(${formatLargeCurrency(totalLiabilities)})`;
+
+
+            // Project growth over years, passing the draw display elements and retirement draw rate
+            projectGrowth(currentNetInvestments, currentNetWorth, homeValue, totalLiabilities, currentMortgageValue, baseSalary,
+                          bonusRate, my401kContributionRate, company401kContributionRate,
+                          annualRothContribution, monthly529Contribution, monthlyHSAContribution,
+                          annualSalaryRaise, stockAppreciation,
+                          housingAppreciation, inflation, annualPrincipalPayment,
+                          currentOtherIncomesState,
+                          otherEquity, currentAge,
+                          retirementDrawRate, todaysDrawDisplay, fortyFiveYODrawDisplay, sixtyTwoYODrawDisplay,
+                          retirementYear);
+        }
+
+        function projectGrowth(initialNetInvestments, initialNetWorth, initialHomeValue, initialTotalLiabilities, initialMortgageValue, initialBaseSalary,
+                               bonusRate, my401kContributionRate, company401kContributionRate,
+                               annualRothContribution, monthly529Contribution, monthlyHSAContribution,
+                               annualSalaryRaise, stockAppreciation,
+                               housingAppreciation, inflation, annualPrincipalPayment,
+                               initialOtherIncomesState,
+                               otherEquity, initialAge,
+                               retirementDrawRate, todaysDrawDisplay, fortyFiveYODrawDisplay, sixtyTwoYODrawDisplay,
+                               retirementYearInput) {
+
+            projectionTableBody.innerHTML = '';
+            chartContainer.innerHTML = '';
+
+            let currentInvestments = initialNetInvestments;
+            let currentHomeValue = initialHomeValue;
+            let currentMortgage = initialMortgageValue;
+            let currentOtherLiabilitiesTotal = initialTotalLiabilities - initialMortgageValue;
+            let currentBaseSalary = initialBaseSalary;
+
+            const startYear = new Date().getFullYear();
+            let currentProjectedAge = initialAge;
+
+            let projectedOtherIncomes = JSON.parse(JSON.stringify(initialOtherIncomesState));
+            const inflationRate = inflation;
+
+            const chartData = [];
+
+            todaysDrawDisplay.textContent = formatLargeCurrency(0);
+            fortyFiveYODrawDisplay.textContent = formatLargeCurrency(0);
+            sixtyTwoYODrawDisplay.textContent = formatLargeCurrency(0);
+
+            const todaysDrawValue = initialNetInvestments * retirementDrawRate;
+            todaysDrawDisplay.textContent = formatLargeCurrency(todaysDrawValue);
+
+            const firstYear = startYear;
+            const firstAge = initialAge;
+
+            chartData.push({
+                age: firstAge,
+                investments: initialNetInvestments,
+                netWorth: initialNetWorth / Math.pow((1 + inflationRate), 0)
+            });
+
+            const row0 = projectionTableBody.insertRow();
+            row0.classList.add('hover:bg-blue-50');
+            row0.insertCell().textContent = firstAge;
+            row0.insertCell().textContent = firstYear;
+            row0.insertCell().textContent = formatTableCurrency(initialNetInvestments);
+            row0.insertCell().textContent = formatTableCurrency(initialNetWorth);
+            row0.insertCell().textContent = formatTableCurrency(initialNetWorth);
+
+
+            for (let i = 1; currentProjectedAge <= 100; i++) {
+                const year = startYear + i;
+                const age = currentProjectedAge;
+
+                let annualMy401kContributionCurrentYear = currentBaseSalary * my401kContributionRate;
+                let annualCompany401kContributionCurrentYear = currentBaseSalary * company401kContributionRate;
+                let annual529ContributionCurrentYear = monthly529Contribution * 12;
+                let annualHSAContributionCurrentYear = monthlyHSAContribution * 12;
+                let annualRothContributionCurrentYear = annualRothContribution;
+
+                if (age >= retirementYearInput) {
+                    annualMy401kContributionCurrentYear = 0;
+                    annualCompany401kContributionCurrentYear = 0;
+                    annual529ContributionCurrentYear = 0;
+                    annualHSAContributionCurrentYear = 0;
+                    annualRothContributionCurrentYear = 0;
+                }
+
+                currentInvestments *= (1 + stockAppreciation);
+
+                let totalNewInvestmentMoneyCurrentYear = 0;
+                totalNewInvestmentMoneyCurrentYear += annualMy401kContributionCurrentYear;
+                totalNewInvestmentMoneyCurrentYear += annual529ContributionCurrentYear;
+                totalNewInvestmentMoneyCurrentYear += annualHSAContributionCurrentYear;
+                totalNewInvestmentMoneyCurrentYear += annualRothContributionCurrentYear;
+                totalNewInvestmentMoneyCurrentYear += annualCompany401kContributionCurrentYear;
+
+                let currentAnnualOtherIncome = 0;
+                projectedOtherIncomes.forEach(income => {
+                    income.value *= (1 + income.escalationRate);
+                    if (income.name === "Rental Income") {
+                        income.value = Math.floor(income.value / 100) * 100;
+                    }
+                    currentAnnualOtherIncome += income.value * 12;
+                });
+                totalNewInvestmentMoneyCurrentYear += currentAnnualOtherIncome;
+
+                currentInvestments += totalNewInvestmentMoneyCurrentYear;
+
+                if (age === 45) {
+                    const drawValue = currentInvestments * retirementDrawRate;
+                    const drawValueInTodaysDollars = drawValue / Math.pow((1 + inflationRate), i);
+                    fortyFiveYODrawDisplay.textContent = formatLargeCurrency(drawValueInTodaysDollars);
+                }
+
+                if (age === 62) {
+                    const drawValue = currentInvestments * retirementDrawRate;
+                    const drawValueInTodaysDollars = drawValue / Math.pow((1 + inflationRate), i);
+                    sixtyTwoYODrawDisplay.textContent = formatLargeCurrency(drawValueInTodaysDollars);
+                }
+
+                currentHomeValue *= (1 + housingAppreciation);
+                currentMortgage = Math.max(0, currentMortgage - annualPrincipalPayment);
+
+                const currentHomeEquity = currentHomeValue - currentMortgage;
+                const currentTotalLiabilitiesInProjection = currentMortgage + currentOtherLiabilitiesTotal;
+                let currentNetWorth = currentInvestments + currentHomeEquity + otherEquity - currentTotalLiabilitiesInProjection;
+                const netWorthInTodaysDollars = currentNetWorth / Math.pow((1 + inflationRate), i);
+
+                chartData.push({
+                    age: age,
+                    investments: currentInvestments,
+                    netWorth: netWorthInTodaysDollars
+                });
+
+                const row = projectionTableBody.insertRow();
+                row.classList.add('hover:bg-blue-50');
+
+                if (age % 5 === 0) {
+                    row.classList.add('bg-blue-100');
+                }
+
+                row.insertCell().textContent = age;
+                row.insertCell().textContent = year;
+                row.insertCell().textContent = formatTableCurrency(currentInvestments);
+                row.insertCell().textContent = formatTableCurrency(currentNetWorth);
+                row.insertCell().textContent = formatTableCurrency(netWorthInTodaysDollars);
+
+                currentBaseSalary *= (1 + annualSalaryRaise);
+
+                currentProjectedAge++;
+            }
+            renderChart(chartData);
+        }
+
+        // D3.js Chart Rendering Function for Projected Growth
+        function renderChart(data) {
+            d3.select(chartContainer).select("svg").remove();
+
+            const parentWidth = chartContainer.offsetWidth;
+            const margin = { top: 40, right: 60, bottom: 50, left: 80 };
+            const width = parentWidth - margin.left - margin.right;
+            const height = 400 - margin.top - margin.bottom;
+
+            const svg = d3.select(chartContainer).append("svg")
+                .attr("width", width + margin.left + margin.right)
+                .attr("height", height + margin.top + margin.bottom)
+                .attr("class", "chart-svg")
+                .append("g")
+                .attr("transform", `translate(${margin.left},${margin.top})`);
+
+            const xScale = d3.scaleLinear()
+                .domain(d3.extent(data, d => d.age))
+                .range([0, width]);
+
+            const yMax = d3.max(data, d => Math.max(d.investments, d.netWorth));
+            const yMin = d3.min(data, d => Math.min(d.investments, d.netWorth));
+
+            const yScale = d3.scaleLinear()
+                .domain([yMin * 0.95, yMax * 1.05])
+                .range([height, 0]);
+
+            const xAxis = d3.axisBottom(xScale).tickFormat(d3.format("d"));
+            const yAxis = d3.axisLeft(yScale).tickFormat(d => formatLargeCurrency(d).replace(/\$/g, ''));
+
+            svg.append("g")
+                .attr("class", "x axis")
+                .attr("transform", `translate(0,${height})`)
+                .call(xAxis);
+
+            svg.append("g")
+                .attr("class", "y axis")
+                .call(yAxis);
+
+            svg.append("g")
+                .attr("class", "grid")
+                .call(d3.axisLeft(yScale)
+                    .tickSize(-width)
+                    .tickFormat("")
+                );
+
+            const lineInvestments = d3.line()
+                .x(d => xScale(d.age))
+                .y(d => yScale(d.investments));
+
+            const lineNetWorth = d3.line()
+                .x(d => xScale(d.age))
+                .y(d => yScale(d.netWorth));
+
+            svg.append("path")
+                .datum(data)
+                .attr("class", "line line-investments")
+                .attr("d", lineInvestments);
+
+            svg.append("path")
+                .datum(data)
+                .attr("class", "line line-networth")
+                .attr("d", lineNetWorth);
+
+            svg.append("text")
+                .attr("transform", `translate(${width / 2}, ${height + margin.bottom - 10})`)
+                .style("text-anchor", "middle")
+                .attr("font-size", "0.9rem")
+                .text("Age");
+
+            svg.append("text")
+                .attr("transform", "rotate(-90)")
+                .attr("y", 0 - margin.left + 20)
+                .attr("x", 0 - (height / 2))
+                .attr("dy", "1em")
+                .style("text-anchor", "middle")
+                .attr("font-size", "0.9rem")
+                .text("Value ($)");
+
+            svg.append("text")
+                .attr("x", (width / 2))
+                .attr("y", 0 - (margin.top / 2))
+                .attr("text-anchor", "middle")
+                .attr("font-size", "1.2rem")
+                .attr("font-weight", "bold")
+                .text("Projected Investments & Net Worth");
+
+            const tooltip = d3.select("body").append("div")
+                .attr("class", "tooltip")
+                .style("opacity", 0)
+                .style("position", "absolute");
+
+            svg.append("rect")
+                .attr("class", "overlay")
+                .attr("width", width)
+                .attr("height", height)
+                .style("fill", "none")
+                .style("pointer-events", "all")
+                .on("mouseover", function() { tooltip.style("opacity", 1); })
+                .on("mouseout", function() { tooltip.style("opacity", 0); })
+                .on("mousemove", mousemove);
+
+            const focusInvestment = svg.append("g")
+                .attr("class", "focus")
+                .style("display", "none");
+
+            focusInvestment.append("circle")
+                .attr("r", 5)
+                .attr("fill", "#2563eb");
+
+            const focusNetWorth = svg.append("g")
+                .attr("class", "focus")
+                .style("display", "none");
+
+            focusNetWorth.append("circle")
+                .attr("r", 5)
+                .attr("fill", "#10b981");
+
+            function mousemove(event) {
+                const x0 = xScale.invert(d3.pointer(event)[0]);
+                const bisect = d3.bisector(d => d.age).left;
+                const i = bisect(data, x0, 1);
+                const d0 = data[i - 1];
+                const d1 = data[i];
+                const d = x0 - d0.age > d1.age - x0 ? d1 : d0;
+
+                focusInvestment.attr("transform", `translate(${xScale(d.age)},${yScale(d.investments)})`);
+                focusNetWorth.attr("transform", `translate(${xScale(d.age)},${yScale(d.netWorth)})`);
+
+                focusInvestment.style("display", null);
+                focusNetWorth.style("display", null);
+
+                tooltip.html(`Age: ${d.age}<br>Investments: ${formatTableCurrency(d.investments)}<br>Net Worth (Today's $): ${formatTableCurrency(d.netWorth)}`)
+                    .style("left", (event.pageX + 10) + "px")
+                    .style("top", (event.pageY - 20) + "px");
+            }
+            chartContainer.__chartData__ = data; // Store data for resize handling
+        }
+
+
+        // Function to record current investments
+        recordInvestmentsBtn.addEventListener('click', async () => {
+            if (!window.db || !window.currentUserId) {
+                recordStatusMessage.textContent = "Error: Please sign in or ensure Firebase is initialized.";
+                return;
+            }
+
+            const currentNetWorth = parseFloat(currentNetWorthDisplay.textContent.replace('$', '').replace('K', '000').replace('M', '000000').replace(/,/g, ''));
+            const currentNetInvestments = parseFloat(currentNetInvestmentsDisplay.textContent.replace('$', '').replace('K', '000').replace('M', '000000').replace(/,/g, ''));
+
+            if (isNaN(currentNetWorth) || isNaN(currentNetInvestments)) {
+                recordStatusMessage.textContent = "Error: Could not read current net worth or investments. Calculate first.";
+                return;
+            }
+
+            recordStatusMessage.textContent = "Recording...";
+            try {
+                // Ensure the date is a proper Firestore Timestamp for ordering
+                const recordData = {
+                    date: new Date(), // Firestore automatically converts Date objects to Timestamps
+                    netWorth: currentNetWorth,
+                    netInvestments: currentNetInvestments
+                };
+                await addDoc(collection(window.db, `/artifacts/${window.appId}/users/${window.currentUserId}/historical_records`), recordData);
+                recordStatusMessage.textContent = "Record saved successfully!";
+            } catch (error) {
+                console.error("Error adding document: ", error);
+                recordStatusMessage.textContent = `Error saving record: ${error.message}`;
+            }
+        });
+
+        // Function to render historical data in table and chart
+        function renderHistoricalData(records) {
+            historicalTableBody.innerHTML = ''; // Clear existing table rows
+            historicalChartContainer.innerHTML = ''; // Clear existing chart
+
+            if (records.length === 0) {
+                historicalTableBody.innerHTML = '<tr><td colspan="3" class="py-3 px-6 text-center text-gray-500">No historical records yet. Click "Record Current Investments" to add one!</td></tr>';
+                return;
+            }
+
+            // Populate table
+            records.forEach(record => {
+                const row = historicalTableBody.insertRow();
+                row.classList.add('hover:bg-gray-50');
+                const date = record.date.toDate(); // Convert Firestore Timestamp to JS Date
+                row.insertCell().textContent = date.toLocaleDateString();
+                row.insertCell().textContent = formatTableCurrency(record.netInvestments);
+                row.insertCell().textContent = formatTableCurrency(record.netWorth);
+            });
+
+            // Render historical chart
+            renderHistoricalChart(records);
+        }
+
+        // D3.js Chart Rendering Function for Historical Data
+        function renderHistoricalChart(data) {
+            d3.select(historicalChartContainer).select("svg").remove();
+
+            const parentWidth = historicalChartContainer.offsetWidth;
+            const margin = { top: 40, right: 60, bottom: 50, left: 80 };
+            const width = parentWidth - margin.left - margin.right;
+            const height = 400 - margin.top - margin.bottom;
+
+            const svg = d3.select(historicalChartContainer).append("svg")
+                .attr("width", width + margin.left + margin.right)
+                .attr("height", height + margin.top + margin.bottom)
+                .attr("class", "chart-svg")
+                .append("g")
+                .attr("transform", `translate(${margin.left},${margin.top})`);
+
+            // Scales - X scale is time, Y scale is linear
+            const xScale = d3.scaleTime()
+                .domain(d3.extent(data, d => d.date.toDate())) // Convert Firestore Timestamp to Date object
+                .range([0, width]);
+
+            const yMax = d3.max(data, d => Math.max(d.netInvestments, d.netWorth));
+            const yMin = d3.min(data, d => Math.min(d.netInvestments, d.netWorth));
+
+            const yScale = d3.scaleLinear()
+                .domain([yMin * 0.95, yMax * 1.05])
+                .range([height, 0]);
+
+            // Axes
+            const xAxis = d3.axisBottom(xScale).tickFormat(d3.timeFormat("%Y-%m-%d"));
+            const yAxis = d3.axisLeft(yScale).tickFormat(d => formatLargeCurrency(d).replace(/\$/g, ''));
+
+            svg.append("g")
+                .attr("class", "x axis")
+                .attr("transform", `translate(0,${height})`)
+                .call(xAxis);
+
+            svg.append("g")
+                .attr("class", "y axis")
+                .call(yAxis);
+
+            // Add Y-axis grid lines
+            svg.append("g")
+                .attr("class", "grid")
+                .call(d3.axisLeft(yScale)
+                    .tickSize(-width)
+                    .tickFormat("")
+                );
+
+            // Line generators
+            const lineHistoricalInvestments = d3.line()
+                .x(d => xScale(d.date.toDate()))
+                .y(d => yScale(d.netInvestments));
+
+            const lineHistoricalNetWorth = d3.line()
+                .x(d => xScale(d.date.toDate()))
+                .y(d => yScale(d.netWorth));
+
+            // Draw lines
+            svg.append("path")
+                .datum(data)
+                .attr("class", "line line-investments")
+                .attr("d", lineHistoricalInvestments);
+
+            svg.append("path")
+                .datum(data)
+                .attr("class", "line line-networth")
+                .attr("d", lineHistoricalNetWorth);
+
+            // Add axis labels
+            svg.append("text")
+                .attr("transform", `translate(${width / 2}, ${height + margin.bottom - 10})`)
+                .style("text-anchor", "middle")
+                .attr("font-size", "0.9rem")
+                .text("Date");
+
+            svg.append("text")
+                .attr("transform", "rotate(-90)")
+                .attr("y", 0 - margin.left + 20)
+                .attr("x", 0 - (height / 2))
+                .attr("dy", "1em")
+                .style("text-anchor", "middle")
+                .attr("font-size", "0.9rem")
+                .text("Value ($)");
+
+            // Add Chart Title
+            svg.append("text")
+                .attr("x", (width / 2))
+                .attr("y", 0 - (margin.top / 2))
+                .attr("text-anchor", "middle")
+                .attr("font-size", "1.2rem")
+                .attr("font-weight", "bold")
+                .text("Historical Financials");
+
+            // Tooltip functionality for historical chart (similar to projected chart)
+            const tooltip = d3.select("body").append("div")
+                .attr("class", "tooltip")
+                .style("opacity", 0)
+                .style("position", "absolute");
+
+            svg.append("rect")
+                .attr("class", "overlay")
+                .attr("width", width)
+                .attr("height", height)
+                .style("fill", "none")
+                .style("pointer-events", "all")
+                .on("mouseover", function() { tooltip.style("opacity", 1); })
+                .on("mouseout", function() { tooltip.style("opacity", 0); })
+                .on("mousemove", mousemove);
+
+            const focusHistoricalInvestment = svg.append("g")
+                .attr("class", "focus")
+                .style("display", "none");
+            focusHistoricalInvestment.append("circle")
+                .attr("r", 5)
+                .attr("fill", "#2563eb");
+
+            const focusHistoricalNetWorth = svg.append("g")
+                .attr("class", "focus")
+                .style("display", "none");
+            focusHistoricalNetWorth.append("circle")
+                .attr("r", 5)
+                .attr("fill", "#10b981");
+
+            function mousemove(event) {
+                const xDate = xScale.invert(d3.pointer(event)[0]);
+                const bisectDate = d3.bisector(d => d.date.toDate()).left;
+                const i = bisectDate(data, xDate, 1);
+                const d0 = data[i - 1];
+                const d1 = data[i];
+                const d = (d1 && xDate - d0.date.toDate() > d1.date.toDate() - xDate) ? d1 : d0;
+
+                if (d) {
+                    focusHistoricalInvestment.attr("transform", `translate(${xScale(d.date.toDate())},${yScale(d.netInvestments)})`);
+                    focusHistoricalNetWorth.attr("transform", `translate(${xScale(d.date.toDate())},${yScale(d.netWorth)})`);
+                    focusHistoricalInvestment.style("display", null);
+                    focusHistoricalNetWorth.style("display", null);
+
+                    tooltip.html(`Date: ${d.date.toDate().toLocaleDateString()}<br>Investments: ${formatTableCurrency(d.netInvestments)}<br>Net Worth: ${formatTableCurrency(d.netWorth)}`)
+                        .style("left", (event.pageX + 10) + "px")
+                        .style("top", (event.pageY - 20) + "px");
+                }
+            }
+            historicalChartContainer.__chartData__ = data; // Store data for resize handling
+        }
+
+
+        // Add event listeners to all static input fields
+        for (const key in staticInputs) {
+            staticInputs[key].addEventListener('input', calculateFinancials);
+        }
+
+        // Add event listener for adding new investment accounts
+        addInvestmentBtn.addEventListener('click', () => addInvestmentAccountInput());
+        // Add event listener for adding new liability accounts
+        addLiabilityBtn.addEventListener('click', () => addLiabilityInput());
+        // Add event listener for adding new other income accounts
+        addOtherIncomeBtn.addEventListener('click', () => addOtherIncomeInput());
+
+        // Attach event listeners for slider value display updates
+        sliderPairs.forEach(pair => {
+            pair.slider.addEventListener('input', () => updateSliderValueDisplay(pair.slider, pair.valueDisplay, pair.unit));
+            pair.slider.addEventListener('change', calculateFinancials);
+            updateSliderValueDisplay(pair.slider, pair.valueDisplay, pair.unit);
+        });
+
+        // Initial population of investment and liability accounts and calculation on page load
+        document.addEventListener('DOMContentLoaded', () => {
+            initialInvestmentAccounts.forEach(account => addInvestmentAccountInput(account));
+            initialLiabilities.forEach(liability => addLiabilityInput(liability));
+            initialOtherIncome.forEach(income => addOtherIncomeInput(income));
+            calculateFinancials(); // Initial calculation after setting up inputs
+
+            // Re-render charts on window resize for responsiveness
+            window.addEventListener('resize', () => {
+                const projectedData = chartContainer.__chartData__;
+                if (projectedData) {
+                    renderChart(projectedData);
+                }
+                const historicalData = historicalChartContainer.__chartData__;
+                if (historicalData) {
+                    renderHistoricalChart(historicalData);
+                }
+            });
+        });
+    </script>
+</head>
+<body class="p-4 md:p-8">
+    <div class="container mx-auto p-4 md:p-8 bg-white rounded-lg shadow-xl">
+        <h1 class="text-4xl font-extrabold mb-4 text-center text-blue-800">Retirement Plan Calculator</h1>
+
+        <!-- Display Current Net Worth & Net Investments - MOVED TO TOP -->
+        <div class="mt-4 mb-8 p-6 bg-green-50 rounded-lg shadow-inner flex flex-col md:flex-row justify-around items-center text-center border border-green-200">
+            <div class="mb-4 md:mb-0 md:mr-8">
+                <p class="text-xl font-bold text-gray-800">Current Net Worth:</p>
+                <p id="currentNetWorth" class="text-4xl font-extrabold text-green-700 mt-2">$0</p>
+            </div>
+            <div class="mb-4 md:mb-0 md:mr-8">
+                <p class="text-xl font-bold text-gray-800">Current Net Investments:</p>
+                <p id="currentNetInvestments" class="text-4xl font-extrabold text-blue-700 mt-2">$0</p>
+            </div>
+            <div class="mb-4 md:mb-0 md:mr-8">
+                <p class="text-xl font-bold text-gray-800">Today's Draw:</p>
+                <p id="todaysDraw" class="text-4xl font-extrabold text-purple-700 mt-2">$0</p>
+            </div>
+            <div class="mb-4 md:mb-0 md:mr-8">
+                <p class="text-xl font-bold text-gray-800">45 YO Draw (Today's $):</p>
+                <p id="fortyFiveYODraw" class="text-4xl font-extrabold text-purple-700 mt-2">$0</p>
+            </div>
+            <div>
+                <p class="text-xl font-bold text-gray-800">62 YO Draw (Today's $):</p>
+                <p id="sixtyTwoYODraw" class="text-4xl font-extrabold text-purple-700 mt-2">$0</p>
+            </div>
+        </div>
+
+        <!-- Section 1: Current Financials & Assumptions -->
+        <div class="bg-blue-50 p-6 rounded-lg shadow-md mb-8 border border-blue-200">
+            <!-- Collapsible Section: Assets, Investments, and Liabilities -->
+            <details open>
+                <summary class="text-2xl font-bold mb-6 text-blue-700 cursor-pointer">
+                    1. Assets, Investments, and Liabilities
+                </summary>
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+                    <!-- Investment Accounts (Dynamic) -->
+                    <div>
+                        <h3 class="text-xl font-semibold mb-4 text-gray-800">Investment Accounts <span class="font-bold text-green-600" id="totalInvestmentsSummary"></span></h3>
+                        <div id="investmentAccountsContainer" class="mb-4 space-y-4">
+                            <!-- Dynamic investment inputs will be added here by JavaScript -->
+                        </div>
+                        <button id="addInvestmentBtn" type="button" class="mt-4 bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg shadow-md">
+                            + Add Investment Account
+                        </button>
+                    </div>
+
+                    <!-- Other Assets & Liabilities -->
+                    <div>
+                        <h3 class="text-xl font-semibold mb-4 text-gray-800">Other Assets <span class="font-bold text-green-600" id="totalOtherAssetsSummary"></span></h3>
+                        <div class="mb-4">
+                            <label for="checkingAccount" class="label-style">Checking Account ($)</label>
+                            <input type="number" id="checkingAccount" value="18156" step="100" class="input-field">
+                        </div>
+                        <div class="mb-4">
+                            <label for="homeValue" class="label-style">Home Value ($)</label>
+                            <input type="number" id="homeValue" value="943522" step="100" class="input-field">
+                        </div>
+                        <div class="mb-4">
+                            <label for="otherEquity" class="label-style">Other Equity (Car, etc.) ($)</label>
+                            <input type="number" id="otherEquity" value="90601" step="100" class="input-field">
+                        </div>
+
+                        <h3 class="text-xl font-semibold mt-8 mb-4 text-gray-800">Liabilities <span class="font-bold text-green-600" id="totalLiabilitiesSummary"></span></h3>
+                        <div id="liabilitiesContainer" class="mb-4 space-y-4">
+                            <!-- Dynamic liability inputs will be added here by JavaScript -->
+                        </div>
+                        <button id="addLiabilityBtn" type="button" class="mt-4 bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg shadow-md">
+                            + Add Liability
+                        </button>
+                    </div>
+                </div>
+            </details>
+
+            <!-- Collapsible Section: Income, Savings, and Assumptions -->
+            <details open class="mt-8">
+                <summary class="text-2xl font-bold mb-6 text-blue-700 cursor-pointer">
+                    2. Income, Savings, and Assumptions
+                </summary>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
+                    <div>
+                        <h3 class="text-xl font-semibold mb-4 text-gray-800">Income & Contribution Assumptions</h3>
+                        <div class="mb-4">
+                            <label for="currentAge" class="label-style">Current Age</label>
+                            <div class="slider-input-wrapper">
+                                <input type="range" id="currentAge" min="18" max="100" value="38" step="1" class="w-full">
+                                <span class="slider-value-display" id="currentAgeValue"></span>
+                            </div>
+                        </div>
+                        <div class="mb-4">
+                            <label for="baseSalary" class="label-style">Base Salary ($)</label>
+                            <input type="number" id="baseSalary" value="179386" step="100" class="input-field">
+                        </div>
+
+                        <div class="mb-4">
+                            <label for="bonusRate" class="label-style">Bonus Rate (% of Base Salary)</label>
+                            <div class="slider-input-wrapper">
+                                <input type="range" id="bonusRate" min="0" max="50" value="23" step="0.5" class="w-full">
+                                <span class="slider-value-display" id="bonusRateValue"></span>
+                            </div>
+                        </div>
+
+                        <div class="mb-4">
+                            <label for="my401kContributionRate" class="label-style">My 401K Contribution Rate (% of Base Salary)</label>
+                            <div class="slider-input-wrapper">
+                                <input type="range" id="my401kContributionRate" min="0" max="20" value="6" step="0.5" class="w-full">
+                                <span class="slider-value-display" id="my401kContributionRateValue"></span>
+                            </div>
+                        </div>
+
+                        <div class="mb-4">
+                            <label for="company401kContributionRate" class="label-style">Company 401K Contribution Rate (% of Base Salary)</label>
+                            <div class="slider-input-wrapper">
+                                <input type="range" id="company401kContributionRate" min="0" max="20" value="10" step="0.5" class="w-full">
+                                <span class="slider-value-display" id="company401kContributionRateValue"></span>
+                            </div>
+                        </div>
+
+                        <div class="mb-4">
+                            <label for="monthly529Contribution" class="label-style">Monthly 529 Contribution ($)</label>
+                            <input type="number" id="monthly529Contribution" value="400" step="50" class="input-field">
+                        </div>
+                        <div class="mb-4">
+                            <label for="monthlyHSAContribution" class="label-style">Monthly HSA Contribution ($)</label>
+                            <input type="number" id="monthlyHSAContribution" value="625" step="25" class="input-field">
+                        </div>
+
+                        <div class="mb-4">
+                            <label for="annualRothContribution" class="label-style">Other Annual Savings Contribution ($)</label>
+                            <input type="number" id="annualRothContribution" value="0" step="100" class="input-field">
+                        </div>
+                        <h3 class="text-xl font-semibold mt-8 mb-4 text-gray-800">Other Income (Monthly)</h3>
+                        <div id="otherIncomeContainer" class="mb-4 space-y-4">
+                            <!-- Dynamic other income inputs will be added here by JavaScript -->
+                        </div>
+                        <button id="addOtherIncomeBtn" type="button" class="mt-4 bg-purple-500 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded-lg shadow-md">
+                            + Add Other Income
+                        </button>
+                    </div>
+
+                    <div>
+                        <h3 class="text-xl font-semibold mb-4 text-gray-800">Growth & Expense Assumptions</h3>
+                        <div class="mb-4">
+                            <label for="annualSalaryRaise" class="label-style">Annual Salary Raise (%)</label>
+                            <div class="slider-input-wrapper">
+                                <input type="range" id="annualSalaryRaise" min="0" max="10" value="3.8" step="0.1" class="w-full">
+                                <span class="slider-value-display" id="annualSalaryRaiseValue"></span>
+                            </div>
+                        </div>
+
+                        <div class="mb-4">
+                            <label for="stockAppreciation" class="label-style">Stock Appreciation (%)</label>
+                            <div class="slider-input-wrapper">
+                                <input type="range" id="stockAppreciation" min="0" max="15" value="10" step="0.5" class="w-full">
+                                <span class="slider-value-display" id="stockAppreciationValue"></span>
+                            </div>
+                        </div>
+
+                        <div class="mb-4">
+                            <label for="housingAppreciation" class="label-style">Housing Appreciation (%)</label>
+                            <div class="slider-input-wrapper">
+                                <input type="range" id="housingAppreciation" min="0" max="10" value="4" step="0.5" class="w-full">
+                                <span class="slider-value-display" id="housingAppreciationValue"></span>
+                            </div>
+                        </div>
+
+                        <div class="mb-4">
+                            <label for="inflation" class="label-style">Inflation (%)</label>
+                            <div class="slider-input-wrapper">
+                                <input type="range" id="inflation" min="0" max="10" value="3" step="0.5" class="w-full">
+                                <span class="slider-value-display" id="inflationValue"></span>
+                            </div>
+                        </div>
+
+                        <div class="mb-4">
+                            <label for="retirementDrawRate" class="label-style">Retirement Draw (%)</label>
+                            <div class="slider-input-wrapper">
+                                <input type="range" id="retirementDrawRate" min="0" max="10" value="7" step="0.5" class="w-full">
+                                <span class="slider-value-display" id="retirementDrawRateValue"></span>
+                            </div>
+                        </div>
+
+                        <div class="mb-4">
+                            <label for="retirementYear" class="label-style">Retirement Year (Age)</label>
+                            <div class="slider-input-wrapper">
+                                <input type="range" id="retirementYear" min="38" max="100" value="65" step="1" class="w-full">
+                                <span class="slider-value-display" id="retirementYearValue"></span>
+                            </div>
+                        </div>
+
+                        <div class="mb-4">
+                            <label for="monthlyPrincipalPayment" class="label-style">Monthly Principal Payment ($)</label>
+                            <input type="number" id="monthlyPrincipalPayment" value="1428" step="100" class="input-field">
+                        </div>
+                    </div>
+                </div>
+            </details>
+        </div>
+
+        <!-- Section 3: Projected Growth Chart -->
+        <div class="bg-blue-50 p-6 rounded-lg shadow-md mb-8 border border-blue-200">
+            <h2 class="text-2xl font-bold mb-4 text-blue-700">3. Projected Growth Chart</h2>
+            <div id="chart-container" class="w-full overflow-x-auto">
+                <!-- D3.js chart will be rendered here -->
+            </div>
+            <div class="flex justify-center mt-4 space-x-6 text-gray-700 font-semibold">
+                <div class="flex items-center">
+                    <span class="inline-block w-4 h-4 rounded-full mr-2" style="background-color: #2563eb;"></span>
+                    Net Investments
+                </div>
+                <div class="flex items-center">
+                    <span class="inline-block w-4 h-4 rounded-full mr-2" style="background-color: #10b981;"></span>
+                    Net Worth (Today's $)
+                </div>
+            </div>
+        </div>
+
+        <!-- Section 4: Growth Projection Table -->
+        <div class="bg-blue-50 p-6 rounded-lg shadow-md border border-blue-200">
+            <h2 class="text-2xl font-bold mb-4 text-blue-700">4. Projected Growth Table</h2>
+            <div class="overflow-x-auto rounded-lg border border-gray-200 shadow-sm">
+                <table class="min-w-full bg-white">
+                    <thead class="bg-blue-600 text-white uppercase text-sm leading-normal">
+                        <tr>
+                            <th class="py-3 px-6 text-left">Age</th>
+                            <th class="py-3 px-6 text-left">Year</th>
+                            <th class="py-3 px-6 text-left">Investments</th>
+                            <th class="py-3 px-6 text-left">Net Worth</th>
+                            <th class="py-3 px-6 text-left">Net Worth (Today's $)</th>
+                        </tr>
+                    </thead>
+                    <tbody id="projectionTableBody" class="text-gray-700 text-sm font-light divide-y divide-gray-200">
+                        <!-- Rows will be inserted here by JavaScript -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Section 5: Historical Records -->
+        <div class="bg-blue-50 p-6 rounded-lg shadow-md mt-8 border border-blue-200">
+            <h2 class="text-2xl font-bold mb-4 text-blue-700">5. Historical Records</h2>
+            <div class="flex flex-wrap items-center justify-between mb-4 gap-4">
+                <button id="recordInvestmentsBtn" type="button" class="bg-indigo-500 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-lg shadow-md transition duration-200 ease-in-out">
+                    Record Current Investments
+                </button>
+                <p id="recordStatusMessage" class="text-sm text-gray-600"></p>
+                <p id="userIdDisplay" class="text-xs text-gray-500"></p>
+            </div>
+
+            <div id="historicalChartContainer" class="w-full overflow-x-auto mb-8">
+                <!-- D3.js historical chart will be rendered here -->
+            </div>
+             <div class="flex justify-center mt-4 space-x-6 text-gray-700 font-semibold">
+                <div class="flex items-center">
+                    <span class="inline-block w-4 h-4 rounded-full mr-2" style="background-color: #2563eb;"></span>
+                    Historical Net Investments
+                </div>
+                <div class="flex items-center">
+                    <span class="inline-block w-4 h-4 rounded-full mr-2" style="background-color: #10b981;"></span>
+                    Historical Net Worth
+                </div>
+            </div>
+
+
+            <h3 class="text-xl font-semibold mb-4 text-gray-800">Historical Data Table</h3>
+            <div class="overflow-x-auto rounded-lg border border-gray-200 shadow-sm">
+                <table class="min-w-full bg-white">
+                    <thead class="bg-gray-600 text-white uppercase text-sm leading-normal">
+                        <tr>
+                            <th class="py-3 px-6 text-left">Date</th>
+                            <th class="py-3 px-6 text-left">Net Investments</th>
+                            <th class="py-3 px-6 text-left">Net Worth</th>
+                        </tr>
+                    </thead>
+                    <tbody id="historicalTableBody" class="text-gray-700 text-sm font-light divide-y divide-gray-200">
+                        <!-- Historical rows will be inserted here by JavaScript -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
