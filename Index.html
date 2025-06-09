@@ -885,45 +885,46 @@
         });
     </script>
 </head>
-<body class="flex flex-col lg:flex-row min-h-screen">
-    <!-- Left Sticky Banner -->
-    <div id="leftStickyBanner" class="fixed top-0 left-0 h-screen w-64 bg-blue-800 text-white p-6 shadow-2xl flex flex-col items-center justify-start z-50 overflow-y-auto
-                                     lg:w-64 lg:h-screen lg:flex-col
-                                     w-full h-auto flex-row flex-wrap justify-center items-start pt-4 pb-2 px-2">
-        <h2 class="text-3xl font-extrabold mb-8 text-center text-white lg:text-3xl text-2xl w-full">Your Snapshot</h2>
+<body class="flex flex-col min-h-screen">
+    <!-- Snapshot Banner (not sticky on mobile, sticky on left for desktop) -->
+    <div id="leftStickyBanner" class="
+        relative w-full h-auto bg-blue-800 text-white p-4 shadow-xl flex flex-row flex-wrap justify-center items-start z-50
+        lg:fixed lg:top-0 lg:left-0 lg:h-screen lg:w-64 lg:flex-col lg:items-center lg:justify-start lg:p-6 lg:shadow-2xl lg:overflow-y-auto
+    ">
+        <h2 class="text-xl font-extrabold mb-4 text-center text-white w-full lg:text-3xl lg:mb-8">Your Snapshot</h2>
         <!-- Each summary item will be a div -->
-        <div class="text-center w-full mb-4 summary-item lg:w-auto lg:text-center sm:text-left">
-            <p class="text-lg font-bold text-blue-200 sm:text-base">Net Worth:</p>
-            <p id="currentNetWorth" class="text-3xl font-semibold text-white mt-1 sm:text-xl">$0</p>
+        <div class="text-center mb-2 summary-item w-1/2 sm:w-1/3 md:w-1/4 lg:w-auto lg:text-center px-1">
+            <p class="text-sm font-bold text-blue-200 lg:text-lg">Net Worth:</p>
+            <p id="currentNetWorth" class="text-xl font-semibold text-white mt-1 lg:text-3xl">$0</p>
         </div>
-        <div class="text-center w-full mb-4 summary-item lg:w-auto lg:text-center sm:text-left">
-            <p class="text-lg font-bold text-blue-200 sm:text-base">Net Investments:</p>
-            <p id="currentNetInvestments" class="text-3xl font-semibold text-white mt-1 sm:text-xl">$0</p>
+        <div class="text-center mb-2 summary-item w-1/2 sm:w-1/3 md:w-1/4 lg:w-auto lg:text-center px-1">
+            <p class="text-sm font-bold text-blue-200 lg:text-lg">Net Investments:</p>
+            <p id="currentNetInvestments" class="text-xl font-semibold text-white mt-1 lg:text-3xl">$0</p>
         </div>
-        <div class="text-center w-full mb-4 summary-item lg:w-auto lg:text-center sm:text-left">
-            <p class="text-lg font-bold text-blue-200 sm:text-base">Annual Income:</p>
-            <p id="annualIncomeDisplay" class="text-3xl font-semibold text-white mt-1 sm:text-xl">$0</p>
+        <div class="text-center mb-2 summary-item w-1/2 sm:w-1/3 md:w-1/4 lg:w-auto lg:text-center px-1">
+            <p class="text-sm font-bold text-blue-200 lg:text-lg">Annual Income:</p>
+            <p id="annualIncomeDisplay" class="text-xl font-semibold text-white mt-1 lg:text-3xl">$0</p>
         </div>
-        <div class="text-center w-full mb-4 summary-item lg:w-auto lg:text-center sm:text-left">
-            <p class="text-lg font-bold text-blue-200 sm:text-base">Annual Savings:</p>
-            <p id="annualSavingsDisplay" class="text-3xl font-semibold text-white mt-1 sm:text-xl">$0</p>
+        <div class="text-center mb-2 summary-item w-1/2 sm:w-1/3 md:w-1/4 lg:w-auto lg:text-center px-1">
+            <p class="text-sm font-bold text-blue-200 lg:text-lg">Annual Savings:</p>
+            <p id="annualSavingsDisplay" class="text-xl font-semibold text-white mt-1 lg:text-3xl">$0</p>
         </div>
-        <div class="text-center w-full mb-4 summary-item lg:w-auto lg:text-center sm:text-left">
-            <p class="text-lg font-bold text-blue-200 sm:text-base">Today's Draw:</p>
-            <p id="todaysDraw" class="text-3xl font-semibold text-white mt-1 sm:text-xl">$0</p>
+        <div class="text-center mb-2 summary-item w-1/2 sm:w-1/3 md:w-1/4 lg:w-auto lg:text-center px-1">
+            <p class="text-sm font-bold text-blue-200 lg:text-lg">Today's Draw:</p>
+            <p id="todaysDraw" class="text-xl font-semibold text-white mt-1 lg:text-3xl">$0</p>
         </div>
-        <div class="text-center w-full mb-4 summary-item lg:w-auto lg:text-center sm:text-left">
-            <p class="text-lg font-bold text-blue-200 sm:text-base">45 YO Draw (Today's $):</p>
-            <p id="fortyFiveYODraw" class="text-3xl font-semibold text-white mt-1 sm:text-xl">$0</p>
+        <div class="text-center mb-2 summary-item w-1/2 sm:w-1/3 md:w-1/4 lg:w-auto lg:text-center px-1">
+            <p class="text-sm font-bold text-blue-200 lg:text-lg">45 YO Draw (Today's $):</p>
+            <p id="fortyFiveYODraw" class="text-xl font-semibold text-white mt-1 lg:text-3xl">$0</p>
         </div>
-        <div class="text-center w-full mb-4 summary-item lg:w-auto lg:text-center sm:text-left">
-            <p class="text-lg font-bold text-blue-200 sm:text-base">62 YO Draw (Today's $):</p>
-            <p id="sixtyTwoYODraw" class="text-3xl font-semibold text-white mt-1 sm:text-xl">$0</p>
+        <div class="text-center mb-2 summary-item w-1/2 sm:w-1/3 md:w-1/4 lg:w-auto lg:text-center px-1">
+            <p class="text-sm font-bold text-blue-200 lg:text-lg">62 YO Draw (Today's $):</p>
+            <p id="sixtyTwoYODraw" class="text-xl font-semibold text-white mt-1 lg:text-3xl">$0</p>
         </div>
     </div>
 
     <!-- Main Content Area -->
-    <div class="flex-1 ml-0 lg:ml-64 p-4 md:p-8 main-content-wrapper mt-[10rem] sm:mt-[7rem] lg:mt-0">
+    <div class="flex-1 p-4 md:p-8 lg:ml-64">
         <div class="w-full bg-white rounded-lg shadow-xl p-4 md:p-8">
             <h1 class="text-4xl font-extrabold mb-4 text-center text-blue-800">Retirement Plan Calculator</h1>
 
