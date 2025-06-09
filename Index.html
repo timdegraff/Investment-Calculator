@@ -11,8 +11,9 @@
     <!-- Firebase SDKs -->
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-    import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebase/auth/dist/index.mjs";
-    import { getFirestore, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebase/firestore/dist/index.mjs";
+    // Changed import paths to use .js versions from firebasejs/11.6.1 for better compatibility
+    import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+    import { getFirestore, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
     // Dynamically retrieve Firebase configuration provided by the Canvas environment
     // Fallback to a placeholder if running outside Canvas (for local development testing)
@@ -42,7 +43,7 @@
     const SHARED_DOC_ID = 'shared_inputs'; // A single document for all shared inputs
 
     // Revision Level
-    const appRevision = "1.7"; // Dynamic retirement draw based on slider
+    const appRevision = "1.9"; // Fix: Reverted Firebase SDK import paths for stability
 
     // Predefined default values for dynamic sections
     const defaultInvestmentAccounts = [
@@ -384,10 +385,9 @@
                     defaultOtherAssets.forEach(asset => addOtherAssetInput(asset));
                     defaultLiabilities.forEach(liability => addLiabilityInput(liability));
                     defaultOtherIncomes.forEach(income => addOtherIncomeInput(income));
-
-
-                    // Save this initial blank state to Firestore
-                    await saveDataToFirestore(collectAllCurrentInputs());
+                    
+                    // Call calculateFinancials to update display and save the initial state with defaults
+                    calculateFinancials(true);
                 }
                 window.isLoadingFromFirestore = false; // Reset flag after processing
             }, (error) => {
@@ -1340,7 +1340,7 @@
         lg:fixed lg:top-0 lg:left-0 lg:h-screen lg:w-64 lg:flex-col lg:items-center lg:justify-start lg:p-6 lg:shadow-2xl lg:overflow-y-auto
     ">
         <h2 class="text-xl font-extrabold mb-4 text-center text-white w-full lg:text-3xl lg:mb-8">Your Snapshot</h2>
-        <span id="appRevisionDisplay" class="text-xs text-blue-200 font-semibold mb-4 lg:mb-6">v1.7</span>
+        <span id="appRevisionDisplay" class="text-xs text-blue-200 font-semibold mb-4 lg:mb-6">v1.9</span>
         <!-- Each summary item will be a div -->
         <div class="text-center mb-2 summary-item w-1/2 sm:w-1/3 md:w-1/4 lg:w-auto lg:text-center px-1">
             <p class="text-sm font-bold text-blue-200 lg:text-lg">Net Worth:</p>
