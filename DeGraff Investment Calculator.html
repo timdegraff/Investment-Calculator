@@ -513,14 +513,17 @@
                 .x(d => xScale(d.age))
                 .y(d => yScale(d.netWorth));
 
+            // Draw lines with explicit fill="none"
             svg.append("path")
                 .datum(data)
                 .attr("class", "line line-investments")
+                .attr("fill", "none") // Explicitly set fill to none
                 .attr("d", lineInvestments);
 
             svg.append("path")
                 .datum(data)
                 .attr("class", "line line-networth")
+                .attr("fill", "none") // Explicitly set fill to none
                 .attr("d", lineNetWorth);
 
             svg.append("text")
@@ -712,15 +715,17 @@
                 .x(d => xScale(d.date.toDate()))
                 .y(d => yScale(d.netWorth));
 
-            // Draw lines
+            // Draw lines with explicit fill="none"
             svg.append("path")
                 .datum(data)
                 .attr("class", "line line-investments")
+                .attr("fill", "none") // Explicitly set fill to none
                 .attr("d", lineHistoricalInvestments);
 
             svg.append("path")
                 .datum(data)
                 .attr("class", "line line-networth")
+                .attr("fill", "none") // Explicitly set fill to none
                 .attr("d", lineHistoricalNetWorth);
 
             // Add axis labels
@@ -820,8 +825,74 @@
             updateSliderValueDisplay(pair.slider, pair.valueDisplay, pair.unit);
         });
 
+        // Function to set up real-time listener for historical records
+        function setupHistoricalDataListener() {
+            if (!window.db || !window.currentUserId || !window.appId) {
+                console.warn("Firestore or User ID or App ID not ready for historical data listener.");
+                return;
+            }
+
+            const historicalRecordsRef = collection(window.db, `/artifacts/${window.appId}/users/${window.currentUserId}/historical_records`);
+            const q = query(historicalRecordsRef, orderBy("date", "asc")); // Order by date ascending
+
+            onSnapshot(q, (snapshot) => {
+                const records = [];
+                snapshot.forEach(doc => {
+                    records.push({ id: doc.id, ...doc.data() });
+                });
+                console.log("Historical Records fetched:", records);
+                renderHistoricalData(records); // Render chart and table with fetched data
+            }, (error) => {
+                console.error("Error fetching historical records:", error);
+                recordStatusMessage.textContent = `Error fetching historical data: ${error.message}`;
+            });
+        }
+
         // Initial population of investment and liability accounts and calculation on page load
-        document.addEventListener('DOMContentLoaded', () => {
+        document.addEventListener('DOMContentLoaded', async () => {
+            try {
+                // Parse Firebase config from global variable, or use a placeholder if undefined
+                const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {
+                    apiKey: "YOUR_API_KEY",
+                    authDomain: "YOUR_AUTH_DOMAIN",
+                    projectId: "YOUR_PROJECT_ID",
+                    storageBucket: "YOUR_STORAGE_BUCKET",
+                    messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
+                    appId: "YOUR_APP_ID"
+                };
+
+                window.firebaseApp = initializeApp(firebaseConfig);
+                window.db = getFirestore(window.firebaseApp);
+                window.auth = getAuth(window.firebaseApp);
+
+                // Sign in with custom token if available, otherwise anonymously
+                if (typeof __initial_auth_token !== 'undefined') {
+                    await signInWithCustomToken(window.auth, __initial_auth_token);
+                } else {
+                    await signInAnonymously(window.auth);
+                }
+
+                // Listen for auth state changes to get the user ID
+                onAuthStateChanged(window.auth, (user) => {
+                    if (user) {
+                        window.currentUserId = user.uid;
+                        document.getElementById('userIdDisplay').textContent = `User ID: ${window.currentUserId}`;
+                        console.log("Firebase initialized and user signed in:", user.uid);
+                        // Once authenticated, start listening for historical data
+                        setupHistoricalDataListener();
+                    } else {
+                        console.log("No user signed in.");
+                        window.currentUserId = null;
+                        document.getElementById('userIdDisplay').textContent = `User ID: Not Signed In`;
+                    }
+                });
+
+            } catch (error) {
+                console.error("Error initializing Firebase:", error);
+                document.getElementById('recordStatusMessage').textContent = `Error: Firebase initialization failed. Check console.`;
+            }
+
+            // Initial population of dynamic inputs and calculation after Firebase setup is initiated
             initialInvestmentAccounts.forEach(account => addInvestmentAccountInput(account));
             initialLiabilities.forEach(liability => addLiabilityInput(liability));
             initialOtherIncome.forEach(income => addOtherIncomeInput(income));
