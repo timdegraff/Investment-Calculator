@@ -197,22 +197,19 @@
                         </button>
                     </div>
 
-                    <!-- Other Assets & Liabilities -->
+                    <!-- Other Assets -->
                     <div>
                         <h3 class="text-xl font-semibold mb-4 text-gray-800">Other Assets <span class="font-bold text-green-600" id="totalOtherAssetsSummary"></span></h3>
-                        <div class="mb-4">
-                            <label for="checkingAccount" class="label-style">Checking Account ($)</label>
-                            <input type="text" id="checkingAccount" value="20000" class="input-field">
+                        <div id="otherAssetsContainer" class="mb-4 space-y-4">
+                            <!-- Dynamic other assets inputs will be added here by JavaScript -->
                         </div>
-                        <div class="mb-4">
-                            <label for="homeValue" class="label-style">Home Value ($)</label>
-                            <input type="text" id="homeValue" value="900000" class="input-field">
-                        </div>
-                        <div class="mb-4">
-                            <label for="otherEquity" class="label-style">Other Equity (Car, RV, etc.) ($)</label>
-                            <input type="text" id="otherEquity" value="80000" class="input-field">
-                        </div>
+                        <button id="addOtherAssetBtn" type="button" class="mt-4 bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg shadow-md">
+                            + Add Other Asset
+                        </button>
+                    </div>
 
+                    <!-- Liabilities -->
+                    <div class="lg:col-span-2"> <!-- Span across two columns for liabilities for better layout -->
                         <h3 class="text-xl font-semibold mt-8 mb-4 text-gray-800">Liabilities <span class="font-bold text-red-600" id="totalLiabilitiesSummary"></span></h3>
                         <div id="liabilitiesContainer" class="mb-4 space-y-4">
                             <!-- Dynamic liability inputs will be added here by JavaScript -->
@@ -421,9 +418,6 @@
 
         // Get references to all static input elements
         const staticInputs = {
-            checkingAccount: document.getElementById('checkingAccount'),
-            homeValue: document.getElementById('homeValue'),
-            otherEquity: document.getElementById('otherEquity'),
             currentAge: document.getElementById('currentAge'),
             baseSalary: document.getElementById('baseSalary'),
             bonusRate: document.getElementById('bonusRate'),
@@ -444,14 +438,16 @@
         // Get references to display elements
         const currentNetWorthDisplay = document.getElementById('currentNetWorth');
         const currentNetInvestmentsDisplay = document.getElementById('currentNetInvestments');
-        const annualIncomeDisplay = document.getElementById('annualIncomeDisplay'); // New display element
-        const annualSavingsDisplay = document.getElementById('annualSavingsDisplay'); // New display element for Annual Savings
+        const annualIncomeDisplay = document.getElementById('annualIncomeDisplay');
+        const annualSavingsDisplay = document.getElementById('annualSavingsDisplay');
         const todaysDrawDisplay = document.getElementById('todaysDraw');
         const fortyFiveYODrawDisplay = document.getElementById('fortyFiveYODraw');
         const sixtyTwoYODrawDisplay = document.getElementById('sixtyTwoYODraw');
         const projectionTableBody = document.getElementById('projectionTableBody');
         const investmentAccountsContainer = document.getElementById('investmentAccountsContainer');
         const addInvestmentBtn = document.getElementById('addInvestmentBtn');
+        const otherAssetsContainer = document.getElementById('otherAssetsContainer'); // New reference for other assets container
+        const addOtherAssetBtn = document.getElementById('addOtherAssetBtn'); // New reference for add other asset button
         const liabilitiesContainer = document.getElementById('liabilitiesContainer');
         const addLiabilityBtn = document.getElementById('addLiabilityBtn');
         const otherIncomeContainer = document.getElementById('otherIncomeContainer');
@@ -489,6 +485,13 @@
             { name: "Gold", value: 20000 },
             { name: "Silver", value: 0 },
             { name: "Bitcoin", value: 0 }
+        ];
+
+        // Initial other assets data
+        const initialOtherAssets = [
+            { name: "Checking Account", value: 20000 },
+            { name: "Home Value", value: 900000 },
+            { name: "Other Equity (Car, RV, etc.)", value: 80000 }
         ];
 
         // Initial liability accounts data (exact values, not rounded)
@@ -583,6 +586,31 @@
             });
         }
 
+        // Function to add a new other asset input row
+        function addOtherAssetInput(asset = { name: '', value: 0 }) {
+            const rowDiv = document.createElement('div');
+            rowDiv.classList.add('other-asset-row', 'flex', 'flex-wrap', 'items-center', 'mb-4', 'space-y-2', 'md:space-y-0', 'md:space-x-2');
+            rowDiv.innerHTML = `
+                <input type="text" placeholder="Asset Name" value="${asset.name}" class="input-field asset-name flex-1 min-w-[120px]">
+                <input type="text" placeholder="Value ($)" value="${formatInputNumber(asset.value)}" class="input-field asset-value flex-1 min-w-[100px]">
+                <button type="button" class="delete-item-btn text-red-500 hover:text-red-700 font-bold px-2 py-1 rounded-md transition duration-200 ease-in-out">X</button>
+            `;
+            otherAssetsContainer.appendChild(rowDiv);
+
+            const valueInput = rowDiv.querySelector('.asset-value');
+            valueInput.addEventListener('input', (event) => {
+                const rawValue = event.target.value;
+                event.target.value = formatInputNumber(rawValue);
+                calculateFinancials();
+            });
+
+            const deleteBtn = rowDiv.querySelector('.delete-item-btn');
+            deleteBtn.addEventListener('click', () => {
+                rowDiv.remove();
+                calculateFinancials();
+            });
+        }
+
         // Function to add a new liability input row
         function addLiabilityInput(liability = { name: '', value: 0 }) {
             const rowDiv = document.createElement('div');
@@ -647,6 +675,7 @@
         // Main calculation function
         function calculateFinancials() {
             let totalInvestments = 0;
+            let totalOtherAssets = 0; // Initialize total for dynamic other assets
             let totalLiabilities = 0;
             let currentMortgageValue = 0;
 
@@ -655,6 +684,13 @@
                 const valueInput = row.querySelector('.investment-value');
                 const value = cleanInputNumber(valueInput.value);
                 totalInvestments += value;
+            });
+
+            // Read dynamic other asset values
+            document.querySelectorAll('.other-asset-row').forEach(row => {
+                const valueInput = row.querySelector('.asset-value');
+                const value = cleanInputNumber(valueInput.value);
+                totalOtherAssets += value;
             });
 
             // Read dynamic liability values
@@ -683,14 +719,7 @@
 
 
             // Read static input values, using cleanInputNumber for formatting-aware parsing
-            // Changed input type to 'text' for these fields to allow dynamic formatting,
-            // so we use cleanInputNumber to parse their values.
-            const checkingAccount = cleanInputNumber(staticInputs.checkingAccount.value);
-            let homeValue = cleanInputNumber(staticInputs.homeValue.value);
-            const otherEquity = cleanInputNumber(staticInputs.otherEquity.value);
             const currentAge = parseFloat(staticInputs.currentAge.value) || 0;
-
-
             let baseSalary = cleanInputNumber(staticInputs.baseSalary.value);
             const bonusRate = parseFloat(staticInputs.bonusRate.value) / 100 || 0;
             const my401kContributionRate = parseFloat(staticInputs.my401kContributionRate.value) / 100 || 0;
@@ -720,8 +749,9 @@
                 updateSliderValueDisplay(pair.slider, pair.valueDisplay, pair.unit);
             });
 
-            // Calculate current Net Worth and Net Investments
-            const currentTotalAssets = totalInvestments + checkingAccount + homeValue + otherEquity;
+            // Calculate Net Worth and Net Investments
+            // Update: Use totalOtherAssets from dynamic inputs
+            const currentTotalAssets = totalInvestments + totalOtherAssets;
             const currentNetWorth = currentTotalAssets - totalLiabilities;
             const currentNetInvestments = totalInvestments;
 
@@ -741,18 +771,23 @@
 
             // Update the span elements with dynamically calculated and rounded values
             totalInvestmentsSummary.textContent = `(${formatLargeCurrency(totalInvestments)})`;
-            totalOtherAssetsSummary.textContent = `(${formatLargeCurrency(checkingAccount + homeValue + otherEquity)})`;
+            totalOtherAssetsSummary.textContent = `(${formatLargeCurrency(totalOtherAssets)})`; // Updated to use dynamic total
             totalLiabilitiesSummary.textContent = `(${formatLargeCurrency(totalLiabilities)})`;
 
 
             // Project growth over years, passing the draw display elements and retirement draw rate
-            projectGrowth(currentNetInvestments, currentNetWorth, homeValue, totalLiabilities, currentMortgageValue, baseSalary,
+            projectGrowth(currentNetInvestments, currentNetWorth,
+                          // Pass initialHomeValue and otherEquity to projection if needed, or derive from totalOtherAssets
+                          // For now, we'll pass the breakdown from other assets if home value is still needed separately for projection logic
+                          initialOtherAssets.find(asset => asset.name === "Home Value")?.value || 0,
+                          totalLiabilities, currentMortgageValue, baseSalary,
                           bonusRate, my401kContributionRate, company401kContributionRate,
                           annualRothContribution, monthly529Contribution, monthlyHSAContribution,
                           annualSalaryRaise, stockAppreciation,
                           housingAppreciation, inflation, annualPrincipalPayment,
                           currentOtherIncomesState,
-                          otherEquity, currentAge,
+                          initialOtherAssets.find(asset => asset.name === "Other Equity (Car, RV, etc.)")?.value || 0, // Pass other equity separately if needed
+                          currentAge,
                           retirementDrawRate, todaysDrawDisplay, fortyFiveYODrawDisplay, sixtyTwoYODrawDisplay,
                           retirementYear);
         }
@@ -763,7 +798,8 @@
                                annualSalaryRaise, stockAppreciation,
                                housingAppreciation, inflation, annualPrincipalPayment,
                                initialOtherIncomesState,
-                               otherEquity, initialAge,
+                               otherEquityValueFromInitialAssets, // Renamed to clarify its source
+                               initialAge,
                                retirementDrawRate, todaysDrawDisplay, fortyFiveYODrawDisplay, sixtyTwoYODrawDisplay,
                                retirementYearInput) {
 
@@ -771,10 +807,11 @@
             chartContainer.innerHTML = '';
 
             let currentInvestments = initialNetInvestments;
-            let currentHomeValue = initialHomeValue;
+            let currentHomeValue = initialHomeValue; // This still relies on an initial home value, consider if it should dynamically change
             let currentMortgage = initialMortgageValue;
             let currentOtherLiabilitiesTotal = initialTotalLiabilities - initialMortgageValue;
             let currentBaseSalary = initialBaseSalary;
+            let currentOtherEquity = otherEquityValueFromInitialAssets; // Use the passed initial other equity value
 
             const startYear = new Date().getFullYear();
             let currentProjectedAge = initialAge;
@@ -853,11 +890,15 @@
                 }
 
                 currentHomeValue *= (1 + housingAppreciation);
+                // Assume other equity also appreciates with inflation (or a fixed rate if specified)
+                // For now, let's assume it holds its value relative to inflation. If a separate growth rate is needed, add a slider.
+                currentOtherEquity = otherEquityValueFromInitialAssets / Math.pow((1 + inflationRate), 0) * Math.pow((1 + inflationRate), i); // This assumes other equity keeps its real value. If it grows at a different rate, a new input is needed.
+
                 currentMortgage = Math.max(0, currentMortgage - annualPrincipalPayment);
 
                 const currentHomeEquity = currentHomeValue - currentMortgage;
                 const currentTotalLiabilitiesInProjection = currentMortgage + currentOtherLiabilitiesTotal;
-                let currentNetWorth = currentInvestments + currentHomeEquity + otherEquity - currentTotalLiabilitiesInProjection;
+                let currentNetWorth = currentInvestments + currentHomeEquity + currentOtherEquity - currentTotalLiabilitiesInProjection;
                 const netWorthInTodaysDollars = currentNetWorth / Math.pow((1 + inflationRate), i);
 
                 chartData.push({
@@ -1039,7 +1080,7 @@
             }
             staticInputs[key].addEventListener('input', calculateFinancials);
             // Add specific input formatting for relevant fields
-            if (['checkingAccount', 'homeValue', 'otherEquity', 'baseSalary', 'annualRothContribution', 'monthly529Contribution', 'monthlyHSAContribution', 'monthlyPrincipalPayment'].includes(key)) {
+            if (['baseSalary', 'annualRothContribution', 'monthly529Contribution', 'monthlyHSAContribution', 'monthlyPrincipalPayment'].includes(key)) {
                 staticInputs[key].addEventListener('input', (event) => {
                     const rawValue = event.target.value;
                     event.target.value = formatInputNumber(rawValue);
@@ -1049,6 +1090,8 @@
 
         // Add event listener for adding new investment accounts
         addInvestmentBtn.addEventListener('click', () => addInvestmentAccountInput());
+        // Add event listener for adding new other asset accounts
+        addOtherAssetBtn.addEventListener('click', () => addOtherAssetInput());
         // Add event listener for adding new liability accounts
         addLiabilityBtn.addEventListener('click', () => addLiabilityInput());
         // Add event listener for adding new other income accounts
@@ -1064,6 +1107,7 @@
         // Initial population of investment and liability accounts and calculation on page load
         document.addEventListener('DOMContentLoaded', () => {
             initialInvestmentAccounts.forEach(account => addInvestmentAccountInput(account));
+            initialOtherAssets.forEach(asset => addOtherAssetInput(asset)); // Populate initial other assets
             initialLiabilities.forEach(liability => addLiabilityInput(liability));
             initialOtherIncome.forEach(income => addOtherIncomeInput(income));
             calculateFinancials(); // Initial calculation after setting up inputs
