@@ -8,219 +8,882 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- D3.js CDN for charting -->
     <script src="https://d3js.org/d3.v7.min.js"></script>
-    <style>
-        /* Custom styles for the Inter font and overall aesthetics */
-        body {
-            font-family: 'Inter', sans-serif;
-            background-color: #f0f4f8; /* Light blue-gray background */
-            color: #334155; /* Dark slate gray for text */
-        }
-        input[type="range"] {
-            -webkit-appearance: none;
-            width: 100%;
-            height: 8px;
-            background: #d1d5db; /* Light gray track */
-            outline: none;
-            opacity: 0.7;
-            transition: opacity .2s;
-            border-radius: 4px;
-            margin: 0; /* Remove default margin */
-        }
-        input[type="range"]:hover {
-            opacity: 1;
-        }
-        input[type="range"]::-webkit-slider-thumb {
-            -webkit-appearance: none;
-            appearance: none;
-            width: 24px;
-            height: 24px;
-            border-radius: 50%;
-            background: #2563eb; /* Blue thumb */
-            cursor: pointer;
-            box-shadow: 0 0 5px rgba(0, 0, 0, 0.2);
-            position: relative; /* Needed for positioning value */
-            z-index: 2;
-        }
-        input[type="range"]::-moz-range-thumb {
-            width: 24px;
-            height: 24px;
-            border-radius: 50%;
-            background: #2563eb; /* Blue thumb */
-            cursor: pointer;
-            box-shadow: 0 0 5px rgba(0, 0, 0, 0.2);
-            position: relative;
-            z-index: 2;
+    <!-- Firebase SDKs -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // Firebase global variables (provided by Canvas environment)
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+
+        // Global Firebase vars
+        let app;
+        let db;
+        let auth;
+        let userId; // Will store the authenticated user ID
+
+        // Firestore Paths - Using a public collection as security is not a concern for this specific use case
+        const PUBLIC_COLLECTION_PATH = `artifacts/${appId}/public/data/retirement_calculator`;
+        const SHARED_DOC_ID = 'shared_inputs'; // A single document for all shared inputs
+
+        // Flag to prevent saving when data is being loaded from Firestore
+        window.isLoadingFromFirestore = false;
+
+        // Helper functions for number formatting in input fields
+        function formatInputNumber(value) {
+            if (value === null || value === undefined || value === '') {
+                return '';
+            }
+            // Ensure value is treated as a number before formatting, removing existing commas
+            let num = Number(String(value).replace(/,/g, ''));
+            if (isNaN(num)) {
+                return '';
+            }
+            return new Intl.NumberFormat('en-US').format(num);
         }
 
-        .shadow-lg {
-            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
-        }
-        .rounded-lg {
-            border-radius: 0.75rem;
-        }
-        /* Custom styling for inputs */
-        .input-field {
-            @apply shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline;
-        }
-        .label-style {
-            @apply block text-gray-700 text-sm font-bold mb-2;
-        }
-        /* Table row hover effect */
-        tbody tr:hover {
-            background-color: #e0f2fe; /* Light blue on hover */
+        function cleanInputNumber(stringValue) {
+            if (stringValue === null || stringValue === undefined || stringValue === '') {
+                return 0;
+            }
+            // Remove all non-digit characters except for a potential leading minus sign and decimal
+            const cleaned = stringValue.replace(/[^\d.-]/g, '');
+            return parseFloat(cleaned) || 0;
         }
 
-        /* Slider value display */
-        .slider-container {
-            position: relative;
-            width: 100%;
-            display: flex;
-            align-items: center;
-            margin-bottom: 1rem;
-        }
-        .slider-value-display {
-            position: absolute;
-            background-color: #2563eb;
-            color: white;
-            padding: 2px 6px;
-            border-radius: 4px;
-            font-size: 0.75rem;
-            white-space: nowrap;
-            pointer-events: none; /* Allows clicks to pass through to the slider */
-            transform: translateX(-50%); /* Center horizontally */
-            top: -24px; /* Position above the thumb */
-            z-index: 10;
-            transition: left 0s; /* Changed to 0s for immediate snap */
-        }
-        .slider-input-wrapper {
-            position: relative;
-            width: 100%;
-            margin-top: 2rem; /* Give space for the value display above */
+        // Get references to all static input elements
+        const staticInputs = {
+            currentAge: document.getElementById('currentAge'),
+            baseSalary: document.getElementById('baseSalary'),
+            bonusRate: document.getElementById('bonusRate'),
+            my401kContributionRate: document.getElementById('my401kContributionRate'),
+            company401kContributionRate: document.getElementById('company401kContributionRate'),
+            annualRothContribution: document.getElementById('annualRothContribution'),
+            monthly529Contribution: document.getElementById('monthly529Contribution'),
+            monthlyHSAContribution: document.getElementById('monthlyHSAContribution'),
+            annualSalaryRaise: document.getElementById('annualSalaryRaise'),
+            stockAppreciation: document.getElementById('stockAppreciation'),
+            housingAppreciation: document.getElementById('housingAppreciation'),
+            inflation: document.getElementById('inflation'),
+            retirementDrawRate: document.getElementById('retirementDrawRate'),
+            retirementYear: document.getElementById('retirementYear'),
+            monthlyPrincipalPayment: document.getElementById('monthlyPrincipalPayment')
+        };
+
+        // Get references to display elements
+        const currentNetWorthDisplay = document.getElementById('currentNetWorth');
+        const currentNetInvestmentsDisplay = document.getElementById('currentNetInvestments');
+        const annualIncomeDisplay = document.getElementById('annualIncomeDisplay');
+        const annualSavingsDisplay = document.getElementById('annualSavingsDisplay');
+        const todaysDrawDisplay = document.getElementById('todaysDraw');
+        const fortyFiveYODrawDisplay = document.getElementById('fortyFiveYODraw');
+        const sixtyTwoYODrawDisplay = document.getElementById('sixtyTwoYODraw');
+        const projectionTableBody = document.getElementById('projectionTableBody');
+        const investmentAccountsContainer = document.getElementById('investmentAccountsContainer');
+        const addInvestmentBtn = document.getElementById('addInvestmentBtn');
+        const otherAssetsContainer = document.getElementById('otherAssetsContainer');
+        const addOtherAssetBtn = document.getElementById('addOtherAssetBtn');
+        const liabilitiesContainer = document.getElementById('liabilitiesContainer');
+        const addLiabilityBtn = document.getElementById('addLiabilityBtn');
+        const otherIncomeContainer = document.getElementById('otherIncomeContainer');
+        const addOtherIncomeBtn = document.getElementById('addOtherIncomeBtn');
+        const chartContainer = document.getElementById('chart-container');
+
+        // References for the summary spans
+        const totalInvestmentsSummary = document.getElementById('totalInvestmentsSummary');
+        const totalOtherAssetsSummary = document.getElementById('totalOtherAssetsSummary');
+        const totalLiabilitiesSummary = document.getElementById('totalLiabilitiesSummary');
+
+        // Get references to slider input and value display pairs
+        const sliderPairs = [
+            { slider: document.getElementById('currentAge'), valueDisplay: document.getElementById('currentAgeValue'), unit: '' },
+            { slider: document.getElementById('bonusRate'), valueDisplay: document.getElementById('bonusRateValue'), unit: '%' },
+            { slider: document.getElementById('my401kContributionRate'), valueDisplay: document.getElementById('my401kContributionRateValue'), unit: '%' },
+            { slider: document.getElementById('company401kContributionRate'), valueDisplay: document.getElementById('company401kContributionRateValue'), unit: '%' },
+            { slider: document.getElementById('annualSalaryRaise'), valueDisplay: document.getElementById('annualSalaryRaiseValue'), unit: '%' },
+            { slider: document.getElementById('stockAppreciation'), valueDisplay: document.getElementById('stockAppreciationValue'), unit: '%' },
+            { slider: document.getElementById('housingAppreciation'), valueDisplay: document.getElementById('housingAppreciationValue'), unit: '%' },
+            { slider: document.getElementById('inflation'), valueDisplay: document.getElementById('inflationValue'), unit: '%' },
+            { slider: document.getElementById('retirementDrawRate'), valueDisplay: document.getElementById('retirementDrawRateValue'), unit: '%' },
+            { slider: document.getElementById('retirementYear'), valueDisplay: document.getElementById('retirementYearValue'), unit: '' }
+        ];
+
+        // Initial investment accounts data (exact values, not rounded) - these are default fallbacks
+        const initialInvestmentAccounts = [
+            { name: "401K", value: 524620 },
+            { name: "Roth 1", value: 177474 },
+            { name: "Roth 2", value: 156407 },
+            { name: "529", value: 55485 },
+            { name: "HSA", value: 25187 },
+            { name: "Stocks", value: 0 },
+            { name: "Gold", value: 6600 },
+            { name: "Silver", value: 0 },
+            { name: "Bitcoin", value: 0 }
+        ];
+
+        // Initial other assets data - these are default fallbacks
+        const initialOtherAssets = [
+            { name: "Checking Account", value: 17522 },
+            { name: "Home Value", value: 943522 },
+            { name: "Other Equity (Car, RV, etc.)", value: 90601 }
+        ];
+
+        // Initial liability accounts data (exact values, not rounded) - these are default fallbacks
+        const initialLiabilities = [
+            { name: "Mortgage", value: 202212 },
+            { name: "Credit Cards", value: 0 },
+            { name: "HELOC", value: 0 },
+            { name: "Car Loan", value: 0 }
+        ];
+
+        // Initial other income data - these are default fallbacks
+        const initialOtherIncome = [
+            { name: "Cell Tower Lease", value: 1200, escalationRate: 0.015 },
+            { name: "Rental 1", value: 1300, escalationRate: 0.04 }
+        ];
+
+        // Function to format numbers as currency, rounded to nearest thousand, without K/M (for table)
+        const formatTableCurrency = (amount) => {
+            const roundedAmount = Math.round(amount / 1000) * 1000;
+            return new Intl.NumberFormat('en-US', {
+                style: 'currency',
+                currency: 'USD',
+                minimumFractionDigits: 0,
+                maximumFractionDigits: 0
+            }).format(roundedAmount);
+        };
+
+        // Function to format numbers as currency with K/M and specified decimal places (for summary displays)
+        const formatLargeCurrency = (amount) => {
+            if (Math.abs(amount) >= 1000000) {
+                return `$${(amount / 1000000).toFixed(2)}M`;
+            }
+            if (Math.abs(amount) >= 1000) {
+                return `$${(amount / 1000).toFixed(0)}K`;
+            }
+            return new Intl.NumberFormat('en-US', {
+                style: 'currency',
+                currency: 'USD',
+                minimumFractionDigits: 0,
+                maximumFractionDigits: 0
+            }).format(amount);
+        };
+
+        // Function to format Y-axis labels dynamically based on max value in the chart
+        function formatProjectedChartAxisLabel(value, maxChartValue) {
+            if (maxChartValue < 5000000) { // If max value is under 5 million, show in thousands
+                return `$${(value / 1000).toFixed(0)}K`; // No decimals for K
+            } else { // Otherwise, show in millions
+                return `$${(value / 1000000).toFixed(0)}M`; // No decimals for M
+            }
         }
 
-        /* D3 Chart Specific Styles */
-        .chart-svg {
-            display: block;
-            margin: auto;
-            border-radius: 0.5rem;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-        }
-        .line {
-            fill: none;
-            stroke-width: 3px;
-        }
-        .line-investments {
-            stroke: #2563eb; /* Blue for investments */
-        }
-        .line-networth {
-            stroke: #10b981; /* Green for net worth */
-        }
-        .axis text {
-            font-size: 0.8rem;
-            fill: #6b7280; /* Gray text for axes */
-        }
-        .axis path, .axis line {
-            stroke: #d1d5db; /* Light gray for axis lines */
-            stroke-width: 1px;
-        }
-        .grid line {
-            stroke: #e5e7eb; /* Even lighter gray for grid lines */
-            stroke-opacity: 0.7;
-            shape-rendering: crispEdges;
-        }
-        .tooltip {
-            position: absolute;
-            text-align: center;
-            padding: 8px;
-            background: #fff;
-            border: 1px solid #ccc;
-            border-radius: 4px;
-            pointer-events: none;
-            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
-            font-size: 0.9rem;
-            color: #333;
+        // Function to update slider value display position
+        function updateSliderValueDisplay(slider, valueDisplay, unit) {
+            const min = parseFloat(slider.min);
+            const max = parseFloat(slider.max);
+            const val = parseFloat(slider.value);
+            const percentage = (val - min) / (max - min);
+
+            const thumbWidth = 24;
+            const sliderWidth = slider.offsetWidth;
+
+            const leftPosition = (percentage * (sliderWidth - thumbWidth)) + (thumbWidth / 2);
+
+            valueDisplay.style.left = `${leftPosition}px`;
+            valueDisplay.textContent = `${val.toFixed(slider.step === '0.1' || slider.step === '0.5' ? 1 : 0)}${unit}`;
         }
 
-        /* Responsive adjustments for the sticky banner and main content */
-        @media (max-width: 1023px) { /* Adjust for screens smaller than 'lg' breakpoint (1024px) */
-            #leftStickyBanner {
-                width: 100%;
-                height: auto;
-                position: sticky; /* or fixed */
-                top: 0;
-                left: 0;
-                flex-direction: row; /* Horizontal layout for mobile */
-                flex-wrap: wrap; /* Allow items to wrap */
-                justify-content: center; /* Center items horizontally */
-                align-items: flex-start; /* Align items to the top */
-                padding: 1rem; /* Smaller padding for mobile */
-                box-shadow: 0 4px 8px rgba(0,0,0,0.2); /* Add shadow to top banner */
+        // Firebase Initialization
+        const initFirebase = async () => {
+            try {
+                app = initializeApp(firebaseConfig);
+                db = getFirestore(app);
+                auth = getAuth(app);
+
+                // Sign in anonymously or with custom token if available
+                if (initialAuthToken) {
+                    await signInWithCustomToken(auth, initialAuthToken);
+                } else {
+                    await signInAnonymously(auth);
+                }
+
+                userId = auth.currentUser?.uid || 'anonymous';
+                console.log("Firebase initialized and user authenticated:", userId);
+
+                setupRealtimeListener(); // Start listening for data changes
+            } catch (error) {
+                console.error("Error initializing Firebase or authenticating:", error);
+                // If Firebase fails, still run calculations with default/current DOM values
+                calculateFinancials(false);
             }
-            #leftStickyBanner h2 {
-                font-size: 1.5rem; /* Smaller title on mobile */
-                margin-bottom: 0.5rem;
-                width: 100%; /* Take full width for title */
+        };
+
+        // Function to save data to Firestore
+        async function saveDataToFirestore(data) {
+            if (!db || !userId) {
+                console.warn("Firestore not initialized or user not authenticated. Data not saved.");
+                return;
             }
-            #leftStickyBanner .summary-item {
-                flex: 1 1 auto; /* Allow items to grow and shrink, wrap as needed */
-                min-width: 120px; /* Minimum width for each item to prevent too much squishing */
-                margin-bottom: 0.5rem;
-                padding: 0 0.5rem; /* Add horizontal padding to items */
+            // Prevent saving if the update came from Firestore itself
+            if (window.isLoadingFromFirestore) {
+                return;
             }
-            #leftStickyBanner .summary-item p {
-                font-size: 0.9rem; /* Smaller text for mobile */
+            try {
+                const docRef = doc(db, PUBLIC_COLLECTION_PATH, SHARED_DOC_ID);
+                await setDoc(docRef, data, { merge: true }); // Merge to update specific fields
+                console.log("Data saved to Firestore.");
+            } catch (error) {
+                console.error("Error saving data to Firestore:", error);
             }
-            #leftStickyBanner .summary-item p:last-child {
-                font-size: 1.2rem; /* Smaller value for mobile */
-            }
-            .main-content-wrapper {
-                margin-left: 0; /* No left margin on mobile */
-                margin-top: auto; /* Push content down by banner height if sticky */
-            }
-        }
-        /* Make the main container full width on mobile */
-        .container.mx-auto {
-            padding-left: 1rem;
-            padding-right: 1rem;
         }
 
-        /* For lg and up (desktop) */
-        @media (min-width: 1024px) {
-            #leftStickyBanner {
-                width: 16rem; /* Tailwind's w-64 */
-                height: 100vh; /* Full viewport height */
-                position: fixed;
-                top: 0;
-                left: 0;
-                flex-direction: column; /* Vertical layout for desktop */
-                justify-content: flex-start; /* Align items to the top */
-                align-items: center;
-                padding: 1.5rem;
-                box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05); /* Original shadow */
+        // Function to set up real-time listener for data
+        function setupRealtimeListener() {
+            if (!db || !userId) {
+                console.warn("Firestore not initialized or user not authenticated. Cannot set up listener.");
+                return;
             }
-            #leftStickyBanner h2 {
-                font-size: 1.875rem; /* Tailwind text-3xl */
-                margin-bottom: 2rem; /* Tailwind mb-8 */
-                width: auto;
+            const docRef = doc(db, PUBLIC_COLLECTION_PATH, SHARED_DOC_ID);
+            onSnapshot(docRef, (docSnap) => {
+                window.isLoadingFromFirestore = true; // Set flag when loading from Firestore
+                if (docSnap.exists()) {
+                    const data = docSnap.data();
+                    console.log("Data loaded from Firestore:", data);
+                    populateInputsFromFirestore(data);
+                } else {
+                    console.log("No shared data found in Firestore. Using default values and saving them.");
+                    // If no data, ensure initial calculation runs with current DOM values and save them
+                    calculateFinancials(true);
+                }
+                window.isLoadingFromFirestore = false; // Reset flag after processing
+            }, (error) => {
+                console.error("Error listening to Firestore document:", error);
+                calculateFinancials(false); // Fallback to local calculation
+                window.isLoadingFromFirestore = false; // Reset flag on error
+            });
+        }
+
+        // Function to populate inputs from Firestore data
+        function populateInputsFromFirestore(data) {
+            // Update static inputs
+            for (const key in staticInputs) {
+                if (data[key] !== undefined) {
+                    let value = data[key];
+                    // Special handling for percentage sliders to convert back to 0-100 range for display
+                    if (['bonusRate', 'my401kContributionRate', 'company401kContributionRate', 'annualSalaryRaise', 'stockAppreciation', 'housingAppreciation', 'inflation', 'retirementDrawRate'].includes(key)) {
+                        value = parseFloat(value) * 100; // Convert decimal back to percentage for UI
+                    }
+
+                    if (staticInputs[key].type === 'range') {
+                         staticInputs[key].value = value;
+                    } else {
+                         staticInputs[key].value = formatInputNumber(value);
+                    }
+                    updateSliderValueDisplay(staticInputs[key], document.getElementById(`${key}Value`), sliderPairs.find(p => p.slider === staticInputs[key])?.unit || '');
+                }
             }
-            #leftStickyBanner .summary-item {
-                flex: none; /* Don't allow items to grow/shrink based on space */
-                width: auto; /* Take natural width */
-                margin-bottom: 1rem; /* Tailwind mb-4 */
-                padding: 0;
+
+            // Update dynamic inputs (investments, other assets, liabilities, other income)
+            // Clear existing dynamic rows first
+            investmentAccountsContainer.innerHTML = '';
+            otherAssetsContainer.innerHTML = '';
+            liabilitiesContainer.innerHTML = '';
+            otherIncomeContainer.innerHTML = '';
+
+            // Repopulate with data from Firestore or initial defaults if not present
+            (data.investmentAccounts || initialInvestmentAccounts).forEach(account => addInvestmentAccountInput(account));
+            (data.otherAssets || initialOtherAssets).forEach(asset => addOtherAssetInput(asset));
+            (data.liabilities || initialLiabilities).forEach(liability => addLiabilityInput(liability));
+            (data.otherIncome || initialOtherIncome).forEach(income => addOtherIncomeInput(income));
+
+            // After populating, recalculate to update summaries and chart (but don't save yet)
+            calculateFinancials(false);
+        }
+
+        // Function to add a new investment account input row
+        function addInvestmentAccountInput(account = { name: '', value: 0 }) {
+            const rowDiv = document.createElement('div');
+            rowDiv.classList.add('investment-row', 'flex', 'flex-wrap', 'items-center', 'mb-4', 'space-y-2', 'md:space-y-0', 'md:space-x-2');
+            rowDiv.innerHTML = `
+                <input type="text" placeholder="Account Name" value="${account.name}" class="input-field investment-name flex-1 min-w-[120px]">
+                <input type="text" placeholder="Value ($)" value="${formatInputNumber(account.value)}" class="input-field investment-value flex-1 min-w-[100px]">
+                <button type="button" class="delete-item-btn text-red-500 hover:text-red-700 font-bold px-2 py-1 rounded-md transition duration-200 ease-in-out">X</button>
+            `;
+            investmentAccountsContainer.appendChild(rowDiv);
+
+            const valueInput = rowDiv.querySelector('.investment-value');
+            valueInput.addEventListener('input', (event) => {
+                const rawValue = event.target.value;
+                event.target.value = formatInputNumber(rawValue);
+                calculateFinancials(true); // Trigger save
+            });
+            const nameInput = rowDiv.querySelector('.investment-name');
+            nameInput.addEventListener('input', () => calculateFinancials(true)); // Trigger save
+
+            const deleteBtn = rowDiv.querySelector('.delete-item-btn');
+            deleteBtn.addEventListener('click', () => {
+                rowDiv.remove();
+                calculateFinancials(true); // Trigger save
+            });
+        }
+
+        // Function to add a new other asset input row
+        function addOtherAssetInput(asset = { name: '', value: 0 }) {
+            const rowDiv = document.createElement('div');
+            rowDiv.classList.add('other-asset-row', 'flex', 'flex-wrap', 'items-center', 'mb-4', 'space-y-2', 'md:space-y-0', 'md:space-x-2');
+            rowDiv.innerHTML = `
+                <input type="text" placeholder="Asset Name" value="${asset.name}" class="input-field asset-name flex-1 min-w-[120px]">
+                <input type="text" placeholder="Value ($)" value="${formatInputNumber(asset.value)}" class="input-field asset-value flex-1 min-w-[100px]">
+                <button type="button" class="delete-item-btn text-red-500 hover:text-red-700 font-bold px-2 py-1 rounded-md transition duration-200 ease-in-out">X</button>
+            `;
+            otherAssetsContainer.appendChild(rowDiv);
+
+            const valueInput = rowDiv.querySelector('.asset-value');
+            valueInput.addEventListener('input', (event) => {
+                const rawValue = event.target.value;
+                event.target.value = formatInputNumber(rawValue);
+                calculateFinancials(true); // Trigger save
+            });
+            const nameInput = rowDiv.querySelector('.asset-name');
+            nameInput.addEventListener('input', () => calculateFinancials(true)); // Trigger save
+
+            const deleteBtn = rowDiv.querySelector('.delete-item-btn');
+            deleteBtn.addEventListener('click', () => {
+                rowDiv.remove();
+                calculateFinancials(true); // Trigger save
+            });
+        }
+
+        // Function to add a new liability input row
+        function addLiabilityInput(liability = { name: '', value: 0 }) {
+            const rowDiv = document.createElement('div');
+            rowDiv.classList.add('liability-row', 'flex', 'flex-wrap', 'items-center', 'mb-4', 'space-y-2', 'md:space-y-0', 'md:space-x-2');
+            rowDiv.innerHTML = `
+                <input type="text" placeholder="Liability Name" value="${liability.name}" class="input-field liability-name flex-1 min-w-[120px]">
+                <input type="text" placeholder="Value ($)" value="${formatInputNumber(liability.value)}" class="input-field liability-value flex-1 min-w-[100px]">
+                <button type="button" class="delete-item-btn text-red-500 hover:text-red-700 font-bold px-2 py-1 rounded-md transition duration-200 ease-in-out">X</button>
+            `;
+            liabilitiesContainer.appendChild(rowDiv);
+
+            const valueInput = rowDiv.querySelector('.liability-value');
+            valueInput.addEventListener('input', (event) => {
+                const rawValue = event.target.value;
+                event.target.value = formatInputNumber(rawValue);
+                calculateFinancials(true); // Trigger save
+            });
+            const nameInput = rowDiv.querySelector('.liability-name');
+            nameInput.addEventListener('input', () => calculateFinancials(true)); // Trigger save
+
+            const deleteBtn = rowDiv.querySelector('.delete-item-btn');
+            deleteBtn.addEventListener('click', () => {
+                rowDiv.remove();
+                calculateFinancials(true); // Trigger save
+            });
+        }
+
+        // Function to add a new other income input row
+        function addOtherIncomeInput(income = { name: '', value: 0, escalationRate: 0 }) {
+            const rowDiv = document.createElement('div');
+            rowDiv.classList.add('other-income-row', 'flex', 'flex-wrap', 'items-center', 'mb-4', 'space-y-2', 'md:space-y-0', 'md:space-x-2');
+            rowDiv.innerHTML = `
+                <input type="text" placeholder="Income Source" value="${income.name}" class="input-field income-name flex-1 min-w-[120px]">
+                <input type="text" placeholder="Monthly Value ($)" value="${formatInputNumber(income.value)}" class="input-field income-value flex-1 min-w-[100px]">
+                <div class="flex items-center">
+                    <input type="number" placeholder="Escalation Rate" value="${(income.escalationRate * 100).toFixed(1)}" step="0.1" min="0" max="10" class="input-field income-escalation-rate w-24">
+                    <span class="ml-1 text-gray-700">%</span>
+                </div>
+                <button type="button" class="delete-item-btn text-red-500 hover:text-red-700 font-bold px-2 py-1 rounded-md transition duration-200 ease-in-out">X</button>
+            `;
+            otherIncomeContainer.appendChild(rowDiv);
+
+            // Attach event listeners for value and escalation rate, and for name changes
+            rowDiv.querySelectorAll('input').forEach(input => {
+                if (input.classList.contains('income-value')) {
+                    input.addEventListener('input', (event) => {
+                        event.target.value = formatInputNumber(event.target.value);
+                        calculateFinancials(true); // Trigger save
+                    });
+                } else {
+                    input.addEventListener('input', () => calculateFinancials(true)); // Trigger save for name/escalation
+                }
+            });
+
+            const deleteBtn = rowDiv.querySelector('.delete-item-btn');
+            deleteBtn.addEventListener('click', () => {
+                rowDiv.remove();
+                calculateFinancials(true); // Trigger save
+            });
+        }
+
+        // Main calculation function (now accepts a shouldSave flag)
+        function calculateFinancials(shouldSaveData = true) {
+            let totalInvestments = 0;
+            let totalOtherAssets = 0;
+            let totalLiabilities = 0;
+            let currentMortgageValue = 0;
+
+            let currentFinancials = {}; // Object to store all inputs for saving
+
+            // Collect static input values
+            for (const key in staticInputs) {
+                let value;
+                if (staticInputs[key].type === 'range') {
+                    value = parseFloat(staticInputs[key].value);
+                } else { // Text inputs
+                    value = cleanInputNumber(staticInputs[key].value);
+                }
+                // Convert percentages to decimal for internal calculations and storage
+                if (['bonusRate', 'my401kContributionRate', 'company401kContributionRate', 'annualSalaryRaise', 'stockAppreciation', 'housingAppreciation', 'inflation', 'retirementDrawRate'].includes(key)) {
+                    value = value / 100;
+                }
+                currentFinancials[key] = value;
             }
-            #leftStickyBanner .summary-item p {
-                font-size: 1.125rem; /* Tailwind text-xl */
+
+            // Read dynamic investment account values
+            currentFinancials.investmentAccounts = [];
+            document.querySelectorAll('.investment-row').forEach(row => {
+                const name = row.querySelector('.investment-name').value;
+                const value = cleanInputNumber(row.querySelector('.investment-value').value);
+                totalInvestments += value;
+                currentFinancials.investmentAccounts.push({ name, value });
+            });
+
+            // Read dynamic other asset values
+            currentFinancials.otherAssets = [];
+            document.querySelectorAll('.other-asset-row').forEach(row => {
+                const name = row.querySelector('.asset-name').value;
+                const value = cleanInputNumber(row.querySelector('.asset-value').value);
+                totalOtherAssets += value;
+                currentFinancials.otherAssets.push({ name, value });
+            });
+
+            // Read dynamic liability values
+            currentFinancials.liabilities = [];
+            document.querySelectorAll('.liability-row').forEach(row => {
+                const nameInput = row.querySelector('.liability-name');
+                const valueInput = row.querySelector('.liability-value');
+                const name = nameInput.value;
+                const value = cleanInputNumber(valueInput.value);
+                totalLiabilities += value;
+                currentFinancials.liabilities.push({ name, value });
+
+                if (name.toLowerCase() === "mortgage") {
+                    currentMortgageValue = value;
+                }
+            });
+
+            // Read dynamic other income values
+            currentFinancials.otherIncome = [];
+            let totalOtherMonthlyIncome = 0;
+            document.querySelectorAll('.other-income-row').forEach(row => {
+                const name = row.querySelector('.income-name').value;
+                const value = cleanInputNumber(row.querySelector('.income-value').value);
+                const escalationRate = parseFloat(row.querySelector('.income-escalation-rate').value) / 100 || 0;
+                currentFinancials.otherIncome.push({ name, value, escalationRate });
+                totalOtherMonthlyIncome += value;
+            });
+
+            // Re-read values from currentFinancials for calculations to ensure consistency with what's being saved
+            const currentAge = currentFinancials.currentAge;
+            const baseSalary = currentFinancials.baseSalary;
+            const bonusRate = currentFinancials.bonusRate;
+            const my401kContributionRate = currentFinancials.my401kContributionRate;
+            const company401kContributionRate = currentFinancials.company401kContributionRate;
+            const annualRothContribution = currentFinancials.annualRothContribution;
+            const monthly529Contribution = currentFinancials.monthly529Contribution;
+            const monthlyHSAContribution = currentFinancials.monthlyHSAContribution;
+            const annualSalaryRaise = currentFinancials.annualSalaryRaise;
+            const stockAppreciation = currentFinancials.stockAppreciation;
+            const housingAppreciation = currentFinancials.housingAppreciation;
+            const inflation = currentFinancials.inflation;
+            const retirementDrawRate = currentFinancials.retirementDrawRate;
+            const retirementYear = currentFinancials.retirementYear;
+            const monthlyPrincipalPayment = currentFinancials.monthlyPrincipalPayment;
+            const annualPrincipalPayment = monthlyPrincipalPayment * 12;
+
+            // Update min for retirementYear slider dynamically based on currentAge
+            staticInputs.retirementYear.min = currentAge;
+            if (retirementYear < currentAge) {
+                staticInputs.retirementYear.value = currentAge;
             }
-            #leftStickyBanner .summary-item p:last-child {
-                font-size: 1.875rem; /* Tailwind text-3xl */
-            }
-            .main-content-wrapper {
-                margin-left: 16rem; /* Tailwind's ml-64 */
-                margin-top: 0;
+
+            // Update slider value displays (already done in populateInputsFromFirestore or event listeners)
+            sliderPairs.forEach(pair => {
+                updateSliderValueDisplay(pair.slider, pair.valueDisplay, pair.unit);
+            });
+
+            // Calculate Net Worth and Net Investments
+            const currentTotalAssets = totalInvestments + totalOtherAssets;
+            const currentNetWorth = currentTotalAssets - totalLiabilities;
+            const currentNetInvestments = totalInvestments;
+
+            // Calculate Annual Income
+            const annualBonusIncome = baseSalary * bonusRate;
+            const totalAnnualOtherIncome = totalOtherMonthlyIncome * 12;
+            const totalAnnualIncome = baseSalary + annualBonusIncome + totalAnnualOtherIncome;
+
+            // Calculate Total Annual Savings
+            const totalAnnualSavings =
+                (baseSalary * my401kContributionRate) +
+                (baseSalary * company401kContributionRate) +
+                (monthly529Contribution * 12) +
+                (monthlyHSAContribution * 12) +
+                annualRothContribution +
+                (monthlyPrincipalPayment * 12);
+
+            // Display current values using new formatting
+            currentNetWorthDisplay.textContent = formatLargeCurrency(currentNetWorth);
+            currentNetInvestmentsDisplay.textContent = formatLargeCurrency(currentNetInvestments);
+            annualIncomeDisplay.textContent = formatLargeCurrency(totalAnnualIncome);
+            annualSavingsDisplay.textContent = formatLargeCurrency(totalAnnualSavings);
+
+            // Update the summary spans
+            totalInvestmentsSummary.textContent = `(${formatLargeCurrency(totalInvestments)})`;
+            totalOtherAssetsSummary.textContent = `(${formatLargeCurrency(totalOtherAssets)})`;
+            totalLiabilitiesSummary.textContent = `(${formatLargeCurrency(totalLiabilities)})`;
+
+            // Project growth over years
+            projectGrowth(currentNetInvestments, currentNetWorth,
+                          currentFinancials.otherAssets.find(asset => asset.name === "Home Value")?.value || 0,
+                          totalLiabilities, currentMortgageValue, baseSalary,
+                          bonusRate, my401kContributionRate, company401kContributionRate,
+                          annualRothContribution, monthly529Contribution, monthlyHSAContribution,
+                          annualSalaryRaise, stockAppreciation,
+                          housingAppreciation, inflation, annualPrincipalPayment,
+                          currentFinancials.otherIncome, // Pass the collected current other income state
+                          currentFinancials.otherAssets.find(asset => asset.name === "Other Equity (Car, RV, etc.)")?.value || 0,
+                          currentAge,
+                          retirementDrawRate, todaysDrawDisplay, fortyFiveYODrawDisplay, sixtyTwoYODrawDisplay,
+                          retirementYear, totalAnnualOtherIncome);
+
+            // Trigger saving if flag is true AND it's not from a Firestore load
+            if (shouldSaveData && !window.isLoadingFromFirestore) {
+                saveDataToFirestore(currentFinancials);
             }
         }
-    </style>
+
+
+        function projectGrowth(initialNetInvestments, initialNetWorth, initialHomeValue, initialTotalLiabilities, initialMortgageValue, initialBaseSalary,
+                               bonusRate, my401kContributionRate, company401kContributionRate,
+                               annualRothContribution, monthly529Contribution, monthlyHSAContribution,
+                               annualSalaryRaise, stockAppreciation,
+                               housingAppreciation, inflation, annualPrincipalPayment,
+                               currentOtherIncomesStateForProjection, // Changed to reflect current, not initial
+                               otherEquityValueFromInitialAssets,
+                               initialAge,
+                               retirementDrawRate, todaysDrawDisplay, fortyFiveYODrawDisplay, sixtyTwoYODrawDisplay,
+                               retirementYearInput, initialTotalOtherAnnualIncome) {
+
+            projectionTableBody.innerHTML = '';
+            chartContainer.innerHTML = '';
+
+            let currentInvestments = initialNetInvestments;
+            let currentHomeValue = initialHomeValue;
+            let currentMortgage = initialMortgageValue;
+            let currentOtherLiabilitiesTotal = initialTotalLiabilities - initialMortgageValue;
+            let currentBaseSalary = initialBaseSalary;
+            let currentOtherEquity = otherEquityValueFromInitialAssets;
+
+            const startYear = new Date().getFullYear();
+            let currentProjectedAge = initialAge;
+
+            let projectedOtherIncomes = JSON.parse(JSON.stringify(currentOtherIncomesStateForProjection)); // Use current state
+            const inflationRate = inflation;
+
+            const chartData = [];
+
+            // Calculate and display today's draw including other income
+            // Note: This is now just a display value, actual projection starts from year 1 below
+            const todaysDrawValue = (initialNetInvestments * retirementDrawRate) + initialTotalOtherAnnualIncome;
+            todaysDrawDisplay.textContent = formatLargeCurrency(todaysDrawValue);
+
+            chartData.push({
+                age: initialAge,
+                investments: initialNetInvestments,
+                netWorth: initialNetWorth / Math.pow((1 + inflationRate), 0)
+            });
+
+            for (let i = 1; currentProjectedAge <= 100; i++) {
+                const year = startYear + i;
+                const age = currentProjectedAge;
+
+                let annualMy401kContributionCurrentYear = currentBaseSalary * my401kContributionRate;
+                let annualCompany401kContributionCurrentYear = currentBaseSalary * company401kContributionRate;
+                let annual529ContributionCurrentYear = monthly529Contribution * 12;
+                let annualHSAContributionCurrentYear = monthlyHSAContribution * 12;
+                let annualRothContributionCurrentYear = annualRothContribution;
+
+                if (age >= retirementYearInput) {
+                    annualMy401kContributionCurrentYear = 0;
+                    annualCompany401kContributionCurrentYear = 0;
+                    annual529ContributionCurrentYear = 0;
+                    annualHSAContributionCurrentYear = 0;
+                    annualRothContributionCurrentYear = 0;
+                }
+
+                currentInvestments *= (1 + stockAppreciation);
+
+                let totalNewInvestmentMoneyCurrentYear = 0;
+                totalNewInvestmentMoneyCurrentYear += annualMy401kContributionCurrentYear;
+                totalNewInvestmentMoneyCurrentYear += annual529ContributionCurrentYear;
+                totalNewInvestmentMoneyCurrentYear += annualHSAContributionCurrentYear;
+                totalNewInvestmentMoneyCurrentYear += annualRothContributionCurrentYear;
+                totalNewInvestmentMoneyCurrentYear += annualCompany401kContributionCurrentYear;
+
+                let currentAnnualOtherIncome = 0;
+                projectedOtherIncomes.forEach(income => {
+                    income.value *= (1 + income.escalationRate);
+                    if (income.name.toLowerCase().includes("rental") && income.escalationRate > 0) {
+                        // Round down to nearest $100 for rental income if it has escalation
+                        income.value = Math.floor(income.value / 100) * 100;
+                    }
+                    currentAnnualOtherIncome += income.value * 12;
+                });
+                totalNewInvestmentMoneyCurrentYear += currentAnnualOtherIncome;
+
+                currentInvestments += totalNewInvestmentMoneyCurrentYear;
+
+                // Draw calculations now include other income for the specific year
+                if (age === 45) {
+                    const drawValue = (currentInvestments * retirementDrawRate) + currentAnnualOtherIncome;
+                    const drawValueInTodaysDollars = drawValue / Math.pow((1 + inflationRate), i);
+                    fortyFiveYODrawDisplay.textContent = formatLargeCurrency(drawValueInTodaysDollars);
+                }
+
+                if (age === 62) {
+                    const drawValue = (currentInvestments * retirementDrawRate) + currentAnnualOtherIncome;
+                    const drawValueInTodaysDollars = drawValue / Math.pow((1 + inflationRate), i);
+                    sixtyTwoYODrawDisplay.textContent = formatLargeCurrency(drawValueInTodaysDollars);
+                }
+
+                currentHomeValue *= (1 + housingAppreciation);
+                currentOtherEquity = otherEquityValueFromInitialAssets / Math.pow((1 + inflationRate), 0) * Math.pow((1 + inflationRate), i); // Adjust other equity for inflation
+
+                currentMortgage = Math.max(0, currentMortgage - annualPrincipalPayment);
+
+                const currentHomeEquity = currentHomeValue - currentMortgage;
+                const currentTotalLiabilitiesInProjection = currentMortgage + currentOtherLiabilitiesTotal; // Assuming other liabilities don't change
+                let currentNetWorth = currentInvestments + currentHomeEquity + currentOtherEquity - currentTotalLiabilitiesInProjection;
+                const netWorthInTodaysDollars = currentNetWorth / Math.pow((1 + inflationRate), i);
+
+                chartData.push({
+                    age: age,
+                    investments: currentInvestments,
+                    netWorth: netWorthInTodaysDollars
+                });
+
+                const row = projectionTableBody.insertRow();
+                row.classList.add('hover:bg-blue-50');
+
+                if (age % 5 === 0) {
+                    row.classList.add('bg-blue-100');
+                }
+
+                row.insertCell().textContent = age;
+                row.insertCell().textContent = year;
+                row.insertCell().textContent = formatTableCurrency(currentInvestments);
+                row.insertCell().textContent = formatTableCurrency(currentNetWorth);
+                row.insertCell().textContent = formatTableCurrency(netWorthInTodaysDollars);
+
+                currentBaseSalary *= (1 + annualSalaryRaise);
+
+                currentProjectedAge++;
+            }
+            renderChart(chartData);
+        }
+
+        // D3.js Chart Rendering Function for Projected Growth
+        function renderChart(data) {
+            d3.select(chartContainer).select("svg").remove();
+
+            const parentWidth = chartContainer.offsetWidth;
+            const margin = { top: 40, right: 60, bottom: 50, left: 80 };
+            const width = parentWidth - margin.left - margin.right;
+            const height = 400 - margin.top - margin.bottom;
+
+            const svg = d3.select(chartContainer).append("svg")
+                .attr("width", width + margin.left + margin.right)
+                .attr("height", height + margin.top + margin.bottom)
+                .attr("class", "chart-svg")
+                .append("g")
+                .attr("transform", `translate(${margin.left},${margin.top})`);
+
+            const xScale = d3.scaleLinear()
+                .domain(d3.extent(data, d => d.age))
+                .range([0, width]);
+
+            const yMax = d3.max(data, d => Math.max(d.investments, d.netWorth));
+            const yMin = d3.min(data, d => Math.min(d.investments, d.netWorth));
+
+            const yScale = d3.scaleLinear()
+                .domain([yMin * 0.95, yMax * 1.05])
+                .range([height, 0]);
+
+            const xAxis = d3.axisBottom(xScale).tickFormat(d3.format("d"));
+            const yAxis = d3.axisLeft(yScale).tickFormat(d => formatProjectedChartAxisLabel(d, yMax));
+
+
+            svg.append("g")
+                .attr("class", "x axis")
+                .attr("transform", `translate(0,${height})`)
+                .call(xAxis);
+
+            svg.append("g")
+                .attr("class", "y axis")
+                .call(yAxis);
+
+            svg.append("g")
+                .attr("class", "grid")
+                .call(d3.axisLeft(yScale)
+                    .tickSize(-width)
+                    .tickFormat("")
+                );
+
+            const lineInvestments = d3.line()
+                .x(d => xScale(d.age))
+                .y(d => yScale(d.investments));
+
+            const lineNetWorth = d3.line()
+                .x(d => xScale(d.age))
+                .y(d => yScale(d.netWorth));
+
+            svg.append("path")
+                .datum(data)
+                .attr("class", "line line-investments")
+                .attr("fill", "none")
+                .attr("d", lineInvestments);
+
+            svg.append("path")
+                .datum(data)
+                .attr("class", "line line-networth")
+                .attr("fill", "none")
+                .attr("d", lineNetWorth);
+
+            svg.append("text")
+                .attr("transform", `translate(${width / 2}, ${height + margin.bottom - 10})`)
+                .style("text-anchor", "middle")
+                .attr("font-size", "0.9rem")
+                .text("Age");
+
+            svg.append("text")
+                .attr("transform", "rotate(-90)")
+                .attr("y", 0 - margin.left + 20)
+                .attr("x", 0 - (height / 2))
+                .attr("dy", "1em")
+                .style("text-anchor", "middle")
+                .attr("font-size", "0.9rem")
+                .text("Value ($)");
+
+            svg.append("text")
+                .attr("x", (width / 2))
+                .attr("y", 0 - (margin.top / 2))
+                .attr("text-anchor", "middle")
+                .attr("font-size", "1.2rem")
+                .attr("font-weight", "bold")
+                .text("Projected Investments & Net Worth");
+
+            const tooltip = d3.select("body").append("div")
+                .attr("class", "tooltip")
+                .style("opacity", 0)
+                .style("position", "absolute");
+
+            svg.append("rect")
+                .attr("class", "overlay")
+                .attr("width", width)
+                .attr("height", height)
+                .style("fill", "none")
+                .style("pointer-events", "all")
+                .on("mouseover", function() { focusInvestment.style("display", null); focusNetWorth.style("display", null); tooltip.style("opacity", 1); })
+                .on("mouseout", function() { focusInvestment.style("display", "none"); focusNetWorth.style("display", "none"); tooltip.style("opacity", 0); })
+                .on("mousemove", mousemove);
+
+            const focusInvestment = svg.append("g")
+                .attr("class", "focus")
+                .style("display", "none");
+
+            focusInvestment.append("circle")
+                .attr("r", 5)
+                .attr("fill", "#2563eb");
+
+            const focusNetWorth = svg.append("g")
+                .attr("class", "focus")
+                .style("display", "none");
+
+            focusNetWorth.append("circle")
+                .attr("r", 5)
+                .attr("fill", "#10b981");
+
+            function mousemove(event) {
+                const x0 = xScale.invert(d3.pointer(event)[0]);
+                const bisect = d3.bisector(d => d.age).left;
+                const i = bisect(data, x0, 1);
+                const d0 = data[i - 1];
+                const d1 = data[i];
+                const d = x0 - d0.age > d1.age - x0 ? d1 : d0;
+
+                focusInvestment.attr("transform", `translate(${xScale(d.age)},${yScale(d.investments)})`);
+                focusNetWorth.attr("transform", `translate(${xScale(d.age)},${yScale(d.netWorth)})`);
+
+                tooltip.html(`Age: ${d.age}<br>Investments: ${formatTableCurrency(d.investments)}<br>Net Worth (Today's $): ${formatTableCurrency(d.netWorth)}`)
+                    .style("left", (event.pageX + 10) + "px")
+                    .style("top", (event.pageY - 20) + "px");
+            }
+            chartContainer.__chartData__ = data; // Store data for resize handling
+        }
+
+
+        // Add event listeners to all static input fields
+        for (const key in staticInputs) {
+            // All changes to static inputs trigger save
+            staticInputs[key].addEventListener('input', () => calculateFinancials(true));
+            // Add specific input formatting for relevant fields
+            if (staticInputs[key].type === 'text') {
+                 staticInputs[key].addEventListener('input', (event) => {
+                    const rawValue = event.target.value;
+                    event.target.value = formatInputNumber(rawValue);
+                });
+            }
+        }
+
+        // Add event listener for adding new investment accounts
+        addInvestmentBtn.addEventListener('click', () => { addInvestmentAccountInput(); calculateFinancials(true); });
+        // Add event listener for adding new other asset accounts
+        addOtherAssetBtn.addEventListener('click', () => { addOtherAssetInput(); calculateFinancials(true); });
+        // Add event listener for adding new liability accounts
+        addLiabilityBtn.addEventListener('click', () => { addLiabilityInput(); calculateFinancials(true); });
+        // Add event listener for adding new other income accounts
+        addOtherIncomeBtn.addEventListener('click', () => { addOtherIncomeInput(); calculateFinancials(true); });
+
+        // Attach event listeners for slider value display updates and trigger save
+        sliderPairs.forEach(pair => {
+            pair.slider.addEventListener('input', () => updateSliderValueDisplay(pair.slider, pair.valueDisplay, pair.unit));
+            pair.slider.addEventListener('change', () => calculateFinancials(true)); // Change also triggers save
+            // Initial display update handled by populateInputsFromFirestore
+        });
+
+        // Initial setup on page load
+        document.addEventListener('DOMContentLoaded', () => {
+            // Populate initial default dynamic rows. These will be overwritten by Firestore if data exists.
+            initialInvestmentAccounts.forEach(account => addInvestmentAccountInput(account));
+            initialOtherAssets.forEach(asset => addOtherAssetInput(asset));
+            initialLiabilities.forEach(liability => addLiabilityInput(liability));
+            initialOtherIncome.forEach(income => addOtherIncomeInput(income));
+
+            initFirebase(); // Initialize Firebase and start data loading/listening
+
+            // Re-render charts on window resize for responsiveness
+            window.addEventListener('resize', () => {
+                const projectedData = chartContainer.__chartData__;
+                if (projectedData) {
+                    renderChart(projectedData);
+                }
+            });
+        });
+    </script>
 </head>
 <body class="flex flex-col lg:flex-row min-h-screen">
     <!-- Left Sticky Banner -->
@@ -322,7 +985,7 @@
                             </div>
                             <div class="mb-4">
                                 <label for="baseSalary" class="label-style">Base Salary ($)</label>
-                                <input type="text" id="baseSalary" value="180000" class="input-field">
+                                <input type="text" id="baseSalary" value="179386" class="input-field">
                             </div>
 
                             <div class="mb-4">
@@ -430,7 +1093,7 @@
 
                             <div class="mb-4">
                                 <label for="monthlyPrincipalPayment" class="label-style">Monthly Principal Payment ($)</label>
-                                <input type="text" id="monthlyPrincipalPayment" value="1400" class="input-field">
+                                <input type="text" id="monthlyPrincipalPayment" value="1428" class="input-field">
                             </div>
                         </div>
                     </div>
@@ -477,736 +1140,5 @@
             </div>
         </div>
     </div>
-
-    <script>
-        // Helper functions for number formatting in input fields
-        function formatInputNumber(value) {
-            if (value === null || value === undefined || value === '') {
-                return '';
-            }
-            // Ensure value is treated as a number before formatting, removing existing commas
-            let num = Number(String(value).replace(/,/g, ''));
-            if (isNaN(num)) {
-                return '';
-            }
-            return new Intl.NumberFormat('en-US').format(num);
-        }
-
-        function cleanInputNumber(stringValue) {
-            if (stringValue === null || stringValue === undefined || stringValue === '') {
-                return 0;
-            }
-            // Remove all non-digit characters except for a potential leading minus sign and decimal
-            const cleaned = stringValue.replace(/[^\d.-]/g, '');
-            return parseFloat(cleaned) || 0;
-        }
-
-        // Get references to all static input elements
-        const staticInputs = {
-            currentAge: document.getElementById('currentAge'),
-            baseSalary: document.getElementById('baseSalary'),
-            bonusRate: document.getElementById('bonusRate'),
-            my401kContributionRate: document.getElementById('my401kContributionRate'),
-            company401kContributionRate: document.getElementById('company401kContributionRate'),
-            annualRothContribution: document.getElementById('annualRothContribution'),
-            monthly529Contribution: document.getElementById('monthly529Contribution'),
-            monthlyHSAContribution: document.getElementById('monthlyHSAContribution'),
-            annualSalaryRaise: document.getElementById('annualSalaryRaise'),
-            stockAppreciation: document.getElementById('stockAppreciation'),
-            housingAppreciation: document.getElementById('housingAppreciation'),
-            inflation: document.getElementById('inflation'),
-            retirementDrawRate: document.getElementById('retirementDrawRate'),
-            retirementYear: document.getElementById('retirementYear'),
-            monthlyPrincipalPayment: document.getElementById('monthlyPrincipalPayment')
-        };
-
-        // Get references to display elements
-        const currentNetWorthDisplay = document.getElementById('currentNetWorth');
-        const currentNetInvestmentsDisplay = document.getElementById('currentNetInvestments');
-        const annualIncomeDisplay = document.getElementById('annualIncomeDisplay');
-        const annualSavingsDisplay = document.getElementById('annualSavingsDisplay');
-        const todaysDrawDisplay = document.getElementById('todaysDraw');
-        const fortyFiveYODrawDisplay = document.getElementById('fortyFiveYODraw');
-        const sixtyTwoYODrawDisplay = document.getElementById('sixtyTwoYODraw');
-        const projectionTableBody = document.getElementById('projectionTableBody');
-        const investmentAccountsContainer = document.getElementById('investmentAccountsContainer');
-        const addInvestmentBtn = document.getElementById('addInvestmentBtn');
-        const otherAssetsContainer = document.getElementById('otherAssetsContainer'); // New reference for other assets container
-        const addOtherAssetBtn = document.getElementById('addOtherAssetBtn'); // New reference for add other asset button
-        const liabilitiesContainer = document.getElementById('liabilitiesContainer');
-        const addLiabilityBtn = document.getElementById('addLiabilityBtn');
-        const otherIncomeContainer = document.getElementById('otherIncomeContainer');
-        const addOtherIncomeBtn = document.getElementById('addOtherIncomeBtn');
-        const chartContainer = document.getElementById('chart-container');
-
-        // References for the summary spans
-        const totalInvestmentsSummary = document.getElementById('totalInvestmentsSummary');
-        const totalOtherAssetsSummary = document.getElementById('totalOtherAssetsSummary');
-        const totalLiabilitiesSummary = document.getElementById('totalLiabilitiesSummary');
-
-
-        // Get references to slider input and value display pairs
-        const sliderPairs = [
-            { slider: document.getElementById('currentAge'), valueDisplay: document.getElementById('currentAgeValue'), unit: '' },
-            { slider: document.getElementById('bonusRate'), valueDisplay: document.getElementById('bonusRateValue'), unit: '%' },
-            { slider: document.getElementById('my401kContributionRate'), valueDisplay: document.getElementById('my401kContributionRateValue'), unit: '%' },
-            { slider: document.getElementById('company401kContributionRate'), valueDisplay: document.getElementById('company401kContributionRateValue'), unit: '%' },
-            { slider: document.getElementById('annualSalaryRaise'), valueDisplay: document.getElementById('annualSalaryRaiseValue'), unit: '%' },
-            { slider: document.getElementById('stockAppreciation'), valueDisplay: document.getElementById('stockAppreciationValue'), unit: '%' },
-            { slider: document.getElementById('housingAppreciation'), valueDisplay: document.getElementById('housingAppreciationValue'), unit: '%' },
-            { slider: document.getElementById('inflation'), valueDisplay: document.getElementById('inflationValue'), unit: '%' },
-            { slider: document.getElementById('retirementDrawRate'), valueDisplay: document.getElementById('retirementDrawRateValue'), unit: '%' },
-            { slider: document.getElementById('retirementYear'), valueDisplay: document.getElementById('retirementYearValue'), unit: '' }
-        ];
-
-        // Initial investment accounts data (exact values, not rounded)
-        const initialInvestmentAccounts = [
-            { name: "401K", value: 500000 },
-            { name: "Roth 1", value: 100000 },
-            { name: "Roth 2", value: 100000 },
-            { name: "529", value: 50000 },
-            { name: "HSA", value: 25000 },
-            { name: "Stocks", value: 0 },
-            { name: "Gold", value: 20000 },
-            { name: "Silver", value: 0 },
-            { name: "Bitcoin", value: 0 }
-        ];
-
-        // Initial other assets data
-        const initialOtherAssets = [
-            { name: "Checking Account", value: 20000 },
-            { name: "Home Value", value: 900000 },
-            { name: "Other Equity (Car, RV, etc.)", value: 80000 }
-        ];
-
-        // Initial liability accounts data (exact values, not rounded)
-        const initialLiabilities = [
-            { name: "Mortgage", value: 200000 },
-            { name: "Credit Cards", value: 0 },
-            { name: "HELOC", value: 0 },
-            { name: "Car Loan", value: 0 }
-        ];
-
-        // Initial other income data
-        const initialOtherIncome = [
-            { name: "Cell Tower Lease", value: 1200, escalationRate: 0.015 },
-            { name: "Rental 1", value: 1300, escalationRate: 0.04 }
-        ];
-
-        // Function to format numbers as currency, rounded to nearest thousand, without K/M (for table)
-        const formatTableCurrency = (amount) => {
-            const roundedAmount = Math.round(amount / 1000) * 1000;
-            return new Intl.NumberFormat('en-US', {
-                style: 'currency',
-                currency: 'USD',
-                minimumFractionDigits: 0,
-                maximumFractionDigits: 0
-            }).format(roundedAmount);
-        };
-
-        // Function to format numbers as currency with K/M and specified decimal places (for summary displays)
-        const formatLargeCurrency = (amount) => {
-            if (Math.abs(amount) >= 1000000) {
-                return `$${(amount / 1000000).toFixed(2)}M`;
-            }
-            if (Math.abs(amount) >= 1000) {
-                return `$${(amount / 1000).toFixed(0)}K`;
-            }
-            return new Intl.NumberFormat('en-US', {
-                style: 'currency',
-                currency: 'USD',
-                minimumFractionDigits: 0,
-                maximumFractionDigits: 0
-            }).format(amount);
-        };
-
-        // Function to format Y-axis labels dynamically based on max value in the chart
-        function formatProjectedChartAxisLabel(value, maxChartValue) {
-            if (maxChartValue < 5000000) { // If max value is under 5 million, show in thousands
-                return `$${(value / 1000).toFixed(0)}K`; // No decimals for K
-            } else { // Otherwise, show in millions
-                return `$${(value / 1000000).toFixed(0)}M`; // No decimals for M
-            }
-        }
-
-        // Function to update slider value display position
-        function updateSliderValueDisplay(slider, valueDisplay, unit) {
-            const min = parseFloat(slider.min);
-            const max = parseFloat(slider.max);
-            const val = parseFloat(slider.value);
-            const percentage = (val - min) / (max - min);
-
-            const thumbWidth = 24;
-            const sliderWidth = slider.offsetWidth;
-
-            const leftPosition = (percentage * (sliderWidth - thumbWidth)) + (thumbWidth / 2);
-
-            valueDisplay.style.left = `${leftPosition}px`;
-            valueDisplay.textContent = `${val.toFixed(slider.step === '0.1' || slider.step === '0.5' ? 1 : 0)}${unit}`;
-        }
-
-
-        // Function to add a new investment account input row
-        function addInvestmentAccountInput(account = { name: '', value: 0 }) {
-            const rowDiv = document.createElement('div');
-            rowDiv.classList.add('investment-row', 'flex', 'flex-wrap', 'items-center', 'mb-4', 'space-y-2', 'md:space-y-0', 'md:space-x-2');
-            rowDiv.innerHTML = `
-                <input type="text" placeholder="Account Name" value="${account.name}" class="input-field investment-name flex-1 min-w-[120px]">
-                <input type="text" placeholder="Value ($)" value="${formatInputNumber(account.value)}" class="input-field investment-value flex-1 min-w-[100px]">
-                <button type="button" class="delete-item-btn text-red-500 hover:text-red-700 font-bold px-2 py-1 rounded-md transition duration-200 ease-in-out">X</button>
-            `;
-            investmentAccountsContainer.appendChild(rowDiv);
-
-            const valueInput = rowDiv.querySelector('.investment-value');
-            valueInput.addEventListener('input', (event) => {
-                const rawValue = event.target.value;
-                event.target.value = formatInputNumber(rawValue);
-                calculateFinancials();
-            });
-
-            const deleteBtn = rowDiv.querySelector('.delete-item-btn');
-            deleteBtn.addEventListener('click', () => {
-                rowDiv.remove();
-                calculateFinancials();
-            });
-        }
-
-        // Function to add a new other asset input row
-        function addOtherAssetInput(asset = { name: '', value: 0 }) {
-            const rowDiv = document.createElement('div');
-            rowDiv.classList.add('other-asset-row', 'flex', 'flex-wrap', 'items-center', 'mb-4', 'space-y-2', 'md:space-y-0', 'md:space-x-2');
-            rowDiv.innerHTML = `
-                <input type="text" placeholder="Asset Name" value="${asset.name}" class="input-field asset-name flex-1 min-w-[120px]">
-                <input type="text" placeholder="Value ($)" value="${formatInputNumber(asset.value)}" class="input-field asset-value flex-1 min-w-[100px]">
-                <button type="button" class="delete-item-btn text-red-500 hover:text-red-700 font-bold px-2 py-1 rounded-md transition duration-200 ease-in-out">X</button>
-            `;
-            otherAssetsContainer.appendChild(rowDiv);
-
-            const valueInput = rowDiv.querySelector('.asset-value');
-            valueInput.addEventListener('input', (event) => {
-                const rawValue = event.target.value;
-                event.target.value = formatInputNumber(rawValue);
-                calculateFinancials();
-            });
-
-            const deleteBtn = rowDiv.querySelector('.delete-item-btn');
-            deleteBtn.addEventListener('click', () => {
-                rowDiv.remove();
-                calculateFinancials();
-            });
-        }
-
-        // Function to add a new liability input row
-        function addLiabilityInput(liability = { name: '', value: 0 }) {
-            const rowDiv = document.createElement('div');
-            rowDiv.classList.add('liability-row', 'flex', 'flex-wrap', 'items-center', 'mb-4', 'space-y-2', 'md:space-y-0', 'md:space-x-2');
-            rowDiv.innerHTML = `
-                <input type="text" placeholder="Liability Name" value="${liability.name}" class="input-field liability-name flex-1 min-w-[120px]">
-                <input type="text" placeholder="Value ($)" value="${formatInputNumber(liability.value)}" class="input-field liability-value flex-1 min-w-[100px]">
-                <button type="button" class="delete-item-btn text-red-500 hover:text-red-700 font-bold px-2 py-1 rounded-md transition duration-200 ease-in-out">X</button>
-            `;
-            liabilitiesContainer.appendChild(rowDiv);
-
-            const valueInput = rowDiv.querySelector('.liability-value');
-            valueInput.addEventListener('input', (event) => {
-                const rawValue = event.target.value;
-                event.target.value = formatInputNumber(rawValue);
-                calculateFinancials();
-            });
-
-            const deleteBtn = rowDiv.querySelector('.delete-item-btn');
-            deleteBtn.addEventListener('click', () => {
-                rowDiv.remove();
-                calculateFinancials();
-            });
-        }
-
-        // Function to add a new other income input row
-        function addOtherIncomeInput(income = { name: '', value: 0, escalationRate: 0 }) {
-            const rowDiv = document.createElement('div');
-            rowDiv.classList.add('other-income-row', 'flex', 'flex-wrap', 'items-center', 'mb-4', 'space-y-2', 'md:space-y-0', 'md:space-x-2');
-            rowDiv.innerHTML = `
-                <input type="text" placeholder="Income Source" value="${income.name}" class="input-field income-name flex-1 min-w-[120px]">
-                <input type="text" placeholder="Monthly Value ($)" value="${formatInputNumber(income.value)}" class="input-field income-value flex-1 min-w-[100px]">
-                <div class="flex items-center">
-                    <input type="number" placeholder="Escalation Rate" value="${(income.escalationRate * 100).toFixed(1)}" step="0.1" min="0" max="10" class="input-field income-escalation-rate w-24">
-                    <span class="ml-1 text-gray-700">%</span>
-                </div>
-                <button type="button" class="delete-item-btn text-red-500 hover:text-red-700 font-bold px-2 py-1 rounded-md transition duration-200 ease-in-out">X</button>
-            `;
-            otherIncomeContainer.appendChild(rowDiv);
-
-            const valueInput = rowDiv.querySelector('.income-value');
-            valueInput.addEventListener('input', (event) => {
-                const rawValue = event.target.value;
-                event.target.value = formatInputNumber(rawValue);
-                calculateFinancials();
-            });
-
-            const deleteBtn = rowDiv.querySelector('.delete-item-btn');
-
-            rowDiv.querySelectorAll('input').forEach(input => {
-                // Only attach `calculateFinancials` to value/rate changes, not name
-                if (input.classList.contains('income-value') || input.classList.contains('income-escalation-rate')) {
-                    input.addEventListener('input', calculateFinancials);
-                }
-            });
-            deleteBtn.addEventListener('click', () => {
-                rowDiv.remove();
-                calculateFinancials();
-            });
-        }
-
-        // Main calculation function
-        function calculateFinancials() {
-            let totalInvestments = 0;
-            let totalOtherAssets = 0; // Initialize total for dynamic other assets
-            let totalLiabilities = 0;
-            let currentMortgageValue = 0;
-
-            // Read dynamic investment account values
-            document.querySelectorAll('.investment-row').forEach(row => {
-                const valueInput = row.querySelector('.investment-value');
-                const value = cleanInputNumber(valueInput.value);
-                totalInvestments += value;
-            });
-
-            // Read dynamic other asset values
-            document.querySelectorAll('.other-asset-row').forEach(row => {
-                const valueInput = row.querySelector('.asset-value');
-                const value = cleanInputNumber(valueInput.value);
-                totalOtherAssets += value;
-            });
-
-            // Read dynamic liability values
-            document.querySelectorAll('.liability-row').forEach(row => {
-                const nameInput = row.querySelector('.liability-name');
-                const valueInput = row.querySelector('.liability-value');
-                const name = nameInput.value;
-                const value = cleanInputNumber(valueInput.value);
-                totalLiabilities += value;
-
-                if (name.toLowerCase() === "mortgage") {
-                    currentMortgageValue = value;
-                }
-            });
-
-            // Read dynamic other income values
-            let currentOtherIncomesState = [];
-            let totalOtherMonthlyIncome = 0; // Initialize for annual income calculation
-            document.querySelectorAll('.other-income-row').forEach(row => {
-                const name = row.querySelector('.income-name').value;
-                const value = cleanInputNumber(row.querySelector('.income-value').value);
-                const escalationRate = parseFloat(row.querySelector('.income-escalation-rate').value) / 100 || 0;
-                currentOtherIncomesState.push({ name: name, value: value, escalationRate: escalationRate });
-                totalOtherMonthlyIncome += value; // Accumulate for total annual income
-            });
-
-
-            // Read static input values, using cleanInputNumber for formatting-aware parsing
-            const currentAge = parseFloat(staticInputs.currentAge.value) || 0;
-            let baseSalary = cleanInputNumber(staticInputs.baseSalary.value);
-            const bonusRate = parseFloat(staticInputs.bonusRate.value) / 100 || 0;
-            const my401kContributionRate = parseFloat(staticInputs.my401kContributionRate.value) / 100 || 0;
-            const company401kContributionRate = parseFloat(staticInputs.company401kContributionRate.value) / 100 || 0;
-            const annualRothContribution = cleanInputNumber(staticInputs.annualRothContribution.value);
-            const monthly529Contribution = cleanInputNumber(staticInputs.monthly529Contribution.value);
-            const monthlyHSAContribution = cleanInputNumber(staticInputs.monthlyHSAContribution.value);
-
-            const annualSalaryRaise = parseFloat(staticInputs.annualSalaryRaise.value) / 100 || 0;
-            const stockAppreciation = parseFloat(staticInputs.stockAppreciation.value) / 100 || 0;
-            const housingAppreciation = parseFloat(staticInputs.housingAppreciation.value) / 100 || 0;
-            const inflation = parseFloat(staticInputs.inflation.value) / 100 || 0;
-            const retirementDrawRate = parseFloat(staticInputs.retirementDrawRate.value) / 100 || 0;
-            const retirementYear = parseFloat(staticInputs.retirementYear.value) || 0;
-            const monthlyPrincipalPayment = cleanInputNumber(staticInputs.monthlyPrincipalPayment.value);
-            const annualPrincipalPayment = monthlyPrincipalPayment * 12;
-
-            // Update min for retirementYear slider dynamically based on currentAge
-            staticInputs.retirementYear.min = currentAge;
-            if (retirementYear < currentAge) {
-                staticInputs.retirementYear.value = currentAge;
-            }
-
-
-            // Update slider value displays
-            sliderPairs.forEach(pair => {
-                updateSliderValueDisplay(pair.slider, pair.valueDisplay, pair.unit);
-            });
-
-            // Calculate Net Worth and Net Investments
-            // Update: Use totalOtherAssets from dynamic inputs
-            const currentTotalAssets = totalInvestments + totalOtherAssets;
-            const currentNetWorth = currentTotalAssets - totalLiabilities;
-            const currentNetInvestments = totalInvestments;
-
-            // Calculate Annual Income
-            const annualBonusIncome = baseSalary * bonusRate;
-            const totalAnnualOtherIncome = totalOtherMonthlyIncome * 12;
-            const totalAnnualIncome = baseSalary + annualBonusIncome + totalAnnualOtherIncome;
-
-            // Calculate Total Annual Savings - NOW INCLUDES MONTHLY PRINCIPAL PAYMENT
-            const totalAnnualSavings =
-                (baseSalary * my401kContributionRate) +
-                (baseSalary * company401kContributionRate) +
-                (monthly529Contribution * 12) +
-                (monthlyHSAContribution * 12) +
-                annualRothContribution +
-                (monthlyPrincipalPayment * 12); // Added monthly principal payment
-
-            // Display current values using new formatting
-            currentNetWorthDisplay.textContent = formatLargeCurrency(currentNetWorth);
-            currentNetInvestmentsDisplay.textContent = formatLargeCurrency(currentNetInvestments);
-            annualIncomeDisplay.textContent = formatLargeCurrency(totalAnnualIncome); // Display annual income
-            annualSavingsDisplay.textContent = formatLargeCurrency(totalAnnualSavings); // Display annual savings
-
-            // Update the span elements with dynamically calculated and rounded values
-            totalInvestmentsSummary.textContent = `(${formatLargeCurrency(totalInvestments)})`;
-            totalOtherAssetsSummary.textContent = `(${formatLargeCurrency(totalOtherAssets)})`; // Updated to use dynamic total
-            totalLiabilitiesSummary.textContent = `(${formatLargeCurrency(totalLiabilities)})`;
-
-
-            // Project growth over years, passing the draw display elements and retirement draw rate
-            projectGrowth(currentNetInvestments, currentNetWorth,
-                          // Pass initialHomeValue and otherEquity to projection if needed, or derive from totalOtherAssets
-                          // For now, we'll pass the breakdown from other assets if home value is still needed separately for projection logic
-                          initialOtherAssets.find(asset => asset.name === "Home Value")?.value || 0,
-                          totalLiabilities, currentMortgageValue, baseSalary,
-                          bonusRate, my401kContributionRate, company401kContributionRate,
-                          annualRothContribution, monthly529Contribution, monthlyHSAContribution,
-                          annualSalaryRaise, stockAppreciation,
-                          housingAppreciation, inflation, annualPrincipalPayment,
-                          currentOtherIncomesState,
-                          initialOtherAssets.find(asset => asset.name === "Other Equity (Car, RV, etc.)")?.value || 0, // Pass other equity separately if needed
-                          currentAge,
-                          retirementDrawRate, todaysDrawDisplay, fortyFiveYODrawDisplay, sixtyTwoYODrawDisplay,
-                          retirementYear, totalOtherMonthlyIncome * 12); // Pass total other annual income
-        }
-
-        function projectGrowth(initialNetInvestments, initialNetWorth, initialHomeValue, initialTotalLiabilities, initialMortgageValue, initialBaseSalary,
-                               bonusRate, my401kContributionRate, company401kContributionRate,
-                               annualRothContribution, monthly529Contribution, monthlyHSAContribution,
-                               annualSalaryRaise, stockAppreciation,
-                               housingAppreciation, inflation, annualPrincipalPayment,
-                               initialOtherIncomesState,
-                               otherEquityValueFromInitialAssets,
-                               initialAge,
-                               retirementDrawRate, todaysDrawDisplay, fortyFiveYODrawDisplay, sixtyTwoYODrawDisplay,
-                               retirementYearInput, initialTotalOtherAnnualIncome) {
-
-            projectionTableBody.innerHTML = '';
-            chartContainer.innerHTML = '';
-
-            let currentInvestments = initialNetInvestments;
-            let currentHomeValue = initialHomeValue;
-            let currentMortgage = initialMortgageValue;
-            let currentOtherLiabilitiesTotal = initialTotalLiabilities - initialMortgageValue;
-            let currentBaseSalary = initialBaseSalary;
-            let currentOtherEquity = otherEquityValueFromInitialAssets;
-
-            const startYear = new Date().getFullYear();
-            let currentProjectedAge = initialAge;
-
-            let projectedOtherIncomes = JSON.parse(JSON.stringify(initialOtherIncomesState));
-            const inflationRate = inflation;
-
-            const chartData = [];
-
-            // Calculate and display today's draw including other income
-            const todaysDrawValue = (initialNetInvestments * retirementDrawRate) + initialTotalOtherAnnualIncome;
-            todaysDrawDisplay.textContent = formatLargeCurrency(todaysDrawValue);
-
-            const firstYear = startYear;
-            const firstAge = initialAge;
-
-            chartData.push({
-                age: firstAge,
-                investments: initialNetInvestments,
-                netWorth: initialNetWorth / Math.pow((1 + inflationRate), 0)
-            });
-
-
-            for (let i = 1; currentProjectedAge <= 100; i++) {
-                const year = startYear + i;
-                const age = currentProjectedAge;
-
-                let annualMy401kContributionCurrentYear = currentBaseSalary * my401kContributionRate;
-                let annualCompany401kContributionCurrentYear = currentBaseSalary * company401kContributionRate;
-                let annual529ContributionCurrentYear = monthly529Contribution * 12;
-                let annualHSAContributionCurrentYear = monthlyHSAContribution * 12;
-                let annualRothContributionCurrentYear = annualRothContribution;
-
-                if (age >= retirementYearInput) {
-                    annualMy401kContributionCurrentYear = 0;
-                    annualCompany401kContributionCurrentYear = 0;
-                    annual529ContributionCurrentYear = 0;
-                    annualHSAContributionCurrentYear = 0;
-                    annualRothContributionCurrentYear = 0;
-                }
-
-                currentInvestments *= (1 + stockAppreciation);
-
-                let totalNewInvestmentMoneyCurrentYear = 0;
-                totalNewInvestmentMoneyCurrentYear += annualMy401kContributionCurrentYear;
-                totalNewInvestmentMoneyCurrentYear += annual529ContributionCurrentYear;
-                totalNewInvestmentMoneyCurrentYear += annualHSAContributionCurrentYear;
-                totalNewInvestmentMoneyCurrentYear += annualRothContributionCurrentYear;
-                totalNewInvestmentMoneyCurrentYear += annualCompany401kContributionCurrentYear;
-
-                let currentAnnualOtherIncome = 0;
-                projectedOtherIncomes.forEach(income => {
-                    income.value *= (1 + income.escalationRate);
-                    if (income.name === "Rental 1") { // Specific rule for "Rental 1" to round down
-                        income.value = Math.floor(income.value / 100) * 100;
-                    }
-                    currentAnnualOtherIncome += income.value * 12;
-                });
-                totalNewInvestmentMoneyCurrentYear += currentAnnualOtherIncome;
-
-                currentInvestments += totalNewInvestmentMoneyCurrentYear;
-
-                // Draw calculations now include other income for the specific year
-                if (age === 45) {
-                    const drawValue = (currentInvestments * retirementDrawRate) + currentAnnualOtherIncome;
-                    const drawValueInTodaysDollars = drawValue / Math.pow((1 + inflationRate), i);
-                    fortyFiveYODrawDisplay.textContent = formatLargeCurrency(drawValueInTodaysDollars);
-                }
-
-                if (age === 62) {
-                    const drawValue = (currentInvestments * retirementDrawRate) + currentAnnualOtherIncome;
-                    const drawValueInTodaysDollars = drawValue / Math.pow((1 + inflationRate), i);
-                    sixtyTwoYODrawDisplay.textContent = formatLargeCurrency(drawValueInTodaysDollars);
-                }
-
-                currentHomeValue *= (1 + housingAppreciation);
-                currentOtherEquity = otherEquityValueFromInitialAssets / Math.pow((1 + inflationRate), 0) * Math.pow((1 + inflationRate), i);
-
-                currentMortgage = Math.max(0, currentMortgage - annualPrincipalPayment);
-
-                const currentHomeEquity = currentHomeValue - currentMortgage;
-                const currentTotalLiabilitiesInProjection = currentMortgage + currentOtherLiabilitiesTotal;
-                let currentNetWorth = currentInvestments + currentHomeEquity + currentOtherEquity - currentTotalLiabilitiesInProjection;
-                const netWorthInTodaysDollars = currentNetWorth / Math.pow((1 + inflationRate), i);
-
-                chartData.push({
-                    age: age,
-                    investments: currentInvestments,
-                    netWorth: netWorthInTodaysDollars
-                });
-
-                const row = projectionTableBody.insertRow();
-                row.classList.add('hover:bg-blue-50');
-
-                if (age % 5 === 0) {
-                    row.classList.add('bg-blue-100');
-                }
-
-                row.insertCell().textContent = age;
-                row.insertCell().textContent = year;
-                row.insertCell().textContent = formatTableCurrency(currentInvestments);
-                row.insertCell().textContent = formatTableCurrency(currentNetWorth);
-                row.insertCell().textContent = formatTableCurrency(netWorthInTodaysDollars);
-
-                currentBaseSalary *= (1 + annualSalaryRaise);
-
-                currentProjectedAge++;
-            }
-            renderChart(chartData);
-        }
-
-        // D3.js Chart Rendering Function for Projected Growth
-        function renderChart(data) {
-            d3.select(chartContainer).select("svg").remove();
-
-            const parentWidth = chartContainer.offsetWidth;
-            const margin = { top: 40, right: 60, bottom: 50, left: 80 };
-            const width = parentWidth - margin.left - margin.right;
-            const height = 400 - margin.top - margin.bottom;
-
-            const svg = d3.select(chartContainer).append("svg")
-                .attr("width", width + margin.left + margin.right)
-                .attr("height", height + margin.top + margin.bottom)
-                .attr("class", "chart-svg")
-                .append("g")
-                .attr("transform", `translate(${margin.left},${margin.top})`);
-
-            const xScale = d3.scaleLinear()
-                .domain(d3.extent(data, d => d.age))
-                .range([0, width]);
-
-            const yMax = d3.max(data, d => Math.max(d.investments, d.netWorth));
-            const yMin = d3.min(data, d => Math.min(d.investments, d.netWorth));
-
-            const yScale = d3.scaleLinear()
-                .domain([yMin * 0.95, yMax * 1.05])
-                .range([height, 0]);
-
-            const xAxis = d3.axisBottom(xScale).tickFormat(d3.format("d"));
-            // Dynamically format Y-axis labels based on yMax for the entire chart
-            const yAxis = d3.axisLeft(yScale).tickFormat(d => formatProjectedChartAxisLabel(d, yMax));
-
-
-            svg.append("g")
-                .attr("class", "x axis")
-                .attr("transform", `translate(0,${height})`)
-                .call(xAxis);
-
-            svg.append("g")
-                .attr("class", "y axis")
-                .call(yAxis);
-
-            svg.append("g")
-                .attr("class", "grid")
-                .call(d3.axisLeft(yScale)
-                    .tickSize(-width)
-                    .tickFormat("")
-                );
-
-            const lineInvestments = d3.line()
-                .x(d => xScale(d.age))
-                .y(d => yScale(d.investments));
-
-            const lineNetWorth = d3.line()
-                .x(d => xScale(d.age))
-                .y(d => yScale(d.netWorth));
-
-            // Draw lines with explicit fill="none"
-            svg.append("path")
-                .datum(data)
-                .attr("class", "line line-investments")
-                .attr("fill", "none") // Explicitly set fill to none
-                .attr("d", lineInvestments);
-
-            svg.append("path")
-                .datum(data)
-                .attr("class", "line line-networth")
-                .attr("fill", "none") // Explicitly set fill to none
-                .attr("d", lineNetWorth);
-
-            svg.append("text")
-                .attr("transform", `translate(${width / 2}, ${height + margin.bottom - 10})`)
-                .style("text-anchor", "middle")
-                .attr("font-size", "0.9rem")
-                .text("Age");
-
-            svg.append("text")
-                .attr("transform", "rotate(-90)")
-                .attr("y", 0 - margin.left + 20)
-                .attr("x", 0 - (height / 2))
-                .attr("dy", "1em")
-                .style("text-anchor", "middle")
-                .attr("font-size", "0.9rem")
-                .text("Value ($)");
-
-            svg.append("text")
-                .attr("x", (width / 2))
-                .attr("y", 0 - (margin.top / 2))
-                .attr("text-anchor", "middle")
-                .attr("font-size", "1.2rem")
-                .attr("font-weight", "bold")
-                .text("Projected Investments & Net Worth");
-
-            const tooltip = d3.select("body").append("div")
-                .attr("class", "tooltip")
-                .style("opacity", 0)
-                .style("position", "absolute");
-
-            svg.append("rect")
-                .attr("class", "overlay")
-                .attr("width", width)
-                .attr("height", height)
-                .style("fill", "none")
-                .style("pointer-events", "all")
-                .on("mouseover", function() { tooltip.style("opacity", 1); })
-                .on("mouseout", function() { tooltip.style("opacity", 0); })
-                .on("mousemove", mousemove);
-
-            const focusInvestment = svg.append("g")
-                .attr("class", "focus")
-                .style("display", "none");
-
-            focusInvestment.append("circle")
-                .attr("r", 5)
-                .attr("fill", "#2563eb");
-
-            const focusNetWorth = svg.append("g")
-                .attr("class", "focus")
-                .style("display", "none");
-
-            focusNetWorth.append("circle")
-                .attr("r", 5)
-                .attr("fill", "#10b981");
-
-            function mousemove(event) {
-                const x0 = xScale.invert(d3.pointer(event)[0]);
-                const bisect = d3.bisector(d => d.age).left;
-                const i = bisect(data, x0, 1);
-                const d0 = data[i - 1];
-                const d1 = data[i];
-                const d = x0 - d0.age > d1.age - x0 ? d1 : d0;
-
-                focusInvestment.attr("transform", `translate(${xScale(d.age)},${yScale(d.investments)})`);
-                focusNetWorth.attr("transform", `translate(${xScale(d.age)},${yScale(d.netWorth)})`);
-
-                focusInvestment.style("display", null);
-                focusNetWorth.style("display", null);
-
-                tooltip.html(`Age: ${d.age}<br>Investments: ${formatTableCurrency(d.investments)}<br>Net Worth (Today's $): ${formatTableCurrency(d.netWorth)}`)
-                    .style("left", (event.pageX + 10) + "px")
-                    .style("top", (event.pageY - 20) + "px");
-            }
-            chartContainer.__chartData__ = data; // Store data for resize handling
-        }
-
-
-        // Add event listeners to all static input fields
-        for (const key in staticInputs) {
-            // Apply formatting on initial load
-            if (staticInputs[key].type === 'text') { // Only apply to 'text' types for formatting
-                staticInputs[key].value = formatInputNumber(staticInputs[key].value);
-            }
-            staticInputs[key].addEventListener('input', calculateFinancials);
-            // Add specific input formatting for relevant fields
-            if (['baseSalary', 'annualRothContribution', 'monthly529Contribution', 'monthlyHSAContribution', 'monthlyPrincipalPayment'].includes(key)) {
-                staticInputs[key].addEventListener('input', (event) => {
-                    const rawValue = event.target.value;
-                    event.target.value = formatInputNumber(rawValue);
-                });
-            }
-        }
-
-        // Add event listener for adding new investment accounts
-        addInvestmentBtn.addEventListener('click', () => addInvestmentAccountInput());
-        // Add event listener for adding new other asset accounts
-        addOtherAssetBtn.addEventListener('click', () => addOtherAssetInput());
-        // Add event listener for adding new liability accounts
-        addLiabilityBtn.addEventListener('click', () => addLiabilityInput());
-        // Add event listener for adding new other income accounts
-        addOtherIncomeBtn.addEventListener('click', () => addOtherIncomeInput());
-
-        // Attach event listeners for slider value display updates
-        sliderPairs.forEach(pair => {
-            pair.slider.addEventListener('input', () => updateSliderValueDisplay(pair.slider, pair.valueDisplay, pair.unit));
-            pair.slider.addEventListener('change', calculateFinancials);
-            updateSliderValueDisplay(pair.slider, pair.valueDisplay, pair.unit);
-        });
-
-        // Initial population of investment and liability accounts and calculation on page load
-        document.addEventListener('DOMContentLoaded', () => {
-            initialInvestmentAccounts.forEach(account => addInvestmentAccountInput(account));
-            initialOtherAssets.forEach(asset => addOtherAssetInput(asset)); // Populate initial other assets
-            initialLiabilities.forEach(liability => addLiabilityInput(liability));
-            initialOtherIncome.forEach(income => addOtherIncomeInput(income));
-            calculateFinancials(); // Initial calculation after setting up inputs
-
-            // Re-render charts on window resize for responsiveness
-            window.addEventListener('resize', () => {
-                const projectedData = chartContainer.__chartData__;
-                if (projectedData) {
-                    renderChart(projectedData);
-                }
-            });
-        });
-    </script>
 </body>
 </html>
