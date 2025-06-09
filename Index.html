@@ -11,8 +11,8 @@
     <!-- Firebase SDKs -->
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-    import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-    import { getFirestore, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+    import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebase/auth/dist/index.mjs";
+    import { getFirestore, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebase/firestore/dist/index.mjs";
 
     // Dynamically retrieve Firebase configuration provided by the Canvas environment
     // Fallback to a placeholder if running outside Canvas (for local development testing)
@@ -42,7 +42,7 @@
     const SHARED_DOC_ID = 'shared_inputs'; // A single document for all shared inputs
 
     // Revision Level
-    const appRevision = "1.6"; // Implemented post-retirement draw logic
+    const appRevision = "1.7"; // Dynamic retirement draw based on slider
 
     // Predefined default values for dynamic sections
     const defaultInvestmentAccounts = [
@@ -120,9 +120,11 @@
         const annualIncomeDisplay = document.getElementById('annualIncomeDisplay');
         const annualSavingsDisplay = document.getElementById('annualSavingsDisplay');
         const todaysDrawDisplay = document.getElementById('todaysDraw');
-        const fortyFiveYODrawDisplay = document.getElementById('fortyFiveYODraw');
+        const dynamicRetirementDrawLabel = document.getElementById('dynamicRetirementDrawLabel'); // New: Dynamic label for retirement draw
+        const dynamicRetirementDrawValue = document.getElementById('dynamicRetirementDrawValue'); // New: Dynamic value for retirement draw
         const sixtyTwoYODrawDisplay = document.getElementById('sixtyTwoYODraw');
-        const fortyFiveYODrawValueSticky = document.getElementById('fortyFiveYODrawValueSticky'); // Updated reference for sticky element
+        const dynamicRetirementDrawLabelSticky = document.getElementById('dynamicRetirementDrawLabelSticky'); // New: Dynamic sticky label
+        const dynamicRetirementDrawValueSticky = document.getElementById('dynamicRetirementDrawValueSticky'); // New: Dynamic sticky value
         const projectionTableBody = document.getElementById('projectionTableBody');
         const investmentAccountsContainer = document.getElementById('investmentAccountsContainer');
         const addInvestmentBtn = document.getElementById('addInvestmentBtn');
@@ -660,7 +662,7 @@
             const housingAppreciation = currentFinancials.housingAppreciation;
             const inflation = currentFinancials.inflation;
             const retirementDrawRate = currentFinancials.retirementDrawRate;
-            const retirementYear = currentFinancials.retirementYear;
+            const retirementYear = currentFinancials.retirementYear; // This is the dynamic retirement age
             const monthlyPrincipalPayment = currentFinancials.monthlyPrincipalPayment;
             const annualPrincipalPayment = monthlyPrincipalPayment * 12;
 
@@ -674,6 +676,11 @@
             sliderPairs.forEach(pair => {
                 updateSliderValueDisplay(pair.slider, pair.valueDisplay, pair.unit);
             });
+
+            // Update dynamic retirement draw labels based on slider value
+            dynamicRetirementDrawLabel.textContent = `${retirementYear} YO Draw (Today's $):`;
+            dynamicRetirementDrawLabelSticky.textContent = `${retirementYear} YO Draw (Today's $):`;
+
 
             // Calculate Net Worth and Net Investments
             const currentTotalAssets = totalInvestments + totalOtherAssets;
@@ -716,8 +723,10 @@
                           currentFinancials.otherIncome, // Pass the collected current other income state
                           currentFinancials.otherAssets.find(asset => asset.name === "Other Equity (car, tractor, camper)")?.value || 0,
                           currentAge,
-                          retirementDrawRate, todaysDrawDisplay, fortyFiveYODrawDisplay, sixtyTwoYODrawDisplay,
-                          retirementYear, totalAnnualOtherIncome);
+                          retirementDrawRate, todaysDrawDisplay, dynamicRetirementDrawValue, sixtyTwoYODrawDisplay,
+                          retirementYear, // Pass the dynamic retirement year
+                          dynamicRetirementDrawValueSticky, // Pass the sticky element for update
+                          totalAnnualOtherIncome);
 
             // Trigger saving if flag is true AND it's not from a Firestore load
             if (shouldSaveData && !window.isLoadingFromFirestore) {
@@ -731,11 +740,11 @@
                                annualRothContribution, monthly529Contribution, monthlyHSAContribution,
                                annualSalaryRaise, stockAppreciation,
                                housingAppreciation, inflation, annualPrincipalPayment,
-                               currentOtherIncomesStateForProjection, // Changed to reflect current, not initial
+                               currentOtherIncomesStateForProjection,
                                otherEquityValueFromInitialAssets,
                                initialAge,
-                               retirementDrawRate, todaysDrawDisplay, fortyFiveYODrawDisplay, sixtyTwoYODrawDisplay,
-                               retirementYearInput, initialTotalOtherAnnualIncome) {
+                               retirementDrawRate, todaysDrawDisplay, dynamicRetirementDrawValue, sixtyTwoYODrawDisplay,
+                               retirementYearInput, dynamicRetirementDrawValueSticky, initialTotalOtherAnnualIncome) {
 
             projectionTableBody.innerHTML = '';
             chartContainer.innerHTML = '';
@@ -745,19 +754,16 @@
             let currentMortgage = initialMortgageValue;
             let currentOtherLiabilitiesTotal = initialTotalLiabilities - initialMortgageValue;
             let currentBaseSalary = initialBaseSalary;
-            // Other Equity now remains constant at its initial nominal value
             let currentOtherEquity = otherEquityValueFromInitialAssets; 
 
             const startYear = new Date().getFullYear();
             let currentProjectedAge = initialAge;
 
-            let projectedOtherIncomes = JSON.parse(JSON.stringify(currentOtherIncomesStateForProjection)); // Use current state
+            let projectedOtherIncomes = JSON.parse(JSON.stringify(currentOtherIncomesStateForProjection));
             const inflationRate = inflation;
 
             const chartData = [];
 
-            // Calculate and display today's draw including other income
-            // Note: This is now just a display value, actual projection starts from year 1 below
             const todaysDrawValue = (initialNetInvestments * retirementDrawRate) + initialTotalOtherAnnualIncome;
             todaysDrawDisplay.textContent = formatLargeCurrency(todaysDrawValue);
 
@@ -767,19 +773,16 @@
                 netWorth: initialNetWorth / Math.pow((1 + inflationRate), 0)
             });
 
-            // Loop until age 80
             for (let i = 1; currentProjectedAge <= 80; i++) {
                 const year = startYear + i;
                 const age = currentProjectedAge;
 
-                // Initialize current year contributions to 0
                 let annualMy401kContributionCurrentYear = 0;
                 let annualCompany401kContributionCurrentYear = 0;
                 let annual529ContributionCurrentYear = 0;
                 let annualHSAContributionCurrentYear = 0;
                 let annualRothContributionCurrentYear = 0;
 
-                // Only add contributions if current age is less than the retirement year
                 if (age < retirementYearInput) {
                     annualMy401kContributionCurrentYear = currentBaseSalary * my401kContributionRate;
                     annualCompany401kContributionCurrentYear = currentBaseSalary * company401kContributionRate;
@@ -788,50 +791,39 @@
                     annualRothContributionCurrentYear = annualRothContribution;
                 }
                 
-                // Investments grow by stock appreciation
                 currentInvestments *= (1 + stockAppreciation);
 
-                // Other income continues indefinitely, regardless of retirement year
                 let currentAnnualOtherIncome = 0;
                 projectedOtherIncomes.forEach(income => {
                     income.value *= (1 + income.escalationRate);
                     if (income.name.toLowerCase().includes("rental") && income.escalationRate > 0) {
-                        // Round down to nearest $100 for rental income if it has escalation
                         income.value = Math.floor(income.value / 100) * 100;
                     }
                     currentAnnualOtherIncome += income.value * 12;
                 });
 
-                // Add all contributions and other income
                 currentInvestments += annualMy401kContributionCurrentYear;
                 currentInvestments += annualCompany401kContributionCurrentYear;
                 currentInvestments += annual529ContributionCurrentYear;
                 currentInvestments += annualHSAContributionCurrentYear;
                 currentInvestments += annualRothContributionCurrentYear;
-                currentInvestments += currentAnnualOtherIncome; // Other income added here
+                currentInvestments += currentAnnualOtherIncome;
 
                 // Apply draw if at or after retirement year
                 if (age >= retirementYearInput) {
-                    // Calculate draw amount in future dollars, maintaining $100K purchasing power in 2025 dollars
                     const annualDrawAmount = 100000 * Math.pow((1 + inflationRate), i); 
                     currentInvestments -= annualDrawAmount;
                 }
 
-
-                // Draw calculations now include other income for the specific year
-                // Handle "45 YO Draw" display based on current age
-                if (age === 45) {
-                    if (initialAge < 45) { // Only calculate if currentAge was less than 45 initially
-                        // The retirementDrawRate here is the general draw rate; not necessarily $100K
-                        const drawValue = (currentInvestments * retirementDrawRate) + currentAnnualOtherIncome;
-                        const drawValueInTodaysDollars = drawValue / Math.pow((1 + inflationRate), i);
-                        fortyFiveYODrawDisplay.textContent = formatLargeCurrency(drawValueInTodaysDollars);
-                        fortyFiveYODrawValueSticky.textContent = formatLargeCurrency(drawValueInTodaysDollars); // Update sticky value
-                    } else {
-                        fortyFiveYODrawDisplay.textContent = "N/A";
-                    }
+                // Update the dynamic retirement draw value when the specific retirement year is reached
+                if (age === retirementYearInput) {
+                    const drawValue = (currentInvestments * retirementDrawRate) + currentAnnualOtherIncome;
+                    const drawValueInTodaysDollars = drawValue / Math.pow((1 + inflationRate), i);
+                    dynamicRetirementDrawValue.textContent = formatLargeCurrency(drawValueInTodaysDollars);
+                    dynamicRetirementDrawValueSticky.textContent = formatLargeCurrency(drawValueInTodaysDollars); // Update sticky value
                 }
 
+                // Keep 62 YO Draw display as a separate fixed value for comparison
                 if (age === 62) {
                     const drawValue = (currentInvestments * retirementDrawRate) + currentAnnualOtherIncome;
                     const drawValueInTodaysDollars = drawValue / Math.pow((1 + inflationRate), i);
@@ -839,13 +831,10 @@
                 }
 
                 currentHomeValue *= (1 + housingAppreciation);
-                // currentOtherEquity remains constant nominal value, not scaled by inflation
-                // currentOtherEquity = otherEquityValueFromInitialAssets; // Already set above
-
                 currentMortgage = Math.max(0, currentMortgage - annualPrincipalPayment);
 
                 const currentHomeEquity = currentHomeValue - currentMortgage;
-                const currentTotalLiabilitiesInProjection = currentMortgage + currentOtherLiabilitiesTotal; // Assuming other liabilities don't change
+                const currentTotalLiabilitiesInProjection = currentMortgage + currentOtherLiabilitiesTotal;
                 let currentNetWorth = currentInvestments + currentHomeEquity + currentOtherEquity - currentTotalLiabilitiesInProjection;
                 const netWorthInTodaysDollars = currentNetWorth / Math.pow((1 + inflationRate), i);
 
@@ -868,7 +857,6 @@
                 row.insertCell().textContent = formatTableCurrency(currentNetWorth);
                 row.insertCell().textContent = formatTableCurrency(netWorthInTodaysDollars);
 
-                // Salary only increases if not yet retired
                 if (age < retirementYearInput) {
                     currentBaseSalary *= (1 + annualSalaryRaise);
                 }
@@ -1049,7 +1037,7 @@
 
         // Function to handle sticky header on scroll for mobile
         function handleMobileStickyHeader() {
-            const stickyElement = document.getElementById('fortyFiveYODrawSticky'); // Updated ID
+            const stickyElement = document.getElementById('dynamicRetirementDrawSticky'); // Updated ID
             const leftStickyBanner = document.getElementById('leftStickyBanner');
             // Only apply on mobile (less than 1024px width, which is the 'lg' breakpoint in Tailwind)
             if (window.innerWidth < 1024 && stickyElement && leftStickyBanner) {
@@ -1285,7 +1273,7 @@
                 margin-top: 0;
             }
 
-            /* Mobile-only sticky 45 YO Draw */
+            /* Mobile-only sticky dynamic retirement draw */
             .mobile-sticky-draw {
                 position: fixed;
                 top: 0;
@@ -1352,7 +1340,7 @@
         lg:fixed lg:top-0 lg:left-0 lg:h-screen lg:w-64 lg:flex-col lg:items-center lg:justify-start lg:p-6 lg:shadow-2xl lg:overflow-y-auto
     ">
         <h2 class="text-xl font-extrabold mb-4 text-center text-white w-full lg:text-3xl lg:mb-8">Your Snapshot</h2>
-        <span id="appRevisionDisplay" class="text-xs text-blue-200 font-semibold mb-4 lg:mb-6">v1.6</span>
+        <span id="appRevisionDisplay" class="text-xs text-blue-200 font-semibold mb-4 lg:mb-6">v1.7</span>
         <!-- Each summary item will be a div -->
         <div class="text-center mb-2 summary-item w-1/2 sm:w-1/3 md:w-1/4 lg:w-auto lg:text-center px-1">
             <p class="text-sm font-bold text-blue-200 lg:text-lg">Net Worth:</p>
@@ -1375,8 +1363,8 @@
             <p id="todaysDraw" class="text-xl font-semibold text-white mt-1 lg:text-3xl">$0</p>
         </div>
         <div class="text-center mb-2 summary-item w-1/2 sm:w-1/3 md:w-1/4 lg:w-auto lg:text-center px-1">
-            <p class="text-sm font-bold text-blue-200 lg:text-lg">45 YO Draw (Today's $):</p>
-            <p id="fortyFiveYODraw" class="text-xl font-semibold text-white mt-1 lg:text-3xl">$0</p>
+            <p class="text-sm font-bold text-blue-200 lg:text-lg" id="dynamicRetirementDrawLabel">Retirement Draw (Today's $):</p>
+            <p id="dynamicRetirementDrawValue" class="text-xl font-semibold text-white mt-1 lg:text-3xl">$0</p>
         </div>
         <div class="text-center mb-2 summary-item w-1/2 sm:w-1/3 md:w-1/4 lg:w-auto lg:text-center px-1">
             <p class="text-sm font-bold text-blue-200 lg:text-lg">62 YO Draw (Today's $):</p>
@@ -1384,10 +1372,10 @@
         </div>
     </div>
 
-    <!-- Mobile-only sticky 45 YO Draw display (initially hidden) -->
-    <div id="fortyFiveYODrawSticky" class="hidden text-center mb-2 w-full bg-blue-800 text-white p-2">
-        <p class="text-sm font-bold text-blue-200">45 YO Draw (Today's $):</p>
-        <p id="fortyFiveYODrawValueSticky" class="text-xl font-semibold text-white">$0</p>
+    <!-- Mobile-only sticky dynamic retirement draw display (initially hidden) -->
+    <div id="dynamicRetirementDrawSticky" class="hidden text-center mb-2 w-full bg-blue-800 text-white p-2">
+        <p class="text-sm font-bold text-blue-200" id="dynamicRetirementDrawLabelSticky">Retirement Draw (Today's $):</p>
+        <p id="dynamicRetirementDrawValueSticky" class="text-xl font-semibold text-white">$0</p>
     </div>
 
     <!-- Main Content Area -->
