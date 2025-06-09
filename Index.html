@@ -101,7 +101,7 @@
         const liabilitiesContainer = document.getElementById('liabilitiesContainer');
         const addLiabilityBtn = document.getElementById('addLiabilityBtn');
         const otherIncomeContainer = document.getElementById('otherIncomeContainer');
-        const addOtherIncomeBtn = document.getElementById('addOtherIncomeBtn');
+        const addOtherIncomeBtn = document = document.getElementById('addOtherIncomeBtn');
         const chartContainer = document.getElementById('chart-container');
 
         // References for the summary spans
@@ -175,67 +175,27 @@
         const initFirebase = async () => {
             console.log("Initializing Firebase...");
             try {
+                // Initialize app and get services
                 app = initializeApp(firebaseConfig);
                 db = getFirestore(app);
-                auth = getAuth(app);
+                auth = getAuth(app); // Get auth instance immediately
 
-                // Use onAuthStateChanged to manage the authentication state.
-                // This ensures we react to Firebase's internal auth state readiness.
-                await new Promise((resolve, reject) => {
-                    const unsubscribe = onAuthStateChanged(auth, async (user) => {
-                        if (user) {
-                            // User is already signed in (e.g., from a previous session or custom token)
-                            userId = user.uid;
-                            console.log("Firebase initialized and user authenticated:", userId);
-                            unsubscribe(); // Unsubscribe after we get a valid user
-                            resolve();
-                        } else if (initialAuthToken) {
-                            // No user, but Canvas provided a custom token. Try to sign in with it.
-                            try {
-                                const userCredential = await signInWithCustomToken(auth, initialAuthToken);
-                                userId = userCredential.user.uid;
-                                console.log("Firebase initialized and user authenticated with custom token:", userId);
-                                unsubscribe();
-                                resolve();
-                            } catch (customTokenError) {
-                                console.warn("Custom token sign-in failed, attempting anonymous sign-in:", customTokenError);
-                                // Fallback to anonymous sign-in if custom token fails
-                                try {
-                                    const anonUserCredential = await signInAnonymously(auth);
-                                    userId = anonUserCredential.user.uid;
-                                    console.log("Firebase initialized and user authenticated anonymously (after custom token failure):", userId);
-                                    unsubscribe();
-                                    resolve();
-                                } catch (anonError) {
-                                    console.error("Anonymous sign-in failed:", anonError);
-                                    unsubscribe(); // Unsubscribe even on failure
-                                    reject(anonError);
-                                }
-                            }
-                        } else {
-                            // No user and no custom token, sign in anonymously.
-                            try {
-                                const anonUserCredential = await signInAnonymously(auth);
-                                userId = anonUserCredential.user.uid;
-                                console.log("Firebase initialized and user authenticated anonymously:", userId);
-                                unsubscribe();
-                                resolve();
-                            } catch (anonError) {
-                                console.error("Anonymous sign-in failed:", anonError);
-                                unsubscribe(); // Unsubscribe even on failure
-                                reject(anonError);
-                            }
-                        }
-                    }, (error) => {
-                        console.error("Error in onAuthStateChanged listener:", error);
-                        unsubscribe(); // Unsubscribe on listener error
-                        reject(error);
-                    });
-                });
+                // Attempt sign-in directly
+                if (initialAuthToken) {
+                    console.log("Attempting sign-in with custom token...");
+                    await signInWithCustomToken(auth, initialAuthToken);
+                } else {
+                    console.log("Attempting anonymous sign-in...");
+                    await signInAnonymously(auth);
+                }
 
-                setupRealtimeListener(); // Start listening for data changes AFTER auth is resolved
+                // After successful sign-in (either custom or anonymous), get the user ID
+                userId = auth.currentUser?.uid || 'anonymous-after-signin';
+                console.log("Firebase authenticated successfully. User ID:", userId);
+
+                setupRealtimeListener(); // Start listening for data changes
             } catch (error) {
-                console.error("Error initializing Firebase or authenticating (outer catch):", error);
+                console.error("Error initializing Firebase or authenticating:", error);
                 calculateFinancials(false); // Fallback to local calculation
             }
         };
