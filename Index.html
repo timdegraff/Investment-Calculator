@@ -241,8 +241,7 @@
                 setupRealtimeListener();
             } catch (error) {
                 console.error("Critical error during Firebase initialization or authentication flow:", error);
-                // Even if Firebase auth fails, try to calculate financials with existing DOM data
-                calculateFinancials(false);
+                throw error; // Re-throw to be caught by the DOMContentLoaded catch block
             }
         };
 
@@ -1034,11 +1033,25 @@
 
         // Initial setup on page load
         document.addEventListener('DOMContentLoaded', () => {
-            // IMPORTANT: Removed the initial population of dynamic rows here.
-            // This is now handled by the Firestore listener to ensure consistency with persisted data.
-            // The Firestore listener will either load existing data or initialize with blank rows.
+            // Attempt Firebase initialization
+            initFirebase().then(() => {
+                // Firebase init successful and listener set up, data should be populated by onSnapshot
+                // No need to manually add initial rows here if Firestore will handle it.
+            }).catch(() => {
+                // Firebase init failed or auth failed, explicitly add one blank row for each dynamic section
+                // so the 'Add' buttons are functional for manual input.
+                console.warn("Firebase initialization failed, initializing dynamic inputs with blank rows for local use.");
+                investmentAccountsContainer.innerHTML = ''; // Clear existing
+                otherAssetsContainer.innerHTML = '';
+                liabilitiesContainer.innerHTML = '';
+                otherIncomeContainer.innerHTML = '';
 
-            initFirebase(); // Initialize Firebase and start data loading/listening
+                addInvestmentAccountInput();
+                addOtherAssetInput();
+                addLiabilityInput();
+                addOtherIncomeInput();
+                calculateFinancials(false); // Calculate based on initial blank inputs, don't save.
+            });
 
             // Re-render charts on window resize for responsiveness
             window.addEventListener('resize', () => {
