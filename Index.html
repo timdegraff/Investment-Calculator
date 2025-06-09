@@ -188,11 +188,14 @@
             const val = parseFloat(slider.value);
             const percentage = (val - min) / (max - min);
 
-            const thumbWidth = 24;
+            // Using the actual thumb width (32px from CSS) for accurate positioning
+            const thumbWidth = 32;
             const sliderWidth = slider.offsetWidth;
 
-            const leftPosition = (percentage * (sliderWidth - thumbWidth)) + (thumbWidth / 2);
+            // Calculate position relative to the slider's track, then offset by half thumb width
+            const leftPosition = (percentage * (sliderWidth - thumbWidth));
 
+            // Position the value display
             valueDisplay.style.left = `${leftPosition}px`;
             valueDisplay.textContent = `${val.toFixed(slider.step === '0.1' || slider.step === '0.5' ? 1 : 0)}${unit}`;
         }
@@ -546,6 +549,16 @@
             totalOtherAssetsSummary.textContent = `(${formatLargeCurrency(totalOtherAssets)})`;
             totalLiabilitiesSummary.textContent = `(${formatLargeCurrency(totalLiabilities)})`;
 
+            // Handle "45 YO Draw" display based on current age
+            if (currentAge >= 45) {
+                fortyFiveYODrawDisplay.textContent = "N/A";
+            } else {
+                // Recalculate and display if age is below 45
+                // Initial calculation for currentAge
+                const drawValue = (currentNetInvestments * retirementDrawRate) + totalAnnualOtherIncome;
+                todaysDrawDisplay.textContent = formatLargeCurrency(drawValue);
+            }
+
             // Project growth over years
             projectGrowth(currentNetInvestments, currentNetWorth,
                           currentFinancials.otherAssets.find(asset => asset.name === "Home Value")?.value || 0,
@@ -649,10 +662,14 @@
 
                 // Draw calculations now include other income for the specific year
                 if (age === 45) {
-                    const drawValue = (currentInvestments * retirementDrawRate) + currentAnnualOtherIncome;
-                    const drawValueInTodaysDollars = drawValue / Math.pow((1 + inflationRate), i);
-                    fortyFiveYODrawDisplay.textContent = formatLargeCurrency(drawValueInTodaysDollars);
+                    // Only update if currentAge was less than 45 initially
+                    if (initialAge < 45) {
+                        const drawValue = (currentInvestments * retirementDrawRate) + currentAnnualOtherIncome;
+                        const drawValueInTodaysDollars = drawValue / Math.pow((1 + inflationRate), i);
+                        fortyFiveYODrawDisplay.textContent = formatLargeCurrency(drawValueInTodaysDollars);
+                    }
                 }
+
 
                 if (age === 62) {
                     const drawValue = (currentInvestments * retirementDrawRate) + currentAnnualOtherIncome;
@@ -865,6 +882,27 @@
             // Initial display update handled by populateInputsFromFirestore
         });
 
+        // Function to handle sticky header on scroll for mobile
+        function handleMobileStickyHeader() {
+            const stickyElement = document.getElementById('sixtyTwoYODrawSticky');
+            const leftStickyBanner = document.getElementById('leftStickyBanner');
+            // Only apply on mobile (less than 1024px width, which is the 'lg' breakpoint in Tailwind)
+            if (window.innerWidth < 1024 && stickyElement && leftStickyBanner) {
+                // Get the bottom of the initial banner
+                const bannerBottom = leftStickyBanner.offsetHeight;
+                // If the user has scrolled past the banner, make it sticky
+                if (window.scrollY > bannerBottom) {
+                    stickyElement.classList.add('mobile-sticky-draw');
+                } else {
+                    stickyElement.classList.remove('mobile-sticky-draw');
+                }
+            } else if (stickyElement) {
+                // Ensure it's not sticky on desktop
+                stickyElement.classList.remove('mobile-sticky-draw');
+            }
+        }
+
+
         // Initial setup on page load
         document.addEventListener('DOMContentLoaded', () => {
             // Populate initial default dynamic rows. These will be overwritten by Firestore if data exists.
@@ -881,9 +919,249 @@
                 if (projectedData) {
                     renderChart(projectedData);
                 }
+                handleMobileStickyHeader(); // Adjust sticky header on resize
             });
+
+            // Add scroll listener for sticky header on mobile
+            window.addEventListener('scroll', handleMobileStickyHeader);
         });
     </script>
+    <style>
+        /* Custom styles for the Inter font and overall aesthetics */
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f0f4f8; /* Light blue-gray background */
+            color: #334155; /* Dark slate gray for text */
+        }
+        input[type="range"] {
+            -webkit-appearance: none;
+            width: 100%;
+            height: 8px; /* Track height */
+            background: #d1d5db; /* Light gray track */
+            outline: none;
+            opacity: 0.7;
+            transition: opacity .2s;
+            border-radius: 4px;
+            margin: 0;
+            /* Important for vertical alignment of thumb */
+            vertical-align: middle;
+        }
+        input[type="range"]:hover {
+            opacity: 1;
+        }
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 32px; /* Larger thumb */
+            height: 32px; /* Larger thumb */
+            border-radius: 50%;
+            background: #2563eb; /* Blue thumb */
+            cursor: pointer;
+            box-shadow: 0 0 5px rgba(0, 0, 0, 0.2);
+            /* Ensure the thumb is visually above the track */
+            z-index: 2;
+            position: relative; /* Needed for z-index to work */
+        }
+        input[type="range"]::-moz-range-thumb {
+            width: 32px; /* Larger thumb */
+            height: 32px; /* Larger thumb */
+            border-radius: 50%;
+            background: #2563eb; /* Blue thumb */
+            cursor: pointer;
+            box-shadow: 0 0 5px rgba(0, 0, 0, 0.2);
+            z-index: 2;
+            position: relative; /* Needed for z-index to work */
+        }
+
+        .shadow-lg {
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        }
+        .rounded-lg {
+            border-radius: 0.75rem;
+        }
+        /* Custom styling for inputs */
+        .input-field {
+            @apply shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline;
+        }
+        .label-style {
+            @apply block text-gray-700 text-sm font-bold mb-1; /* Reduced mb for labels */
+        }
+        /* Table row hover effect */
+        tbody tr:hover {
+            background-color: #e0f2fe; /* Light blue on hover */
+        }
+
+        /* Slider value display */
+        .slider-input-wrapper {
+            position: relative;
+            width: 100%;
+            margin-bottom: 0.25rem; /* Even more reduced bottom margin for condensing */
+            height: 40px; /* Give it a fixed height to contain the slider and value display */
+            display: flex;
+            align-items: center; /* Vertically center the input range within the wrapper */
+            padding-top: 10px; /* Add some padding to make space for the value text above the thumb */
+        }
+
+        .slider-value-display {
+            position: absolute;
+            background-color: transparent; /* No background, thumb provides it */
+            color: white; /* Text color for the value */
+            font-size: 0.7rem; /* Adjusted font size to fit */
+            font-weight: bold;
+            white-space: nowrap;
+            pointer-events: none; /* Allows clicks to pass through to the slider */
+            text-align: center;
+            /* Position directly over the thumb, considering the thumb's actual size */
+            top: 50%; /* Adjust this to fine-tune vertical position */
+            transform: translate(-50%, -50%); /* Center the text element itself relative to its calculated 'left' */
+            z-index: 3; /* Above the thumb (z-index 2) */
+            line-height: 1; /* Adjust line height for better centering */
+            display: flex; /* Use flexbox to center text within its own div */
+            align-items: center;
+            justify-content: center;
+            width: 32px; /* Match thumb width */
+            height: 32px; /* Match thumb height */
+        }
+
+        /* D3 Chart Specific Styles */
+        .chart-svg {
+            display: block;
+            margin: auto;
+            border-radius: 0.5rem;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+        .line {
+            fill: none;
+            stroke-width: 3px;
+        }
+        .line-investments {
+            stroke: #2563eb; /* Blue for investments */
+        }
+        .line-networth {
+            stroke: #10b981; /* Green for net worth */
+        }
+        .axis text {
+            font-size: 0.8rem;
+            fill: #6b7280; /* Gray text for axes */
+        }
+        .axis path, .axis line {
+            stroke: #d1d5db; /* Light gray for axis lines */
+            stroke-width: 1px;
+        }
+        .grid line {
+            stroke: #e5e7eb; /* Even lighter gray for grid lines */
+            stroke-opacity: 0.7;
+            shape-rendering: crispEdges;
+        }
+        .tooltip {
+            position: absolute;
+            text-align: center;
+            padding: 8px;
+            background: #fff;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            pointer-events: none;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+            font-size: 0.9rem;
+            color: #333;
+        }
+
+        /* Responsive adjustments for the sticky banner and main content */
+        @media (max-width: 1023px) { /* Adjust for screens smaller than 'lg' breakpoint (1024px) */
+            #leftStickyBanner {
+                width: 100%;
+                height: auto;
+                position: relative; /* Not sticky on mobile */
+                top: auto;
+                left: auto;
+                flex-direction: row; /* Horizontal layout for mobile */
+                flex-wrap: wrap; /* Allow items to wrap */
+                justify-content: center; /* Center items horizontally */
+                align-items: flex-start; /* Align items to the top */
+                padding: 1rem; /* Smaller padding for mobile */
+                box-shadow: 0 4px 8px rgba(0,0,0,0.2); /* Add shadow to top banner */
+            }
+            #leftStickyBanner h2 {
+                font-size: 1.5rem; /* Smaller title on mobile */
+                margin-bottom: 0.5rem;
+                width: 100%; /* Take full width for title */
+            }
+            #leftStickyBanner .summary-item {
+                flex: 1 1 auto; /* Allow items to grow and shrink, wrap as needed */
+                min-width: 100px; /* Minimum width for each item to prevent too much squishing */
+                margin-bottom: 0.5rem;
+                padding: 0 0.5rem; /* Add horizontal padding to items */
+            }
+            #leftStickyBanner .summary-item p {
+                font-size: 0.8rem; /* Smaller text for mobile */
+            }
+            #leftStickyBanner .summary-item p:last-child {
+                font-size: 1.1rem; /* Smaller value for mobile */
+            }
+            /* main-content-wrapper no longer needs specific margin-top on mobile */
+            .flex-1.p-4.md\:p-8.lg\:ml-64 {
+                margin-top: 0;
+            }
+
+            /* Mobile-only sticky 62 YO Draw */
+            .mobile-sticky-draw {
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                background-color: #1e3a8a; /* Darker blue for sticky header */
+                color: white;
+                text-align: center;
+                padding: 0.5rem 0;
+                font-size: 1.2rem;
+                font-weight: bold;
+                z-index: 1000;
+                box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+            }
+        }
+        /* Make the main container full width on mobile */
+        .container.mx-auto {
+            padding-left: 1rem;
+            padding-right: 1rem;
+        }
+
+        /* For lg and up (desktop) */
+        @media (min-width: 1024px) {
+            #leftStickyBanner {
+                width: 16rem; /* Tailwind's w-64 */
+                height: 100vh; /* Full viewport height */
+                position: fixed; /* Sticky on desktop */
+                top: 0;
+                left: 0;
+                flex-direction: column; /* Vertical layout for desktop */
+                justify-content: flex-start; /* Align items to the top */
+                align-items: center;
+                padding: 1.5rem;
+                box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05); /* Original shadow */
+            }
+            #leftStickyBanner h2 {
+                font-size: 1.875rem; /* Tailwind text-3xl */
+                margin-bottom: 2rem; /* Tailwind mb-8 */
+                width: auto;
+            }
+            #leftStickyBanner .summary-item {
+                flex: none; /* Don't allow items to grow/shrink based on space */
+                width: auto; /* Take natural width */
+                margin-bottom: 1rem; /* Tailwind mb-4 */
+                padding: 0;
+            }
+            #leftStickyBanner .summary-item p {
+                font-size: 1.125rem; /* Tailwind text-xl */
+            }
+            #leftStickyBanner .summary-item p:last-child {
+                font-size: 1.875rem; /* Tailwind text-3xl */
+            }
+            .flex-1.p-4.md\:p-8.lg\:ml-64 { /* Corrected class for main content wrapper */
+                margin-left: 16rem; /* Tailwind's ml-64 */
+                margin-top: 0;
+            }
+        }
+    </style>
 </head>
 <body class="flex flex-col min-h-screen">
     <!-- Snapshot Banner (not sticky on mobile, sticky on left for desktop) -->
@@ -921,6 +1199,12 @@
             <p class="text-sm font-bold text-blue-200 lg:text-lg">62 YO Draw (Today's $):</p>
             <p id="sixtyTwoYODraw" class="text-xl font-semibold text-white mt-1 lg:text-3xl">$0</p>
         </div>
+    </div>
+
+    <!-- Mobile-only sticky 62 YO Draw display (initially hidden) -->
+    <div id="sixtyTwoYODrawSticky" class="hidden text-center mb-2 summary-item w-full bg-blue-800 text-white p-2">
+        <p class="text-sm font-bold text-blue-200">62 YO Draw (Today's $):</p>
+        <p id="sixtyTwoYODrawValueSticky" class="text-xl font-semibold text-white">$0</p>
     </div>
 
     <!-- Main Content Area -->
@@ -977,7 +1261,7 @@
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
                         <div>
                             <h3 class="text-xl font-semibold mb-4 text-gray-800">Income & Contribution Assumptions</h3>
-                            <div class="mb-4">
+                            <div class="mb-2"> <!-- Reduced margin-bottom for condensed sliders -->
                                 <label for="currentAge" class="label-style">Current Age</label>
                                 <div class="slider-input-wrapper">
                                     <input type="range" id="currentAge" min="18" max="100" value="38" step="1" class="w-full">
@@ -989,7 +1273,7 @@
                                 <input type="text" id="baseSalary" value="179386" class="input-field">
                             </div>
 
-                            <div class="mb-4">
+                            <div class="mb-2">
                                 <label for="bonusRate" class="label-style">Bonus Rate (% of Base Salary)</label>
                                 <div class="slider-input-wrapper">
                                     <input type="range" id="bonusRate" min="0" max="50" value="23" step="0.5" class="w-full">
@@ -997,7 +1281,7 @@
                                 </div>
                             </div>
 
-                            <div class="mb-4">
+                            <div class="mb-2">
                                 <label for="my401kContributionRate" class="label-style">My 401K Contribution Rate (% of Base Salary)</label>
                                 <div class="slider-input-wrapper">
                                     <input type="range" id="my401kContributionRate" min="0" max="20" value="13" step="0.5" class="w-full">
@@ -1005,7 +1289,7 @@
                                 </div>
                             </div>
 
-                            <div class="mb-4">
+                            <div class="mb-2">
                                 <label for="company401kContributionRate" class="label-style">Company 401K Contribution Rate (% of Base Salary)</label>
                                 <div class="slider-input-wrapper">
                                     <input type="range" id="company401kContributionRate" min="0" max="20" value="10" step="0.5" class="w-full">
@@ -1044,7 +1328,7 @@
 
                         <div>
                             <h3 class="text-xl font-semibold mb-4 text-gray-800">Growth & Expense Assumptions</h3>
-                            <div class="mb-4">
+                            <div class="mb-2">
                                 <label for="annualSalaryRaise" class="label-style">Annual Salary Raise (%)</label>
                                 <div class="slider-input-wrapper">
                                     <input type="range" id="annualSalaryRaise" min="0" max="10" value="3.8" step="0.1" class="w-full">
@@ -1052,7 +1336,7 @@
                                 </div>
                             </div>
 
-                            <div class="mb-4">
+                            <div class="mb-2">
                                 <label for="stockAppreciation" class="label-style">Stock Appreciation (%)</label>
                                 <div class="slider-input-wrapper">
                                     <input type="range" id="stockAppreciation" min="0" max="15" value="10" step="0.5" class="w-full">
@@ -1060,7 +1344,7 @@
                                 </div>
                             </div>
 
-                            <div class="mb-4">
+                            <div class="mb-2">
                                 <label for="housingAppreciation" class="label-style">Housing Appreciation (%)</label>
                                 <div class="slider-input-wrapper">
                                     <input type="range" id="housingAppreciation" min="0" max="10" value="4" step="0.5" class="w-full">
@@ -1068,7 +1352,7 @@
                                 </div>
                             </div>
 
-                            <div class="mb-4">
+                            <div class="mb-2">
                                 <label for="inflation" class="label-style">Inflation (%)</label>
                                 <div class="slider-input-wrapper">
                                     <input type="range" id="inflation" min="0" max="10" value="3" step="0.5" class="w-full">
@@ -1076,7 +1360,7 @@
                                 </div>
                             </div>
 
-                            <div class="mb-4">
+                            <div class="mb-2">
                                 <label for="retirementDrawRate" class="label-style">Retirement Draw (%)</label>
                                 <div class="slider-input-wrapper">
                                     <input type="range" id="retirementDrawRate" min="0" max="10" value="7" step="0.5" class="w-full">
@@ -1084,7 +1368,7 @@
                                 </div>
                             </div>
 
-                            <div class="mb-4">
+                            <div class="mb-2">
                                 <label for="retirementYear" class="label-style">Retirement Year (Age)</label>
                                 <div class="slider-input-wrapper">
                                     <input type="range" id="retirementYear" min="38" max="100" value="65" step="1" class="w-full">
