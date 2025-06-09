@@ -363,8 +363,10 @@
 
                     addLiabilityInput({ name: "Mortgage", value: 202212 });
 
-                    // Ensure other income starts with at least one blank row if no data, or a default if desired
-                    addOtherIncomeInput(); // Add one blank income row
+                    // Add new other income entries
+                    addOtherIncomeInput({ name: "Cell Tower", value: 1200, escalationRate: 0.015 });
+                    addOtherIncomeInput({ name: "Rental House", value: 1300, escalationRate: 0.03 });
+
 
                     // Save this initial blank state to Firestore
                     await saveDataToFirestore(collectAllCurrentInputs());
