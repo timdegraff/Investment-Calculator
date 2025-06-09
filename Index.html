@@ -142,251 +142,256 @@
         }
     </style>
 </head>
-<body class="p-4 md:p-8">
-    <div class="container mx-auto p-4 md:p-8 bg-white rounded-lg shadow-xl">
-        <h1 class="text-4xl font-extrabold mb-4 text-center text-blue-800">Retirement Plan Calculator</h1>
-
-        <!-- Display Current Net Worth & Net Investments - MOVED TO TOP -->
-        <div class="mt-4 mb-8 p-6 bg-green-50 rounded-lg shadow-inner flex flex-col md:flex-row justify-around items-center text-center border border-green-200">
-            <div class="mb-4 md:mb-0 md:mr-8">
-                <p class="text-xl font-bold text-gray-800">Net Worth:</p>
-                <p id="currentNetWorth" class="text-3xl font-semibold text-green-700 mt-2">$0</p>
-            </div>
-            <div class="mb-4 md:mb-0 md:mr-8">
-                <p class="text-xl font-bold text-gray-800">Net Investments:</p>
-                <p id="currentNetInvestments" class="text-3xl font-semibold text-blue-700 mt-2">$0</p>
-            </div>
-            <div class="mb-4 md:mb-0 md:mr-8">
-                <p class="text-xl font-bold text-gray-800">Annual Income:</p>
-                <p id="annualIncomeDisplay" class="text-3xl font-semibold text-purple-700 mt-2">$0</p>
-            </div>
-            <div class="mb-4 md:mb-0 md:mr-8">
-                <p class="text-xl font-bold text-gray-800">Annual Savings:</p>
-                <p id="annualSavingsDisplay" class="text-3xl font-semibold text-purple-700 mt-2">$0</p>
-            </div>
-            <div class="mb-4 md:mb-0 md:mr-8">
-                <p class="text-xl font-bold text-gray-800">Today's Draw:</p>
-                <p id="todaysDraw" class="text-3xl font-semibold text-purple-700 mt-2">$0</p>
-            </div>
-            <div class="mb-4 md:mb-0 md:mr-8">
-                <p class="text-xl font-bold text-gray-800">45 YO Draw (Today's $):</p>
-                <p id="fortyFiveYODraw" class="text-3xl font-semibold text-purple-700 mt-2">$0</p>
-            </div>
-            <div>
-                <p class="text-xl font-bold text-gray-800">62 YO Draw (Today's $):</p>
-                <p id="sixtyTwoYODraw" class="text-3xl font-semibold text-purple-700 mt-2">$0</p>
-            </div>
+<body class="flex">
+    <!-- Left Sticky Banner -->
+    <div id="leftStickyBanner" class="fixed top-0 left-0 h-screen w-64 bg-blue-800 text-white p-6 shadow-2xl flex flex-col items-center justify-start z-50 overflow-y-auto">
+        <h2 class="text-3xl font-extrabold mb-8 text-center text-white">Your Snapshot</h2>
+        <!-- Each summary item will be a div -->
+        <div class="text-center w-full mb-4">
+            <p class="text-lg font-bold text-blue-200">Net Worth:</p>
+            <p id="currentNetWorth" class="text-2xl font-semibold text-white mt-1">$0</p>
         </div>
-
-        <!-- Section 1: Current Financials & Assumptions -->
-        <div class="bg-blue-50 p-6 rounded-lg shadow-md mb-8 border border-blue-200">
-            <!-- Collapsible Section: Assets, Investments, and Liabilities -->
-            <details open>
-                <summary class="text-2xl font-bold mb-6 text-blue-700 cursor-pointer">
-                    1. Assets, Investments, and Liabilities
-                </summary>
-                <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
-                    <!-- Investment Accounts (Dynamic) -->
-                    <div>
-                        <h3 class="text-xl font-semibold mb-4 text-gray-800">Investment Accounts <span class="font-bold text-green-600" id="totalInvestmentsSummary"></span></h3>
-                        <div id="investmentAccountsContainer" class="mb-4 space-y-4">
-                            <!-- Dynamic investment inputs will be added here by JavaScript -->
-                        </div>
-                        <button id="addInvestmentBtn" type="button" class="mt-4 bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg shadow-md">
-                            + Add Investment Account
-                        </button>
-                    </div>
-
-                    <!-- Other Assets -->
-                    <div>
-                        <h3 class="text-xl font-semibold mb-4 text-gray-800">Other Assets <span class="font-bold text-green-600" id="totalOtherAssetsSummary"></span></h3>
-                        <div id="otherAssetsContainer" class="mb-4 space-y-4">
-                            <!-- Dynamic other assets inputs will be added here by JavaScript -->
-                        </div>
-                        <button id="addOtherAssetBtn" type="button" class="mt-4 bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg shadow-md">
-                            + Add Other Asset
-                        </button>
-
-                        <!-- Liabilities - Moved here, no longer spanning two columns -->
-                        <h3 class="text-xl font-semibold mt-8 mb-4 text-gray-800">Liabilities <span class="font-bold text-red-600" id="totalLiabilitiesSummary"></span></h3>
-                        <div id="liabilitiesContainer" class="mb-4 space-y-4">
-                            <!-- Dynamic liability inputs will be added here by JavaScript -->
-                        </div>
-                        <button id="addLiabilityBtn" type="button" class="mt-4 bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg shadow-md">
-                            + Add Liability
-                        </button>
-                    </div>
-                </div>
-            </details>
-
-            <!-- Collapsible Section: Income, Savings, and Assumptions -->
-            <details open class="mt-8">
-                <summary class="text-2xl font-bold mb-6 text-blue-700 cursor-pointer">
-                    2. Income, Savings, and Assumptions
-                </summary>
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
-                    <div>
-                        <h3 class="text-xl font-semibold mb-4 text-gray-800">Income & Contribution Assumptions</h3>
-                        <div class="mb-4">
-                            <label for="currentAge" class="label-style">Current Age</label>
-                            <div class="slider-input-wrapper">
-                                <input type="range" id="currentAge" min="18" max="100" value="38" step="1" class="w-full">
-                                <span class="slider-value-display" id="currentAgeValue"></span>
-                            </div>
-                        </div>
-                        <div class="mb-4">
-                            <label for="baseSalary" class="label-style">Base Salary ($)</label>
-                            <input type="text" id="baseSalary" value="180000" class="input-field">
-                        </div>
-
-                        <div class="mb-4">
-                            <label for="bonusRate" class="label-style">Bonus Rate (% of Base Salary)</label>
-                            <div class="slider-input-wrapper">
-                                <input type="range" id="bonusRate" min="0" max="50" value="23" step="0.5" class="w-full">
-                                <span class="slider-value-display" id="bonusRateValue"></span>
-                            </div>
-                        </div>
-
-                        <div class="mb-4">
-                            <label for="my401kContributionRate" class="label-style">My 401K Contribution Rate (% of Base Salary)</label>
-                            <div class="slider-input-wrapper">
-                                <input type="range" id="my401kContributionRate" min="0" max="20" value="13" step="0.5" class="w-full">
-                                <span class="slider-value-display" id="my401kContributionRateValue"></span>
-                            </div>
-                        </div>
-
-                        <div class="mb-4">
-                            <label for="company401kContributionRate" class="label-style">Company 401K Contribution Rate (% of Base Salary)</label>
-                            <div class="slider-input-wrapper">
-                                <input type="range" id="company401kContributionRate" min="0" max="20" value="10" step="0.5" class="w-full">
-                                <span class="slider-value-display" id="company401kContributionRateValue"></span>
-                            </div>
-                        </div>
-
-                        <div class="mb-4">
-                            <label for="monthly529Contribution" class="label-style">Monthly 529 Contribution ($)</label>
-                            <input type="text" id="monthly529Contribution" value="400" class="input-field">
-                        </div>
-                        <div class="mb-4">
-                            <label for="monthlyHSAContribution" class="label-style">Monthly HSA Contribution ($)</label>
-                            <input type="text" id="monthlyHSAContribution" value="600" class="input-field">
-                        </div>
-
-                        <div class="mb-4">
-                            <label for="annualRothContribution" class="label-style">Other Annual Savings Contribution ($)</label>
-                            <input type="text" id="annualRothContribution" value="25000" class="input-field">
-                        </div>
-                        <h3 class="text-xl font-semibold mt-8 mb-4 text-gray-800">Other Income (Monthly)</h3>
-                        <!-- Labels for Other Income inputs -->
-                        <div class="flex items-center text-sm font-semibold mb-2 ml-2">
-                            <div class="flex-1 min-w-[120px]">Income Description</div>
-                            <div class="flex-1 min-w-[100px]">Monthly Amount</div>
-                            <div class="w-24 ml-1">Annual Escalation</div>
-                            <div class="w-6"></div> <!-- Spacer for delete button -->
-                        </div>
-                        <div id="otherIncomeContainer" class="mb-4 space-y-4">
-                            <!-- Dynamic other income inputs will be added here by JavaScript -->
-                        </div>
-                        <button id="addOtherIncomeBtn" type="button" class="mt-4 bg-purple-500 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded-lg shadow-md">
-                            + Add Other Income
-                        </button>
-                    </div>
-
-                    <div>
-                        <h3 class="text-xl font-semibold mb-4 text-gray-800">Growth & Expense Assumptions</h3>
-                        <div class="mb-4">
-                            <label for="annualSalaryRaise" class="label-style">Annual Salary Raise (%)</label>
-                            <div class="slider-input-wrapper">
-                                <input type="range" id="annualSalaryRaise" min="0" max="10" value="3.8" step="0.1" class="w-full">
-                                <span class="slider-value-display" id="annualSalaryRaiseValue"></span>
-                            </div>
-                        </div>
-
-                        <div class="mb-4">
-                            <label for="stockAppreciation" class="label-style">Stock Appreciation (%)</label>
-                            <div class="slider-input-wrapper">
-                                <input type="range" id="stockAppreciation" min="0" max="15" value="10" step="0.5" class="w-full">
-                                <span class="slider-value-display" id="stockAppreciationValue"></span>
-                            </div>
-                        </div>
-
-                        <div class="mb-4">
-                            <label for="housingAppreciation" class="label-style">Housing Appreciation (%)</label>
-                            <div class="slider-input-wrapper">
-                                <input type="range" id="housingAppreciation" min="0" max="10" value="4" step="0.5" class="w-full">
-                                <span class="slider-value-display" id="housingAppreciationValue"></span>
-                            </div>
-                        </div>
-
-                        <div class="mb-4">
-                            <label for="inflation" class="label-style">Inflation (%)</label>
-                            <div class="slider-input-wrapper">
-                                <input type="range" id="inflation" min="0" max="10" value="3" step="0.5" class="w-full">
-                                <span class="slider-value-display" id="inflationValue"></span>
-                            </div>
-                        </div>
-
-                        <div class="mb-4">
-                            <label for="retirementDrawRate" class="label-style">Retirement Draw (%)</label>
-                            <div class="slider-input-wrapper">
-                                <input type="range" id="retirementDrawRate" min="0" max="10" value="7" step="0.5" class="w-full">
-                                <span class="slider-value-display" id="retirementDrawRateValue"></span>
-                            </div>
-                        </div>
-
-                        <div class="mb-4">
-                            <label for="retirementYear" class="label-style">Retirement Year (Age)</label>
-                            <div class="slider-input-wrapper">
-                                <input type="range" id="retirementYear" min="38" max="100" value="65" step="1" class="w-full">
-                                <span class="slider-value-display" id="retirementYearValue"></span>
-                            </div>
-                        </div>
-
-                        <div class="mb-4">
-                            <label for="monthlyPrincipalPayment" class="label-style">Monthly Principal Payment ($)</label>
-                            <input type="text" id="monthlyPrincipalPayment" value="1400" class="input-field">
-                        </div>
-                    </div>
-                </div>
-            </details>
+        <div class="text-center w-full mb-4">
+            <p class="text-lg font-bold text-blue-200">Net Investments:</p>
+            <p id="currentNetInvestments" class="text-2xl font-semibold text-white mt-1">$0</p>
         </div>
-
-        <!-- Section 3: Projected Growth Chart -->
-        <div class="bg-blue-50 p-6 rounded-lg shadow-md mb-8 border border-blue-200">
-            <h2 class="text-2xl font-bold mb-4 text-blue-700">3. Projected Growth Chart</h2>
-            <div id="chart-container" class="w-full overflow-x-auto">
-                <!-- D3.js chart will be rendered here -->
-            </div>
-            <div class="flex justify-center mt-4 space-x-6 text-gray-700 font-semibold">
-                <div class="flex items-center">
-                    <span class="inline-block w-4 h-4 rounded-full mr-2" style="background-color: #2563eb;"></span>
-                    Net Investments
-                </div>
-                <div class="flex items-center">
-                    <span class="inline-block w-4 h-4 rounded-full mr-2" style="background-color: #10b981;"></span>
-                    Net Worth (Today's $)
-                </div>
-            </div>
+        <div class="text-center w-full mb-4">
+            <p class="text-lg font-bold text-blue-200">Annual Income:</p>
+            <p id="annualIncomeDisplay" class="text-2xl font-semibold text-white mt-1">$0</p>
         </div>
+        <div class="text-center w-full mb-4">
+            <p class="text-lg font-bold text-blue-200">Annual Savings:</p>
+            <p id="annualSavingsDisplay" class="text-2xl font-semibold text-white mt-1">$0</p>
+        </div>
+        <div class="text-center w-full mb-4">
+            <p class="text-lg font-bold text-blue-200">Today's Draw:</p>
+            <p id="todaysDraw" class="text-2xl font-semibold text-white mt-1">$0</p>
+        </div>
+        <div class="text-center w-full mb-4">
+            <p class="text-lg font-bold text-blue-200">45 YO Draw (Today's $):</p>
+            <p id="fortyFiveYODraw" class="text-2xl font-semibold text-white mt-1">$0</p>
+        </div>
+        <div class="text-center w-full mb-4">
+            <p class="text-lg font-bold text-blue-200">62 YO Draw (Today's $):</p>
+            <p id="sixtyTwoYODraw" class="text-2xl font-semibold text-white mt-1">$0</p>
+        </div>
+    </div>
 
-        <!-- Section 4: Growth Projection Table -->
-        <div class="bg-blue-50 p-6 rounded-lg shadow-md border border-blue-200">
-            <h2 class="text-2xl font-bold mb-4 text-blue-700">4. Projected Growth Table</h2>
-            <div class="overflow-x-auto rounded-lg border border-gray-200 shadow-sm">
-                <table class="min-w-full bg-white">
-                    <thead class="bg-blue-600 text-white uppercase text-sm leading-normal">
-                        <tr>
-                            <th class="py-3 px-6 text-left">Age</th>
-                            <th class="py-3 px-6 text-left">Year</th>
-                            <th class="py-3 px-6 text-left">Investments</th>
-                            <th class="py-3 px-6 text-left">Net Worth</th>
-                            <th class="py-3 px-6 text-left">Net Worth (Today's $)</th>
-                        </tr>
-                    </thead>
-                    <tbody id="projectionTableBody" class="text-gray-700 text-sm font-light divide-y divide-gray-200">
-                        <!-- Rows will be inserted here by JavaScript -->
-                    </tbody>
-                </table>
+    <!-- Main Content Area -->
+    <div class="flex-1 ml-64 p-4 md:p-8">
+        <div class="w-full bg-white rounded-lg shadow-xl p-4 md:p-8">
+            <h1 class="text-4xl font-extrabold mb-4 text-center text-blue-800">Retirement Plan Calculator</h1>
+
+            <!-- Section 1: Current Financials & Assumptions -->
+            <div class="bg-blue-50 p-6 rounded-lg shadow-md mb-8 border border-blue-200">
+                <!-- Collapsible Section: Assets, Investments, and Liabilities -->
+                <details open>
+                    <summary class="text-2xl font-bold mb-6 text-blue-700 cursor-pointer">
+                        1. Assets, Investments, and Liabilities
+                    </summary>
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+                        <!-- Investment Accounts (Dynamic) -->
+                        <div>
+                            <h3 class="text-xl font-semibold mb-4 text-gray-800">Investment Accounts <span class="font-bold text-green-600" id="totalInvestmentsSummary"></span></h3>
+                            <div id="investmentAccountsContainer" class="mb-4 space-y-4">
+                                <!-- Dynamic investment inputs will be added here by JavaScript -->
+                            </div>
+                            <button id="addInvestmentBtn" type="button" class="mt-4 bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg shadow-md">
+                                + Add Investment Account
+                            </button>
+                        </div>
+
+                        <!-- Other Assets -->
+                        <div>
+                            <h3 class="text-xl font-semibold mb-4 text-gray-800">Other Assets <span class="font-bold text-green-600" id="totalOtherAssetsSummary"></span></h3>
+                            <div id="otherAssetsContainer" class="mb-4 space-y-4">
+                                <!-- Dynamic other assets inputs will be added here by JavaScript -->
+                            </div>
+                            <button id="addOtherAssetBtn" type="button" class="mt-4 bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg shadow-md">
+                                + Add Other Asset
+                            </button>
+
+                            <!-- Liabilities - Moved here, no longer spanning two columns -->
+                            <h3 class="text-xl font-semibold mt-8 mb-4 text-gray-800">Liabilities <span class="font-bold text-red-600" id="totalLiabilitiesSummary"></span></h3>
+                            <div id="liabilitiesContainer" class="mb-4 space-y-4">
+                                <!-- Dynamic liability inputs will be added here by JavaScript -->
+                            </div>
+                            <button id="addLiabilityBtn" type="button" class="mt-4 bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg shadow-md">
+                                + Add Liability
+                            </button>
+                        </div>
+                    </div>
+                </details>
+
+                <!-- Collapsible Section: Income, Savings, and Assumptions -->
+                <details open class="mt-8">
+                    <summary class="text-2xl font-bold mb-6 text-blue-700 cursor-pointer">
+                        2. Income, Savings, and Assumptions
+                    </summary>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
+                        <div>
+                            <h3 class="text-xl font-semibold mb-4 text-gray-800">Income & Contribution Assumptions</h3>
+                            <div class="mb-4">
+                                <label for="currentAge" class="label-style">Current Age</label>
+                                <div class="slider-input-wrapper">
+                                    <input type="range" id="currentAge" min="18" max="100" value="38" step="1" class="w-full">
+                                    <span class="slider-value-display" id="currentAgeValue"></span>
+                                </div>
+                            </div>
+                            <div class="mb-4">
+                                <label for="baseSalary" class="label-style">Base Salary ($)</label>
+                                <input type="text" id="baseSalary" value="180000" class="input-field">
+                            </div>
+
+                            <div class="mb-4">
+                                <label for="bonusRate" class="label-style">Bonus Rate (% of Base Salary)</label>
+                                <div class="slider-input-wrapper">
+                                    <input type="range" id="bonusRate" min="0" max="50" value="23" step="0.5" class="w-full">
+                                    <span class="slider-value-display" id="bonusRateValue"></span>
+                                </div>
+                            </div>
+
+                            <div class="mb-4">
+                                <label for="my401kContributionRate" class="label-style">My 401K Contribution Rate (% of Base Salary)</label>
+                                <div class="slider-input-wrapper">
+                                    <input type="range" id="my401kContributionRate" min="0" max="20" value="13" step="0.5" class="w-full">
+                                    <span class="slider-value-display" id="my401kContributionRateValue"></span>
+                                </div>
+                            </div>
+
+                            <div class="mb-4">
+                                <label for="company401kContributionRate" class="label-style">Company 401K Contribution Rate (% of Base Salary)</label>
+                                <div class="slider-input-wrapper">
+                                    <input type="range" id="company401kContributionRate" min="0" max="20" value="10" step="0.5" class="w-full">
+                                    <span class="slider-value-display" id="company401kContributionRateValue"></span>
+                                </div>
+                            </div>
+
+                            <div class="mb-4">
+                                <label for="monthly529Contribution" class="label-style">Monthly 529 Contribution ($)</label>
+                                <input type="text" id="monthly529Contribution" value="400" class="input-field">
+                            </div>
+                            <div class="mb-4">
+                                <label for="monthlyHSAContribution" class="label-style">Monthly HSA Contribution ($)</label>
+                                <input type="text" id="monthlyHSAContribution" value="600" class="input-field">
+                            </div>
+
+                            <div class="mb-4">
+                                <label for="annualRothContribution" class="label-style">Other Annual Savings Contribution ($)</label>
+                                <input type="text" id="annualRothContribution" value="25000" class="input-field">
+                            </div>
+                            <h3 class="text-xl font-semibold mt-8 mb-4 text-gray-800">Other Income (Monthly)</h3>
+                            <!-- Labels for Other Income inputs -->
+                            <div class="flex items-center text-sm font-semibold mb-2 ml-2">
+                                <div class="flex-1 min-w-[120px]">Income Description</div>
+                                <div class="flex-1 min-w-[100px]">Monthly Amount</div>
+                                <div class="w-24 ml-1">Annual Escalation</div>
+                                <div class="w-6"></div> <!-- Spacer for delete button -->
+                            </div>
+                            <div id="otherIncomeContainer" class="mb-4 space-y-4">
+                                <!-- Dynamic other income inputs will be added here by JavaScript -->
+                            </div>
+                            <button id="addOtherIncomeBtn" type="button" class="mt-4 bg-purple-500 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded-lg shadow-md">
+                                + Add Other Income
+                            </button>
+                        </div>
+
+                        <div>
+                            <h3 class="text-xl font-semibold mb-4 text-gray-800">Growth & Expense Assumptions</h3>
+                            <div class="mb-4">
+                                <label for="annualSalaryRaise" class="label-style">Annual Salary Raise (%)</label>
+                                <div class="slider-input-wrapper">
+                                    <input type="range" id="annualSalaryRaise" min="0" max="10" value="3.8" step="0.1" class="w-full">
+                                    <span class="slider-value-display" id="annualSalaryRaiseValue"></span>
+                                </div>
+                            </div>
+
+                            <div class="mb-4">
+                                <label for="stockAppreciation" class="label-style">Stock Appreciation (%)</label>
+                                <div class="slider-input-wrapper">
+                                    <input type="range" id="stockAppreciation" min="0" max="15" value="10" step="0.5" class="w-full">
+                                    <span class="slider-value-display" id="stockAppreciationValue"></span>
+                                </div>
+                            </div>
+
+                            <div class="mb-4">
+                                <label for="housingAppreciation" class="label-style">Housing Appreciation (%)</label>
+                                <div class="slider-input-wrapper">
+                                    <input type="range" id="housingAppreciation" min="0" max="10" value="4" step="0.5" class="w-full">
+                                    <span class="slider-value-display" id="housingAppreciationValue"></span>
+                                </div>
+                            </div>
+
+                            <div class="mb-4">
+                                <label for="inflation" class="label-style">Inflation (%)</label>
+                                <div class="slider-input-wrapper">
+                                    <input type="range" id="inflation" min="0" max="10" value="3" step="0.5" class="w-full">
+                                    <span class="slider-value-display" id="inflationValue"></span>
+                                </div>
+                            </div>
+
+                            <div class="mb-4">
+                                <label for="retirementDrawRate" class="label-style">Retirement Draw (%)</label>
+                                <div class="slider-input-wrapper">
+                                    <input type="range" id="retirementDrawRate" min="0" max="10" value="7" step="0.5" class="w-full">
+                                    <span class="slider-value-display" id="retirementDrawRateValue"></span>
+                                </div>
+                            </div>
+
+                            <div class="mb-4">
+                                <label for="retirementYear" class="label-style">Retirement Year (Age)</label>
+                                <div class="slider-input-wrapper">
+                                    <input type="range" id="retirementYear" min="38" max="100" value="65" step="1" class="w-full">
+                                    <span class="slider-value-display" id="retirementYearValue"></span>
+                                </div>
+                            </div>
+
+                            <div class="mb-4">
+                                <label for="monthlyPrincipalPayment" class="label-style">Monthly Principal Payment ($)</label>
+                                <input type="text" id="monthlyPrincipalPayment" value="1400" class="input-field">
+                            </div>
+                        </div>
+                    </div>
+                </details>
+            </div>
+
+            <!-- Section 3: Projected Growth Chart -->
+            <div class="bg-blue-50 p-6 rounded-lg shadow-md mb-8 border border-blue-200">
+                <h2 class="text-2xl font-bold mb-4 text-blue-700">3. Projected Growth Chart</h2>
+                <div id="chart-container" class="w-full overflow-x-auto">
+                    <!-- D3.js chart will be rendered here -->
+                </div>
+                <div class="flex justify-center mt-4 space-x-6 text-gray-700 font-semibold">
+                    <div class="flex items-center">
+                        <span class="inline-block w-4 h-4 rounded-full mr-2" style="background-color: #2563eb;"></span>
+                        Net Investments
+                    </div>
+                    <div class="flex items-center">
+                        <span class="inline-block w-4 h-4 rounded-full mr-2" style="background-color: #10b981;"></span>
+                        Net Worth (Today's $)
+                    </div>
+                </div>
+            </div>
+
+            <!-- Section 4: Growth Projection Table -->
+            <div class="bg-blue-50 p-6 rounded-lg shadow-md border border-blue-200">
+                <h2 class="text-2xl font-bold mb-4 text-blue-700">4. Projected Growth Table</h2>
+                <div class="overflow-x-auto rounded-lg border border-gray-200 shadow-sm">
+                    <table class="min-w-full bg-white">
+                        <thead class="bg-blue-600 text-white uppercase text-sm leading-normal">
+                            <tr>
+                                <th class="py-3 px-6 text-left">Age</th>
+                                <th class="py-3 px-6 text-left">Year</th>
+                                <th class="py-3 px-6 text-left">Investments</th>
+                                <th class="py-3 px-6 text-left">Net Worth</th>
+                                <th class="py-3 px-6 text-left">Net Worth (Today's $)</th>
+                            </tr>
+                        </thead>
+                        <tbody id="projectionTableBody" class="text-gray-700 text-sm font-light divide-y divide-gray-200">
+                            <!-- Rows will be inserted here by JavaScript -->
+                        </tbody>
+                    </table>
+                </div>
             </div>
         </div>
     </div>
