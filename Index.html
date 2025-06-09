@@ -198,18 +198,18 @@
                         <h3 class="text-xl font-semibold mb-4 text-gray-800">Other Assets <span class="font-bold text-green-600" id="totalOtherAssetsSummary"></span></h3>
                         <div class="mb-4">
                             <label for="checkingAccount" class="label-style">Checking Account ($)</label>
-                            <input type="number" id="checkingAccount" value="20000" step="100" class="input-field">
+                            <input type="text" id="checkingAccount" value="20000" class="input-field">
                         </div>
                         <div class="mb-4">
                             <label for="homeValue" class="label-style">Home Value ($)</label>
-                            <input type="number" id="homeValue" value="1000000" step="100" class="input-field">
+                            <input type="text" id="homeValue" value="900000" class="input-field">
                         </div>
                         <div class="mb-4">
                             <label for="otherEquity" class="label-style">Other Equity (Car, RV, etc.) ($)</label>
-                            <input type="number" id="otherEquity" value="80000" step="100" class="input-field">
+                            <input type="text" id="otherEquity" value="80000" class="input-field">
                         </div>
 
-                        <h3 class="text-xl font-semibold mt-8 mb-4 text-gray-800">Liabilities <span class="font-bold text-green-600" id="totalLiabilitiesSummary"></span></h3>
+                        <h3 class="text-xl font-semibold mt-8 mb-4 text-gray-800">Liabilities <span class="font-bold text-red-600" id="totalLiabilitiesSummary"></span></h3>
                         <div id="liabilitiesContainer" class="mb-4 space-y-4">
                             <!-- Dynamic liability inputs will be added here by JavaScript -->
                         </div>
@@ -237,7 +237,7 @@
                         </div>
                         <div class="mb-4">
                             <label for="baseSalary" class="label-style">Base Salary ($)</label>
-                            <input type="number" id="baseSalary" value="200000" step="100" class="input-field">
+                            <input type="text" id="baseSalary" value="180000" class="input-field">
                         </div>
 
                         <div class="mb-4">
@@ -251,7 +251,7 @@
                         <div class="mb-4">
                             <label for="my401kContributionRate" class="label-style">My 401K Contribution Rate (% of Base Salary)</label>
                             <div class="slider-input-wrapper">
-                                <input type="range" id="my401kContributionRate" min="0" max="20" value="6" step="0.5" class="w-full">
+                                <input type="range" id="my401kContributionRate" min="0" max="20" value="13" step="0.5" class="w-full">
                                 <span class="slider-value-display" id="my401kContributionRateValue"></span>
                             </div>
                         </div>
@@ -266,16 +266,16 @@
 
                         <div class="mb-4">
                             <label for="monthly529Contribution" class="label-style">Monthly 529 Contribution ($)</label>
-                            <input type="number" id="monthly529Contribution" value="400" step="50" class="input-field">
+                            <input type="text" id="monthly529Contribution" value="400" class="input-field">
                         </div>
                         <div class="mb-4">
                             <label for="monthlyHSAContribution" class="label-style">Monthly HSA Contribution ($)</label>
-                            <input type="number" id="monthlyHSAContribution" value="600" step="25" class="input-field">
+                            <input type="text" id="monthlyHSAContribution" value="600" class="input-field">
                         </div>
 
                         <div class="mb-4">
                             <label for="annualRothContribution" class="label-style">Other Annual Savings Contribution ($)</label>
-                            <input type="number" id="annualRothContribution" value="0" step="100" class="input-field">
+                            <input type="text" id="annualRothContribution" value="25000" class="input-field">
                         </div>
                         <h3 class="text-xl font-semibold mt-8 mb-4 text-gray-800">Other Income (Monthly)</h3>
                         <!-- Labels for Other Income inputs -->
@@ -345,7 +345,7 @@
 
                         <div class="mb-4">
                             <label for="monthlyPrincipalPayment" class="label-style">Monthly Principal Payment ($)</label>
-                            <input type="number" id="monthlyPrincipalPayment" value="1400" step="100" class="input-field">
+                            <input type="text" id="monthlyPrincipalPayment" value="1400" class="input-field">
                         </div>
                     </div>
                 </div>
@@ -398,7 +398,8 @@
             if (value === null || value === undefined || value === '') {
                 return '';
             }
-            let num = Number(String(value).replace(/,/g, '')); // Remove commas for consistent parsing
+            // Ensure value is treated as a number before formatting, removing existing commas
+            let num = Number(String(value).replace(/,/g, ''));
             if (isNaN(num)) {
                 return '';
             }
@@ -677,6 +678,8 @@
 
 
             // Read static input values, using cleanInputNumber for formatting-aware parsing
+            // Changed input type to 'text' for these fields to allow dynamic formatting,
+            // so we use cleanInputNumber to parse their values.
             const checkingAccount = cleanInputNumber(staticInputs.checkingAccount.value);
             let homeValue = cleanInputNumber(staticInputs.homeValue.value);
             const otherEquity = cleanInputNumber(staticInputs.otherEquity.value);
@@ -1022,7 +1025,7 @@
         // Add event listeners to all static input fields
         for (const key in staticInputs) {
             // Apply formatting on initial load
-            if (staticInputs[key].type === 'number' || staticInputs[key].type === 'text') { // Use type 'text' if you changed 'number' to 'text' for formatting
+            if (staticInputs[key].type === 'text') { // Only apply to 'text' types for formatting
                 staticInputs[key].value = formatInputNumber(staticInputs[key].value);
             }
             staticInputs[key].addEventListener('input', calculateFinancials);
