@@ -1,69 +1,59 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Investment Calculator</title>
-    <!-- Tailwind CSS CDN for styling -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <!-- D3.js CDN for charting -->
-    <script src="https://d3js.org/d3.v7.min.js"></script>
-    <!-- Firebase SDKs -->
-<script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-    import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-    import { getFirestore, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Investment Calculator</title>
 
-    // Your actual Firebase project configuration (COPY THIS EXACTLY FROM YOUR FIREBASE CONSOLE)
+  <!-- Tailwind CSS for styling -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- D3.js for charts -->
+  <script src="https://d3js.org/d3.v7.min.js"></script>
+
+  <!-- Firebase SDKs -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+    import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+    import { getFirestore, collection, addDoc, getDocs, query, orderBy } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+    //  Your Firebase project configuration
     const firebaseConfig = {
       apiKey: "AIzaSyCC1UKUPFRUnWyQ09hGFkJxVEVBBkZ7X40",
       authDomain: "investment-calculator-931f2.firebaseapp.com",
       projectId: "investment-calculator-931f2",
-      storageBucket: "investment-calculator-931f2.firebasestorage.app",
+      storageBucket: "investment-calculator-931f2.appspot.com",
       messagingSenderId: "943895110805",
       appId: "1:943895110805:web:ba6e1e6177ae31d7af279c",
       measurementId: "G-F0CRPKLS7G"
     };
-    // Use the actual appId from your config, and keep initialAuthToken for Canvas environment compatibility
-    const appId = firebaseConfig.appId;
-    const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
 
+    // 🔧 Initialize Firebase
+    const app = initializeApp(firebaseConfig);
+    const db = getFirestore(app);
+    const auth = getAuth(app);
 
-    // Global Firebase vars
-    let app;
-    let db;
-    let auth;
-    let userId; // Will store the authenticated user ID
+    window.firebaseApp = app;
+    window.db = db;
+    window.auth = auth;
+    window.appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
 
-    // Firestore Paths - Using a public collection for shared data
-    const PUBLIC_COLLECTION_PATH = `artifacts/${appId}/public/data/retirement_calculator`;
-    const SHARED_DOC_ID = 'shared_inputs'; // A single document for all shared inputs
+    //  Sign in anonymously and load historical data
+    signInAnonymously(auth)
+      .then(async (result) => {
+        window.currentUserId = result.user.uid;
+        document.getElementById("userIdDisplay").textContent = `Signed in as ${window.currentUserId}`;
+        console.log("Signed in:", window.currentUserId);
 
-
-        // Flag to prevent saving when data is being loaded from Firestore
-        window.isLoadingFromFirestore = false;
-
-        // Helper functions for number formatting in input fields
-        function formatInputNumber(value) {
-            if (value === null || value === undefined || value === '') {
-                return '';
-            }
-            // Ensure value is treated as a number before formatting, removing existing commas
-            let num = Number(String(value).replace(/,/g, ''));
-            if (isNaN(num)) {
-                return '';
-            }
-            return new Intl.NumberFormat('en-US').format(num);
-        }
-
-        function cleanInputNumber(stringValue) {
-            if (stringValue === null || stringValue === undefined || stringValue === '') {
-                return 0;
-            }
-            // Remove all non-digit characters except for a potential leading minus sign and decimal
-            const cleaned = stringValue.replace(/[^\d.-]/g, '');
-            return parseFloat(cleaned) || 0;
-        }
+        const recordsRef = collection(db, `/artifacts/${window.appId}/users/${window.currentUserId}/historical_records`);
+        const snapshot = await getDocs(query(recordsRef, orderBy("date")));
+        const data = snapshot.docs.map(doc => doc.data());
+        renderHistoricalData(data);
+      })
+      .catch((error) => {
+        console.error("Anonymous sign-in failed:", error);
+        document.getElementById("recordStatusMessage").textContent = "Failed to authenticate.";
+      });
 
         // Get references to all static input elements
         const staticInputs = {
