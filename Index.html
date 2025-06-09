@@ -17,7 +17,7 @@
         // Firebase global variables (provided by Canvas environment)
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
         const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
-        // Fix: Use __initial_auth_token on the right side of the ternary for correct initialization
+        // FIX: Correctly reference __initial_auth_token on the right side of the ternary
         const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
 
         // Global Firebase vars
@@ -26,7 +26,7 @@
         let auth;
         let userId; // Will store the authenticated user ID
 
-        // Firestore Paths - Using a public collection as security is not a concern for this specific use case
+        // Firestore Paths - Using a public collection for shared data
         const PUBLIC_COLLECTION_PATH = `artifacts/${appId}/public/data/retirement_calculator`;
         const SHARED_DOC_ID = 'shared_inputs'; // A single document for all shared inputs
 
@@ -644,15 +644,16 @@
                 currentInvestments += totalNewInvestmentMoneyCurrentYear;
 
                 // Draw calculations now include other income for the specific year
+                // Handle "45 YO Draw" display based on current age
                 if (age === 45) {
-                    // Only update if currentAge was less than 45 initially
-                    if (initialAge < 45) {
+                    if (initialAge < 45) { // Only calculate if currentAge was less than 45 initially
                         const drawValue = (currentInvestments * retirementDrawRate) + currentAnnualOtherIncome;
                         const drawValueInTodaysDollars = drawValue / Math.pow((1 + inflationRate), i);
                         fortyFiveYODrawDisplay.textContent = formatLargeCurrency(drawValueInTodaysDollars);
+                    } else {
+                        fortyFiveYODrawDisplay.textContent = "N/A";
                     }
                 }
-
 
                 if (age === 62) {
                     const drawValue = (currentInvestments * retirementDrawRate) + currentAnnualOtherIncome;
