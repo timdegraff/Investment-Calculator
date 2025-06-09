@@ -236,6 +236,66 @@
             }
         }
 
+        /**
+         * Gathers all current input values (static and dynamic) from the DOM.
+         * This function is used to create a snapshot of the current UI state to save to Firestore.
+         * @returns {Object} An object containing all current financial input data.
+         */
+        function collectAllCurrentInputs() {
+            let collectedData = {};
+
+            // Collect static input values
+            for (const key in staticInputs) {
+                let value;
+                if (staticInputs[key].type === 'range') {
+                    value = parseFloat(staticInputs[key].value);
+                } else {
+                    value = cleanInputNumber(staticInputs[key].value);
+                }
+                // Convert percentages to decimal for internal calculations and storage
+                if (['bonusRate', 'my401kContributionRate', 'company401kContributionRate', 'annualSalaryRaise', 'stockAppreciation', 'housingAppreciation', 'inflation', 'retirementDrawRate'].includes(key)) {
+                    value = value / 100;
+                }
+                collectedData[key] = value;
+            }
+
+            // Collect dynamic investment account values
+            collectedData.investmentAccounts = [];
+            document.querySelectorAll('.investment-row').forEach(row => {
+                const name = row.querySelector('.investment-name').value;
+                const value = cleanInputNumber(row.querySelector('.investment-value').value);
+                collectedData.investmentAccounts.push({ name, value });
+            });
+
+            // Collect dynamic other asset values
+            collectedData.otherAssets = [];
+            document.querySelectorAll('.other-asset-row').forEach(row => {
+                const name = row.querySelector('.asset-name').value;
+                const value = cleanInputNumber(row.querySelector('.asset-value').value);
+                collectedData.otherAssets.push({ name, value });
+            });
+
+            // Collect dynamic liability values
+            collectedData.liabilities = [];
+            document.querySelectorAll('.liability-row').forEach(row => {
+                const name = row.querySelector('.liability-name').value;
+                const value = cleanInputNumber(row.querySelector('.liability-value').value);
+                collectedData.liabilities.push({ name, value });
+            });
+
+            // Collect dynamic other income values
+            collectedData.otherIncome = [];
+            document.querySelectorAll('.other-income-row').forEach(row => {
+                const name = row.querySelector('.income-name').value;
+                const value = cleanInputNumber(row.querySelector('.income-value').value);
+                const escalationRate = parseFloat(row.querySelector('.income-escalation-rate').value) / 100 || 0;
+                collectedData.otherIncome.push({ name, value, escalationRate });
+            });
+
+            return collectedData;
+        }
+
+
         // Function to set up real-time listener for data
         function setupRealtimeListener() {
             if (!db || !userId) {
@@ -244,16 +304,18 @@
             }
             console.log("Setting up real-time Firestore listener.");
             const docRef = doc(db, PUBLIC_COLLECTION_PATH, SHARED_DOC_ID);
-            onSnapshot(docRef, (docSnap) => {
+            onSnapshot(docRef, async (docSnap) => { // Made async to allow awaiting `saveDataToFirestore`
                 window.isLoadingFromFirestore = true; // Set flag when loading from Firestore
                 if (docSnap.exists()) {
                     const data = docSnap.data();
                     console.log("Data loaded from Firestore:", data);
                     populateInputsFromFirestore(data);
                 } else {
-                    console.log("No shared data found in Firestore. Using default values and saving them.");
-                    // If no data, ensure initial calculation runs with current DOM values and save them
-                    calculateFinancials(true);
+                    console.log("No shared data found in Firestore. Populating with defaults and attempting initial save.");
+                    // If no data, populate with initial defaults (or current DOM values if already changed)
+                    // and then save that state to Firestore to establish the document.
+                    populateInputsFromFirestore({}); // Ensure inputs are set to defaults if doc doesn't exist
+                    await saveDataToFirestore(collectAllCurrentInputs()); // Save the current (default) state
                 }
                 window.isLoadingFromFirestore = false; // Reset flag after processing
             }, (error) => {
@@ -288,13 +350,14 @@
             }
 
             // Update dynamic inputs (investments, other assets, liabilities, other income)
-            // Clear existing dynamic rows first
+            // Clear existing dynamic rows first to avoid duplicates
             investmentAccountsContainer.innerHTML = '';
             otherAssetsContainer.innerHTML = '';
             liabilitiesContainer.innerHTML = '';
             otherIncomeContainer.innerHTML = '';
 
             // Repopulate with data from Firestore or initial defaults if not present
+            // Ensure initial defaults are used if Firestore data is empty or undefined for a specific dynamic category
             (data.investmentAccounts || initialInvestmentAccounts).forEach(account => addInvestmentAccountInput(account));
             (data.otherAssets || initialOtherAssets).forEach(asset => addOtherAssetInput(asset));
             (data.liabilities || initialLiabilities).forEach(liability => addLiabilityInput(liability));
