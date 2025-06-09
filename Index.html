@@ -42,7 +42,32 @@
     const SHARED_DOC_ID = 'shared_inputs'; // A single document for all shared inputs
 
     // Revision Level
-    const appRevision = "1.0"; // Increment this for each code update
+    const appRevision = "1.1"; // Increment this for each code update (from 1.0)
+
+    // Predefined default values for dynamic sections
+    const defaultInvestmentAccounts = [
+        { name: "401K", value: 524620 },
+        { name: "Roth 1", value: 177474 },
+        { name: "Roth 2", value: 156407 },
+        { name: "529", value: 55485 },
+        { name: "HSA", value: 25187 },
+        { name: "Gold", value: 6600 },
+        { name: "Checking", value: 17522 }
+    ];
+
+    const defaultOtherAssets = [
+        { name: "Home Value", value: 979500 },
+        { name: "Other Equity (car, tractor, camper)", value: 90601 }
+    ];
+
+    const defaultLiabilities = [
+        { name: "Mortgage", value: 202212 }
+    ];
+
+    const defaultOtherIncomes = [
+        { name: "Cell Tower", value: 1200, escalationRate: 0.015 },
+        { name: "Rental House", value: 1300, escalationRate: 0.03 }
+    ];
 
 
         // Flag to prevent saving when data is being loaded from Firestore
@@ -353,23 +378,10 @@
                     otherIncomeContainer.innerHTML = '';
 
                     // Add dynamic rows with user-provided default values
-                    addInvestmentAccountInput({ name: "401K", value: 524620 });
-                    addInvestmentAccountInput({ name: "Roth 1", value: 177474 });
-                    addInvestmentAccountInput({ name: "Roth 2", value: 156407 });
-                    addInvestmentAccountInput({ name: "529", value: 55485 });
-                    addInvestmentAccountInput({ name: "HSA", value: 25187 });
-                    addInvestmentAccountInput({ name: "Gold", value: 6600 });
-                    addInvestmentAccountInput({ name: "Checking", value: 17522 });
-
-
-                    addOtherAssetInput({ name: "Home Value", value: 979500 });
-                    addOtherAssetInput({ name: "Other Equity (car, tractor, camper)", value: 90601 });
-
-                    addLiabilityInput({ name: "Mortgage", value: 202212 });
-
-                    // Add new other income entries
-                    addOtherIncomeInput({ name: "Cell Tower", value: 1200, escalationRate: 0.015 });
-                    addOtherIncomeInput({ name: "Rental House", value: 1300, escalationRate: 0.03 });
+                    defaultInvestmentAccounts.forEach(account => addInvestmentAccountInput(account));
+                    defaultOtherAssets.forEach(asset => addOtherAssetInput(asset));
+                    defaultLiabilities.forEach(liability => addLiabilityInput(liability));
+                    defaultOtherIncomes.forEach(income => addOtherIncomeInput(income));
 
 
                     // Save this initial blank state to Firestore
@@ -414,29 +426,36 @@
             liabilitiesContainer.innerHTML = '';
             otherIncomeContainer.innerHTML = '';
 
-            // --- CHANGE: Ensure at least one input field is always present for dynamic sections ---
+            // Handle Investment Accounts
             if (data.investmentAccounts && data.investmentAccounts.length > 0) {
                 data.investmentAccounts.forEach(account => addInvestmentAccountInput(account));
             } else {
-                addInvestmentAccountInput(); // Add one blank input if no data or empty array
+                // If no data or empty array from Firestore, use predefined defaults
+                defaultInvestmentAccounts.forEach(account => addInvestmentAccountInput(account));
             }
 
+            // Handle Other Assets
             if (data.otherAssets && data.otherAssets.length > 0) {
                 data.otherAssets.forEach(asset => addOtherAssetInput(asset));
             } else {
-                addOtherAssetInput(); // Add one blank input if no data or empty array
+                // If no data or empty array from Firestore, use predefined defaults
+                defaultOtherAssets.forEach(asset => addOtherAssetInput(asset));
             }
 
+            // Handle Liabilities
             if (data.liabilities && data.liabilities.length > 0) {
                 data.liabilities.forEach(liability => addLiabilityInput(liability));
             } else {
-                addLiabilityInput(); // Add one blank input if no data or empty array
+                // If no data or empty array from Firestore, use predefined defaults
+                defaultLiabilities.forEach(liability => addLiabilityInput(liability));
             }
 
+            // Handle Other Income
             if (data.otherIncome && data.otherIncome.length > 0) {
                 data.otherIncome.forEach(income => addOtherIncomeInput(income));
             } else {
-                addOtherIncomeInput(); // Add one blank input if no data or empty array
+                // If no data or empty array from Firestore, use predefined defaults
+                defaultOtherIncomes.forEach(income => addOtherIncomeInput(income));
             }
             // --- END CHANGE ---
 
@@ -1057,10 +1076,12 @@
                 liabilitiesContainer.innerHTML = '';
                 otherIncomeContainer.innerHTML = '';
 
-                addInvestmentAccountInput();
-                addOtherAssetInput();
-                addLiabilityInput();
-                addOtherIncomeInput();
+                // If Firebase fails, use all defaults for dynamic sections
+                defaultInvestmentAccounts.forEach(account => addInvestmentAccountInput(account));
+                defaultOtherAssets.forEach(asset => addOtherAssetInput(asset));
+                defaultLiabilities.forEach(liability => addLiabilityInput(liability));
+                defaultOtherIncomes.forEach(income => addOtherIncomeInput(income));
+                
                 calculateFinancials(false); // Calculate based on initial blank inputs, don't save.
             });
 
@@ -1316,7 +1337,7 @@
         lg:fixed lg:top-0 lg:left-0 lg:h-screen lg:w-64 lg:flex-col lg:items-center lg:justify-start lg:p-6 lg:shadow-2xl lg:overflow-y-auto
     ">
         <h2 class="text-xl font-extrabold mb-4 text-center text-white w-full lg:text-3xl lg:mb-8">Your Snapshot</h2>
-        <span id="appRevisionDisplay" class="text-xs text-blue-200 font-semibold mb-4 lg:mb-6"></span>
+        <span id="appRevisionDisplay" class="text-xs text-blue-200 font-semibold mb-4 lg:mb-6">v1.1</span>
         <!-- Each summary item will be a div -->
         <div class="text-center mb-2 summary-item w-1/2 sm:w-1/3 md:w-1/4 lg:w-auto lg:text-center px-1">
             <p class="text-sm font-bold text-blue-200 lg:text-lg">Net Worth:</p>
