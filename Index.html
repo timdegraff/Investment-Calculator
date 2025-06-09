@@ -150,23 +150,27 @@
         <div class="mt-4 mb-8 p-6 bg-green-50 rounded-lg shadow-inner flex flex-col md:flex-row justify-around items-center text-center border border-green-200">
             <div class="mb-4 md:mb-0 md:mr-8">
                 <p class="text-xl font-bold text-gray-800">Current Net Worth:</p>
-                <p id="currentNetWorth" class="text-4xl font-extrabold text-green-700 mt-2">$0</p>
+                <p id="currentNetWorth" class="text-3xl font-semibold text-green-700 mt-2">$0</p>
             </div>
             <div class="mb-4 md:mb-0 md:mr-8">
                 <p class="text-xl font-bold text-gray-800">Current Net Investments:</p>
-                <p id="currentNetInvestments" class="text-4xl font-extrabold text-blue-700 mt-2">$0</p>
+                <p id="currentNetInvestments" class="text-3xl font-semibold text-blue-700 mt-2">$0</p>
+            </div>
+            <div class="mb-4 md:mb-0 md:mr-8">
+                <p class="text-xl font-bold text-gray-800">Annual Income:</p>
+                <p id="annualIncomeDisplay" class="text-3xl font-semibold text-purple-700 mt-2">$0</p>
             </div>
             <div class="mb-4 md:mb-0 md:mr-8">
                 <p class="text-xl font-bold text-gray-800">Today's Draw:</p>
-                <p id="todaysDraw" class="text-4xl font-extrabold text-purple-700 mt-2">$0</p>
+                <p id="todaysDraw" class="text-3xl font-semibold text-purple-700 mt-2">$0</p>
             </div>
             <div class="mb-4 md:mb-0 md:mr-8">
                 <p class="text-xl font-bold text-gray-800">45 YO Draw (Today's $):</p>
-                <p id="fortyFiveYODraw" class="text-4xl font-extrabold text-purple-700 mt-2">$0</p>
+                <p id="fortyFiveYODraw" class="text-3xl font-semibold text-purple-700 mt-2">$0</p>
             </div>
             <div>
                 <p class="text-xl font-bold text-gray-800">62 YO Draw (Today's $):</p>
-                <p id="sixtyTwoYODraw" class="text-4xl font-extrabold text-purple-700 mt-2">$0</p>
+                <p id="sixtyTwoYODraw" class="text-3xl font-semibold text-purple-700 mt-2">$0</p>
             </div>
         </div>
 
@@ -389,6 +393,27 @@
     </div>
 
     <script>
+        // Helper functions for number formatting in input fields
+        function formatInputNumber(value) {
+            if (value === null || value === undefined || value === '') {
+                return '';
+            }
+            let num = Number(String(value).replace(/,/g, '')); // Remove commas for consistent parsing
+            if (isNaN(num)) {
+                return '';
+            }
+            return new Intl.NumberFormat('en-US').format(num);
+        }
+
+        function cleanInputNumber(stringValue) {
+            if (stringValue === null || stringValue === undefined || stringValue === '') {
+                return 0;
+            }
+            // Remove all non-digit characters except for a potential leading minus sign and decimal
+            const cleaned = stringValue.replace(/[^\d.-]/g, '');
+            return parseFloat(cleaned) || 0;
+        }
+
         // Get references to all static input elements
         const staticInputs = {
             checkingAccount: document.getElementById('checkingAccount'),
@@ -414,6 +439,7 @@
         // Get references to display elements
         const currentNetWorthDisplay = document.getElementById('currentNetWorth');
         const currentNetInvestmentsDisplay = document.getElementById('currentNetInvestments');
+        const annualIncomeDisplay = document.getElementById('annualIncomeDisplay'); // New display element
         const todaysDrawDisplay = document.getElementById('todaysDraw');
         const fortyFiveYODrawDisplay = document.getElementById('fortyFiveYODraw');
         const sixtyTwoYODrawDisplay = document.getElementById('sixtyTwoYODraw');
@@ -448,12 +474,12 @@
 
         // Initial investment accounts data (exact values, not rounded)
         const initialInvestmentAccounts = [
-            { name: "Tim Roth", value: 100000 },
-            { name: "Jess Roth", value: 200000 },
-            { name: "Tim 401K", value: 500000 },
+            { name: "401K", value: 500000 },
+            { name: "Roth 1", value: 100000 },
+            { name: "Roth 2", value: 100000 },
             { name: "529", value: 50000 },
             { name: "HSA", value: 25000 },
-            { name: "eTrade", value: 0 },
+            { name: "Stocks", value: 0 },
             { name: "Gold", value: 20000 },
             { name: "Silver", value: 0 },
             { name: "Bitcoin", value: 0 }
@@ -470,7 +496,7 @@
         // Initial other income data
         const initialOtherIncome = [
             { name: "Cell Tower Lease", value: 1200, escalationRate: 0.015 },
-            { name: "Rental Income", value: 1300, escalationRate: 0.04 }
+            { name: "Rental 1", value: 1300, escalationRate: 0.04 }
         ];
 
         // Function to format numbers as currency, rounded to nearest thousand, without K/M (for table)
@@ -500,6 +526,15 @@
             }).format(amount);
         };
 
+        // Function to format Y-axis labels dynamically based on max value in the chart
+        function formatProjectedChartAxisLabel(value, maxChartValue) {
+            if (maxChartValue < 5000000) { // If max value is under 5 million, show in thousands
+                return `$${(value / 1000).toFixed(0)}K`; // No decimals for K
+            } else { // Otherwise, show in millions
+                return `$${(value / 1000000).toFixed(0)}M`; // No decimals for M
+            }
+        }
+
         // Function to update slider value display position
         function updateSliderValueDisplay(slider, valueDisplay, unit) {
             const min = parseFloat(slider.min);
@@ -523,16 +558,19 @@
             rowDiv.classList.add('investment-row', 'flex', 'flex-wrap', 'items-center', 'mb-4', 'space-y-2', 'md:space-y-0', 'md:space-x-2');
             rowDiv.innerHTML = `
                 <input type="text" placeholder="Account Name" value="${account.name}" class="input-field investment-name flex-1 min-w-[120px]">
-                <input type="number" placeholder="Value ($)" value="${account.value}" step="100" class="input-field investment-value flex-1 min-w-[100px]">
+                <input type="text" placeholder="Value ($)" value="${formatInputNumber(account.value)}" class="input-field investment-value flex-1 min-w-[100px]">
                 <button type="button" class="delete-item-btn text-red-500 hover:text-red-700 font-bold px-2 py-1 rounded-md transition duration-200 ease-in-out">X</button>
             `;
             investmentAccountsContainer.appendChild(rowDiv);
 
-            const deleteBtn = rowDiv.querySelector('.delete-item-btn');
-
-            rowDiv.querySelectorAll('input').forEach(input => {
-                input.addEventListener('input', calculateFinancials);
+            const valueInput = rowDiv.querySelector('.investment-value');
+            valueInput.addEventListener('input', (event) => {
+                const rawValue = event.target.value;
+                event.target.value = formatInputNumber(rawValue);
+                calculateFinancials();
             });
+
+            const deleteBtn = rowDiv.querySelector('.delete-item-btn');
             deleteBtn.addEventListener('click', () => {
                 rowDiv.remove();
                 calculateFinancials();
@@ -545,16 +583,19 @@
             rowDiv.classList.add('liability-row', 'flex', 'flex-wrap', 'items-center', 'mb-4', 'space-y-2', 'md:space-y-0', 'md:space-x-2');
             rowDiv.innerHTML = `
                 <input type="text" placeholder="Liability Name" value="${liability.name}" class="input-field liability-name flex-1 min-w-[120px]">
-                <input type="number" placeholder="Value ($)" value="${liability.value}" step="100" class="input-field liability-value flex-1 min-w-[100px]">
+                <input type="text" placeholder="Value ($)" value="${formatInputNumber(liability.value)}" class="input-field liability-value flex-1 min-w-[100px]">
                 <button type="button" class="delete-item-btn text-red-500 hover:text-red-700 font-bold px-2 py-1 rounded-md transition duration-200 ease-in-out">X</button>
             `;
             liabilitiesContainer.appendChild(rowDiv);
 
-            const deleteBtn = rowDiv.querySelector('.delete-item-btn');
-
-            rowDiv.querySelectorAll('input').forEach(input => {
-                input.addEventListener('input', calculateFinancials);
+            const valueInput = rowDiv.querySelector('.liability-value');
+            valueInput.addEventListener('input', (event) => {
+                const rawValue = event.target.value;
+                event.target.value = formatInputNumber(rawValue);
+                calculateFinancials();
             });
+
+            const deleteBtn = rowDiv.querySelector('.delete-item-btn');
             deleteBtn.addEventListener('click', () => {
                 rowDiv.remove();
                 calculateFinancials();
@@ -567,7 +608,7 @@
             rowDiv.classList.add('other-income-row', 'flex', 'flex-wrap', 'items-center', 'mb-4', 'space-y-2', 'md:space-y-0', 'md:space-x-2');
             rowDiv.innerHTML = `
                 <input type="text" placeholder="Income Source" value="${income.name}" class="input-field income-name flex-1 min-w-[120px]">
-                <input type="number" placeholder="Monthly Value ($)" value="${income.value}" step="50" class="input-field income-value flex-1 min-w-[100px]">
+                <input type="text" placeholder="Monthly Value ($)" value="${formatInputNumber(income.value)}" class="input-field income-value flex-1 min-w-[100px]">
                 <div class="flex items-center">
                     <input type="number" placeholder="Escalation Rate" value="${(income.escalationRate * 100).toFixed(1)}" step="0.1" min="0" max="10" class="input-field income-escalation-rate w-24">
                     <span class="ml-1 text-gray-700">%</span>
@@ -576,10 +617,20 @@
             `;
             otherIncomeContainer.appendChild(rowDiv);
 
+            const valueInput = rowDiv.querySelector('.income-value');
+            valueInput.addEventListener('input', (event) => {
+                const rawValue = event.target.value;
+                event.target.value = formatInputNumber(rawValue);
+                calculateFinancials();
+            });
+
             const deleteBtn = rowDiv.querySelector('.delete-item-btn');
 
             rowDiv.querySelectorAll('input').forEach(input => {
-                input.addEventListener('input', calculateFinancials);
+                // Only attach `calculateFinancials` to value/rate changes, not name
+                if (input.classList.contains('income-value') || input.classList.contains('income-escalation-rate')) {
+                    input.addEventListener('input', calculateFinancials);
+                }
             });
             deleteBtn.addEventListener('click', () => {
                 rowDiv.remove();
@@ -596,7 +647,7 @@
             // Read dynamic investment account values
             document.querySelectorAll('.investment-row').forEach(row => {
                 const valueInput = row.querySelector('.investment-value');
-                const value = parseFloat(valueInput.value) || 0;
+                const value = cleanInputNumber(valueInput.value);
                 totalInvestments += value;
             });
 
@@ -605,7 +656,7 @@
                 const nameInput = row.querySelector('.liability-name');
                 const valueInput = row.querySelector('.liability-value');
                 const name = nameInput.value;
-                const value = parseFloat(valueInput.value) || 0;
+                const value = cleanInputNumber(valueInput.value);
                 totalLiabilities += value;
 
                 if (name.toLowerCase() === "mortgage") {
@@ -615,28 +666,30 @@
 
             // Read dynamic other income values
             let currentOtherIncomesState = [];
+            let totalOtherMonthlyIncome = 0; // Initialize for annual income calculation
             document.querySelectorAll('.other-income-row').forEach(row => {
                 const name = row.querySelector('.income-name').value;
-                const value = parseFloat(row.querySelector('.income-value').value) || 0;
+                const value = cleanInputNumber(row.querySelector('.income-value').value);
                 const escalationRate = parseFloat(row.querySelector('.income-escalation-rate').value) / 100 || 0;
                 currentOtherIncomesState.push({ name: name, value: value, escalationRate: escalationRate });
+                totalOtherMonthlyIncome += value; // Accumulate for total annual income
             });
 
 
-            // Read static input values
-            const checkingAccount = parseFloat(staticInputs.checkingAccount.value) || 0;
-            let homeValue = parseFloat(staticInputs.homeValue.value) || 0;
-            const otherEquity = parseFloat(staticInputs.otherEquity.value) || 0;
+            // Read static input values, using cleanInputNumber for formatting-aware parsing
+            const checkingAccount = cleanInputNumber(staticInputs.checkingAccount.value);
+            let homeValue = cleanInputNumber(staticInputs.homeValue.value);
+            const otherEquity = cleanInputNumber(staticInputs.otherEquity.value);
             const currentAge = parseFloat(staticInputs.currentAge.value) || 0;
 
 
-            let baseSalary = parseFloat(staticInputs.baseSalary.value) || 0;
+            let baseSalary = cleanInputNumber(staticInputs.baseSalary.value);
             const bonusRate = parseFloat(staticInputs.bonusRate.value) / 100 || 0;
             const my401kContributionRate = parseFloat(staticInputs.my401kContributionRate.value) / 100 || 0;
             const company401kContributionRate = parseFloat(staticInputs.company401kContributionRate.value) / 100 || 0;
-            const annualRothContribution = parseFloat(staticInputs.annualRothContribution.value) || 0;
-            const monthly529Contribution = parseFloat(staticInputs.monthly529Contribution.value) || 0;
-            const monthlyHSAContribution = parseFloat(staticInputs.monthlyHSAContribution.value) || 0;
+            const annualRothContribution = cleanInputNumber(staticInputs.annualRothContribution.value);
+            const monthly529Contribution = cleanInputNumber(staticInputs.monthly529Contribution.value);
+            const monthlyHSAContribution = cleanInputNumber(staticInputs.monthlyHSAContribution.value);
 
             const annualSalaryRaise = parseFloat(staticInputs.annualSalaryRaise.value) / 100 || 0;
             const stockAppreciation = parseFloat(staticInputs.stockAppreciation.value) / 100 || 0;
@@ -644,7 +697,7 @@
             const inflation = parseFloat(staticInputs.inflation.value) / 100 || 0;
             const retirementDrawRate = parseFloat(staticInputs.retirementDrawRate.value) / 100 || 0;
             const retirementYear = parseFloat(staticInputs.retirementYear.value) || 0;
-            const monthlyPrincipalPayment = parseFloat(staticInputs.monthlyPrincipalPayment.value) || 0;
+            const monthlyPrincipalPayment = cleanInputNumber(staticInputs.monthlyPrincipalPayment.value);
             const annualPrincipalPayment = monthlyPrincipalPayment * 12;
 
             // Update min for retirementYear slider dynamically based on currentAge
@@ -664,9 +717,15 @@
             const currentNetWorth = currentTotalAssets - totalLiabilities;
             const currentNetInvestments = totalInvestments;
 
+            // Calculate Annual Income
+            const annualBonusIncome = baseSalary * bonusRate;
+            const totalAnnualOtherIncome = totalOtherMonthlyIncome * 12;
+            const totalAnnualIncome = baseSalary + annualBonusIncome + totalAnnualOtherIncome;
+
             // Display current values using new formatting
             currentNetWorthDisplay.textContent = formatLargeCurrency(currentNetWorth);
             currentNetInvestmentsDisplay.textContent = formatLargeCurrency(currentNetInvestments);
+            annualIncomeDisplay.textContent = formatLargeCurrency(totalAnnualIncome); // Display annual income
 
             // Update the span elements with dynamically calculated and rounded values
             totalInvestmentsSummary.textContent = `(${formatLargeCurrency(totalInvestments)})`;
@@ -728,14 +787,6 @@
                 investments: initialNetInvestments,
                 netWorth: initialNetWorth / Math.pow((1 + inflationRate), 0)
             });
-
-            const row0 = projectionTableBody.insertRow();
-            row0.classList.add('hover:bg-blue-50');
-            row0.insertCell().textContent = firstAge;
-            row0.insertCell().textContent = firstYear;
-            row0.insertCell().textContent = formatTableCurrency(initialNetInvestments);
-            row0.insertCell().textContent = formatTableCurrency(initialNetWorth);
-            row0.insertCell().textContent = formatTableCurrency(initialNetWorth);
 
 
             for (let i = 1; currentProjectedAge <= 100; i++) {
@@ -851,7 +902,9 @@
                 .range([height, 0]);
 
             const xAxis = d3.axisBottom(xScale).tickFormat(d3.format("d"));
-            const yAxis = d3.axisLeft(yScale).tickFormat(d => formatLargeCurrency(d).replace(/\$/g, ''));
+            // Dynamically format Y-axis labels based on yMax for the entire chart
+            const yAxis = d3.axisLeft(yScale).tickFormat(d => formatProjectedChartAxisLabel(d, yMax));
+
 
             svg.append("g")
                 .attr("class", "x axis")
@@ -968,7 +1021,18 @@
 
         // Add event listeners to all static input fields
         for (const key in staticInputs) {
+            // Apply formatting on initial load
+            if (staticInputs[key].type === 'number' || staticInputs[key].type === 'text') { // Use type 'text' if you changed 'number' to 'text' for formatting
+                staticInputs[key].value = formatInputNumber(staticInputs[key].value);
+            }
             staticInputs[key].addEventListener('input', calculateFinancials);
+            // Add specific input formatting for relevant fields
+            if (['checkingAccount', 'homeValue', 'otherEquity', 'baseSalary', 'annualRothContribution', 'monthly529Contribution', 'monthlyHSAContribution', 'monthlyPrincipalPayment'].includes(key)) {
+                staticInputs[key].addEventListener('input', (event) => {
+                    const rawValue = event.target.value;
+                    event.target.value = formatInputNumber(rawValue);
+                });
+            }
         }
 
         // Add event listener for adding new investment accounts
