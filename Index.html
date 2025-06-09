@@ -760,8 +760,14 @@
             const totalAnnualOtherIncome = totalOtherMonthlyIncome * 12;
             const totalAnnualIncome = baseSalary + annualBonusIncome + totalAnnualOtherIncome;
 
-            // Calculate Total Annual Savings
-            const totalAnnualSavings = annualRothContribution + (monthly529Contribution * 12) + (monthlyHSAContribution * 12);
+            // Calculate Total Annual Savings - NOW INCLUDES MONTHLY PRINCIPAL PAYMENT
+            const totalAnnualSavings =
+                (baseSalary * my401kContributionRate) +
+                (baseSalary * company401kContributionRate) +
+                (monthly529Contribution * 12) +
+                (monthlyHSAContribution * 12) +
+                annualRothContribution +
+                (monthlyPrincipalPayment * 12); // Added monthly principal payment
 
             // Display current values using new formatting
             currentNetWorthDisplay.textContent = formatLargeCurrency(currentNetWorth);
@@ -789,7 +795,7 @@
                           initialOtherAssets.find(asset => asset.name === "Other Equity (Car, RV, etc.)")?.value || 0, // Pass other equity separately if needed
                           currentAge,
                           retirementDrawRate, todaysDrawDisplay, fortyFiveYODrawDisplay, sixtyTwoYODrawDisplay,
-                          retirementYear);
+                          retirementYear, totalOtherMonthlyIncome * 12); // Pass total other annual income
         }
 
         function projectGrowth(initialNetInvestments, initialNetWorth, initialHomeValue, initialTotalLiabilities, initialMortgageValue, initialBaseSalary,
@@ -798,20 +804,20 @@
                                annualSalaryRaise, stockAppreciation,
                                housingAppreciation, inflation, annualPrincipalPayment,
                                initialOtherIncomesState,
-                               otherEquityValueFromInitialAssets, // Renamed to clarify its source
+                               otherEquityValueFromInitialAssets,
                                initialAge,
                                retirementDrawRate, todaysDrawDisplay, fortyFiveYODrawDisplay, sixtyTwoYODrawDisplay,
-                               retirementYearInput) {
+                               retirementYearInput, initialTotalOtherAnnualIncome) {
 
             projectionTableBody.innerHTML = '';
             chartContainer.innerHTML = '';
 
             let currentInvestments = initialNetInvestments;
-            let currentHomeValue = initialHomeValue; // This still relies on an initial home value, consider if it should dynamically change
+            let currentHomeValue = initialHomeValue;
             let currentMortgage = initialMortgageValue;
             let currentOtherLiabilitiesTotal = initialTotalLiabilities - initialMortgageValue;
             let currentBaseSalary = initialBaseSalary;
-            let currentOtherEquity = otherEquityValueFromInitialAssets; // Use the passed initial other equity value
+            let currentOtherEquity = otherEquityValueFromInitialAssets;
 
             const startYear = new Date().getFullYear();
             let currentProjectedAge = initialAge;
@@ -821,11 +827,8 @@
 
             const chartData = [];
 
-            todaysDrawDisplay.textContent = formatLargeCurrency(0);
-            fortyFiveYODrawDisplay.textContent = formatLargeCurrency(0);
-            sixtyTwoYODrawDisplay.textContent = formatLargeCurrency(0);
-
-            const todaysDrawValue = initialNetInvestments * retirementDrawRate;
+            // Calculate and display today's draw including other income
+            const todaysDrawValue = (initialNetInvestments * retirementDrawRate) + initialTotalOtherAnnualIncome;
             todaysDrawDisplay.textContent = formatLargeCurrency(todaysDrawValue);
 
             const firstYear = startYear;
@@ -868,7 +871,7 @@
                 let currentAnnualOtherIncome = 0;
                 projectedOtherIncomes.forEach(income => {
                     income.value *= (1 + income.escalationRate);
-                    if (income.name === "Rental Income") {
+                    if (income.name === "Rental 1") { // Specific rule for "Rental 1" to round down
                         income.value = Math.floor(income.value / 100) * 100;
                     }
                     currentAnnualOtherIncome += income.value * 12;
@@ -877,22 +880,21 @@
 
                 currentInvestments += totalNewInvestmentMoneyCurrentYear;
 
+                // Draw calculations now include other income for the specific year
                 if (age === 45) {
-                    const drawValue = currentInvestments * retirementDrawRate;
+                    const drawValue = (currentInvestments * retirementDrawRate) + currentAnnualOtherIncome;
                     const drawValueInTodaysDollars = drawValue / Math.pow((1 + inflationRate), i);
                     fortyFiveYODrawDisplay.textContent = formatLargeCurrency(drawValueInTodaysDollars);
                 }
 
                 if (age === 62) {
-                    const drawValue = currentInvestments * retirementDrawRate;
+                    const drawValue = (currentInvestments * retirementDrawRate) + currentAnnualOtherIncome;
                     const drawValueInTodaysDollars = drawValue / Math.pow((1 + inflationRate), i);
                     sixtyTwoYODrawDisplay.textContent = formatLargeCurrency(drawValueInTodaysDollars);
                 }
 
                 currentHomeValue *= (1 + housingAppreciation);
-                // Assume other equity also appreciates with inflation (or a fixed rate if specified)
-                // For now, let's assume it holds its value relative to inflation. If a separate growth rate is needed, add a slider.
-                currentOtherEquity = otherEquityValueFromInitialAssets / Math.pow((1 + inflationRate), 0) * Math.pow((1 + inflationRate), i); // This assumes other equity keeps its real value. If it grows at a different rate, a new input is needed.
+                currentOtherEquity = otherEquityValueFromInitialAssets / Math.pow((1 + inflationRate), 0) * Math.pow((1 + inflationRate), i);
 
                 currentMortgage = Math.max(0, currentMortgage - annualPrincipalPayment);
 
