@@ -191,6 +191,7 @@
 
         // Firebase Initialization
         const initFirebase = async () => {
+            console.log("Initializing Firebase...");
             try {
                 app = initializeApp(firebaseConfig);
                 db = getFirestore(app);
@@ -222,12 +223,14 @@
             }
             // Prevent saving if the update came from Firestore itself
             if (window.isLoadingFromFirestore) {
+                console.log("Skipping save: Data currently being loaded from Firestore.");
                 return;
             }
+            console.log("Attempting to save data to Firestore:", data);
             try {
                 const docRef = doc(db, PUBLIC_COLLECTION_PATH, SHARED_DOC_ID);
                 await setDoc(docRef, data, { merge: true }); // Merge to update specific fields
-                console.log("Data saved to Firestore.");
+                console.log("Data successfully saved to Firestore.");
             } catch (error) {
                 console.error("Error saving data to Firestore:", error);
             }
@@ -239,6 +242,7 @@
                 console.warn("Firestore not initialized or user not authenticated. Cannot set up listener.");
                 return;
             }
+            console.log("Setting up real-time Firestore listener.");
             const docRef = doc(db, PUBLIC_COLLECTION_PATH, SHARED_DOC_ID);
             onSnapshot(docRef, (docSnap) => {
                 window.isLoadingFromFirestore = true; // Set flag when loading from Firestore
