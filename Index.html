@@ -42,7 +42,7 @@
     const SHARED_DOC_ID = 'shared_inputs'; // A single document for all shared inputs
 
     // Revision Level
-    const appRevision = "1.5"; // Sticky banner changed to 45 YO Draw
+    const appRevision = "1.6"; // Implemented post-retirement draw logic
 
     // Predefined default values for dynamic sections
     const defaultInvestmentAccounts = [
@@ -791,13 +791,6 @@
                 // Investments grow by stock appreciation
                 currentInvestments *= (1 + stockAppreciation);
 
-                let totalNewInvestmentMoneyCurrentYear = 0;
-                totalNewInvestmentMoneyCurrentYear += annualMy401kContributionCurrentYear;
-                totalNewInvestmentMoneyCurrentYear += annual529ContributionCurrentYear;
-                totalNewInvestmentMoneyCurrentYear += annualHSAContributionCurrentYear;
-                totalNewInvestmentMoneyCurrentYear += annualRothContributionCurrentYear;
-                totalNewInvestmentMoneyCurrentYear += annualCompany401kContributionCurrentYear;
-
                 // Other income continues indefinitely, regardless of retirement year
                 let currentAnnualOtherIncome = 0;
                 projectedOtherIncomes.forEach(income => {
@@ -808,14 +801,28 @@
                     }
                     currentAnnualOtherIncome += income.value * 12;
                 });
-                totalNewInvestmentMoneyCurrentYear += currentAnnualOtherIncome;
 
-                currentInvestments += totalNewInvestmentMoneyCurrentYear;
+                // Add all contributions and other income
+                currentInvestments += annualMy401kContributionCurrentYear;
+                currentInvestments += annualCompany401kContributionCurrentYear;
+                currentInvestments += annual529ContributionCurrentYear;
+                currentInvestments += annualHSAContributionCurrentYear;
+                currentInvestments += annualRothContributionCurrentYear;
+                currentInvestments += currentAnnualOtherIncome; // Other income added here
+
+                // Apply draw if at or after retirement year
+                if (age >= retirementYearInput) {
+                    // Calculate draw amount in future dollars, maintaining $100K purchasing power in 2025 dollars
+                    const annualDrawAmount = 100000 * Math.pow((1 + inflationRate), i); 
+                    currentInvestments -= annualDrawAmount;
+                }
+
 
                 // Draw calculations now include other income for the specific year
                 // Handle "45 YO Draw" display based on current age
                 if (age === 45) {
                     if (initialAge < 45) { // Only calculate if currentAge was less than 45 initially
+                        // The retirementDrawRate here is the general draw rate; not necessarily $100K
                         const drawValue = (currentInvestments * retirementDrawRate) + currentAnnualOtherIncome;
                         const drawValueInTodaysDollars = drawValue / Math.pow((1 + inflationRate), i);
                         fortyFiveYODrawDisplay.textContent = formatLargeCurrency(drawValueInTodaysDollars);
@@ -1345,7 +1352,7 @@
         lg:fixed lg:top-0 lg:left-0 lg:h-screen lg:w-64 lg:flex-col lg:items-center lg:justify-start lg:p-6 lg:shadow-2xl lg:overflow-y-auto
     ">
         <h2 class="text-xl font-extrabold mb-4 text-center text-white w-full lg:text-3xl lg:mb-8">Your Snapshot</h2>
-        <span id="appRevisionDisplay" class="text-xs text-blue-200 font-semibold mb-4 lg:mb-6">v1.5</span>
+        <span id="appRevisionDisplay" class="text-xs text-blue-200 font-semibold mb-4 lg:mb-6">v1.6</span>
         <!-- Each summary item will be a div -->
         <div class="text-center mb-2 summary-item w-1/2 sm:w-1/3 md:w-1/4 lg:w-auto lg:text-center px-1">
             <p class="text-sm font-bold text-blue-200 lg:text-lg">Net Worth:</p>
