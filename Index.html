@@ -1,59 +1,71 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Investment Calculator</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Investment Calculator</title>
+    <!-- Tailwind CSS CDN for styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- D3.js CDN for charting -->
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <!-- Firebase SDKs -->
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+    import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+    import { getFirestore, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-  <!-- Tailwind CSS for styling -->
-  <script src="https://cdn.tailwindcss.com"></script>
-
-  <!-- D3.js for charts -->
-  <script src="https://d3js.org/d3.v7.min.js"></script>
-
-  <!-- Firebase SDKs -->
-  <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-    import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-    import { getFirestore, collection, addDoc, getDocs, query, orderBy } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
-
-    //  Your Firebase project configuration
-    const firebaseConfig = {
-      apiKey: "AIzaSyCC1UKUPFRUnWyQ09hGFkJxVEVBBkZ7X40",
-      authDomain: "investment-calculator-931f2.firebaseapp.com",
-      projectId: "investment-calculator-931f2",
-      storageBucket: "investment-calculator-931f2.appspot.com",
-      messagingSenderId: "943895110805",
-      appId: "1:943895110805:web:ba6e1e6177ae31d7af279c",
-      measurementId: "G-F0CRPKLS7G"
+    // Dynamically retrieve Firebase configuration provided by the Canvas environment
+    // Fallback to a placeholder if running outside Canvas (for local development testing)
+    const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {
+        apiKey: "YOUR_API_KEY",
+        authDomain: "YOUR_AUTH_DOMAIN",
+        projectId: "YOUR_PROJECT_ID",
+        storageBucket: "YOUR_STORAGE_BUCKET",
+        messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
+        appId: "YOUR_APP_ID",
+        measurementId: "YOUR_MEASUREMENT_ID"
     };
 
-    // 🔧 Initialize Firebase
-    const app = initializeApp(firebaseConfig);
-    const db = getFirestore(app);
-    const auth = getAuth(app);
+    // Use the actual appId from the Canvas environment, or fallback to the config's appId, then a default
+    const appId = typeof __app_id !== 'undefined' ? __app_id : firebaseConfig.appId || 'default-app-id';
+    const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
 
-    window.firebaseApp = app;
-    window.db = db;
-    window.auth = auth;
-    window.appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
 
-    //  Sign in anonymously and load historical data
-    signInAnonymously(auth)
-      .then(async (result) => {
-        window.currentUserId = result.user.uid;
-        document.getElementById("userIdDisplay").textContent = `Signed in as ${window.currentUserId}`;
-        console.log("Signed in:", window.currentUserId);
+    // Global Firebase vars
+    let app;
+    let db;
+    let auth;
+    let userId; // Will store the authenticated user ID
 
-        const recordsRef = collection(db, `/artifacts/${window.appId}/users/${window.currentUserId}/historical_records`);
-        const snapshot = await getDocs(query(recordsRef, orderBy("date")));
-        const data = snapshot.docs.map(doc => doc.data());
-        renderHistoricalData(data);
-      })
-      .catch((error) => {
-        console.error("Anonymous sign-in failed:", error);
-        document.getElementById("recordStatusMessage").textContent = "Failed to authenticate.";
-      });
+    // Firestore Paths - Using a public collection for shared data
+    const PUBLIC_COLLECTION_PATH = `artifacts/${appId}/public/data/retirement_calculator`;
+    const SHARED_DOC_ID = 'shared_inputs'; // A single document for all shared inputs
+
+
+        // Flag to prevent saving when data is being loaded from Firestore
+        window.isLoadingFromFirestore = false;
+
+        // Helper functions for number formatting in input fields
+        function formatInputNumber(value) {
+            if (value === null || value === undefined || value === '') {
+                return '';
+            }
+            // Ensure value is treated as a number before formatting, removing existing commas
+            let num = Number(String(value).replace(/,/g, ''));
+            if (isNaN(num)) {
+                return '';
+            }
+            return new Intl.NumberFormat('en-US').format(num);
+        }
+
+        function cleanInputNumber(stringValue) {
+            if (stringValue === null || stringValue === undefined || stringValue === '') {
+                return 0;
+            }
+            // Remove all non-digit characters except for a potential leading minus sign and decimal
+            const cleaned = stringValue.replace(/[^\d.-]/g, '');
+            return parseFloat(cleaned) || 0;
+        }
 
         // Get references to all static input elements
         const staticInputs = {
@@ -112,12 +124,6 @@
             { slider: staticInputs.retirementDrawRate, valueDisplay: document.getElementById('retirementDrawRateValue'), unit: '%' },
             { slider: staticInputs.retirementYear, valueDisplay: document.getElementById('retirementYearValue'), unit: '' }
         ];
-
-        // Initial empty arrays for dynamic inputs
-        const initialInvestmentAccounts = [];
-        const initialOtherAssets = [];
-        const initialLiabilities = [];
-        const initialOtherIncome = [];
 
         // Function to format numbers as currency, rounded to nearest thousand, without K/M (for table)
         const formatTableCurrency = (amount) => {
@@ -336,18 +342,30 @@
                     console.log("Data loaded from Firestore:", data);
                     populateInputsFromFirestore(data);
                 } else {
-                    console.log("No shared data found in Firestore. Initializing with blank fields and saving this state.");
+                    console.log("No shared data found in Firestore. Initializing with provided values and saving this state.");
                     // Explicitly clear dynamic inputs
                     investmentAccountsContainer.innerHTML = '';
                     otherAssetsContainer.innerHTML = '';
                     liabilitiesContainer.innerHTML = '';
                     otherIncomeContainer.innerHTML = '';
 
-                    // Add one blank row for each dynamic section as a starting point
-                    addInvestmentAccountInput();
-                    addOtherAssetInput();
-                    addLiabilityInput();
-                    addOtherIncomeInput();
+                    // Add dynamic rows with user-provided default values
+                    addInvestmentAccountInput({ name: "401K", value: 524620 });
+                    addInvestmentAccountInput({ name: "Roth 1", value: 177474 });
+                    addInvestmentAccountInput({ name: "Roth 2", value: 156407 });
+                    addInvestmentAccountInput({ name: "529", value: 55485 });
+                    addInvestmentAccountInput({ name: "HSA", value: 25187 });
+                    addInvestmentAccountInput({ name: "Gold", value: 6600 });
+                    addInvestmentAccountInput({ name: "Checking", value: 17522 });
+
+
+                    addOtherAssetInput({ name: "Home Value", value: 979500 });
+                    addOtherAssetInput({ name: "Other Equity (car, tractor, camper)", value: 90601 });
+
+                    addLiabilityInput({ name: "Mortgage", value: 202212 });
+
+                    // Ensure other income starts with at least one blank row if no data, or a default if desired
+                    addOtherIncomeInput(); // Add one blank income row
 
                     // Save this initial blank state to Firestore
                     await saveDataToFirestore(collectAllCurrentInputs());
@@ -672,7 +690,7 @@
                           annualSalaryRaise, stockAppreciation,
                           housingAppreciation, inflation, annualPrincipalPayment,
                           currentFinancials.otherIncome, // Pass the collected current other income state
-                          currentFinancials.otherAssets.find(asset => asset.name === "Other Equity (Car, RV, etc.)")?.value || 0,
+                          currentFinancials.otherAssets.find(asset => asset.name === "Other Equity (car, tractor, camper)")?.value || 0,
                           currentAge,
                           retirementDrawRate, todaysDrawDisplay, fortyFiveYODrawDisplay, sixtyTwoYODrawDisplay,
                           retirementYear, totalAnnualOtherIncome);
