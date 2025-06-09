@@ -17,7 +17,6 @@
         // Firebase global variables (provided by Canvas environment)
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
         const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
-        // FIX: Correctly reference __initial_auth_token on the right side of the ternary
         const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
 
         // Global Firebase vars
@@ -113,39 +112,17 @@
             { slider: staticInputs.retirementYear, valueDisplay: document.getElementById('retirementYearValue'), unit: '' }
         ];
 
-        // Initial investment accounts data (exact values, not rounded) - these are default fallbacks
-        const initialInvestmentAccounts = [
-            { name: "401K", value: 524620 },
-            { name: "Roth 1", value: 177474 },
-            { name: "Roth 2", value: 156407 },
-            { name: "529", value: 55485 },
-            { name: "HSA", value: 25187 },
-            { name: "Stocks", value: 0 },
-            { name: "Gold", value: 6600 },
-            { name: "Silver", value: 0 },
-            { name: "Bitcoin", value: 0 }
-        ];
+        // Initial investment accounts data (now empty by default)
+        const initialInvestmentAccounts = [];
 
-        // Initial other assets data - these are default fallbacks
-        const initialOtherAssets = [
-            { name: "Checking Account", value: 17522 },
-            { name: "Home Value", value: 943522 },
-            { name: "Other Equity (Car, RV, etc.)", value: 90601 }
-        ];
+        // Initial other assets data (now empty by default)
+        const initialOtherAssets = [];
 
-        // Initial liability accounts data (exact values, not rounded) - these are default fallbacks
-        const initialLiabilities = [
-            { name: "Mortgage", value: 202212 },
-            { name: "Credit Cards", value: 0 },
-            { name: "HELOC", value: 0 },
-            { name: "Car Loan", value: 0 }
-        ];
+        // Initial liability accounts data (now empty by default)
+        const initialLiabilities = [];
 
-        // Initial other income data - these are default fallbacks
-        const initialOtherIncome = [
-            { name: "Cell Tower Lease", value: 1200, escalationRate: 0.015 },
-            { name: "Rental 1", value: 1300, escalationRate: 0.04 }
-        ];
+        // Initial other income data (now empty by default)
+        const initialOtherIncome = [];
 
         // Function to format numbers as currency, rounded to nearest thousand, without K/M (for table)
         const formatTableCurrency = (amount) => {
@@ -311,11 +288,21 @@
                     console.log("Data loaded from Firestore:", data);
                     populateInputsFromFirestore(data);
                 } else {
-                    console.log("No shared data found in Firestore. Populating with defaults and attempting initial save.");
-                    // If no data, populate with initial defaults (or current DOM values if already changed)
-                    // and then save that state to Firestore to establish the document.
-                    populateInputsFromFirestore({}); // Ensure inputs are set to defaults if doc doesn't exist
-                    await saveDataToFirestore(collectAllCurrentInputs()); // Save the current (default) state
+                    console.log("No shared data found in Firestore. Initializing with blank fields and saving this state.");
+                    // Explicitly clear dynamic inputs
+                    investmentAccountsContainer.innerHTML = '';
+                    otherAssetsContainer.innerHTML = '';
+                    liabilitiesContainer.innerHTML = '';
+                    otherIncomeContainer.innerHTML = '';
+
+                    // Add one blank row for each dynamic section as a starting point
+                    addInvestmentAccountInput();
+                    addOtherAssetInput();
+                    addLiabilityInput();
+                    addOtherIncomeInput();
+
+                    // Save this initial blank state to Firestore
+                    await saveDataToFirestore(collectAllCurrentInputs());
                 }
                 window.isLoadingFromFirestore = false; // Reset flag after processing
             }, (error) => {
@@ -649,7 +636,8 @@
             let currentMortgage = initialMortgageValue;
             let currentOtherLiabilitiesTotal = initialTotalLiabilities - initialMortgageValue;
             let currentBaseSalary = initialBaseSalary;
-            let currentOtherEquity = otherEquityValueFromInitialAssets;
+            // CHANGE: Other Equity now remains constant at its initial nominal value
+            let currentOtherEquity = otherEquityValueFromInitialAssets; 
 
             const startYear = new Date().getFullYear();
             let currentProjectedAge = initialAge;
@@ -730,7 +718,8 @@
                 }
 
                 currentHomeValue *= (1 + housingAppreciation);
-                currentOtherEquity = otherEquityValueFromInitialAssets / Math.pow((1 + inflationRate), 0) * Math.pow((1 + inflationRate), i); // Adjust other equity for inflation
+                // currentOtherEquity remains constant nominal value, not scaled by inflation
+                // currentOtherEquity = otherEquityValueFromInitialAssets; // Already set above
 
                 currentMortgage = Math.max(0, currentMortgage - annualPrincipalPayment);
 
@@ -960,11 +949,9 @@
 
         // Initial setup on page load
         document.addEventListener('DOMContentLoaded', () => {
-            // Populate initial default dynamic rows. These will be overwritten by Firestore if data exists.
-            initialInvestmentAccounts.forEach(account => addInvestmentAccountInput(account));
-            initialOtherAssets.forEach(asset => addOtherAssetInput(asset));
-            initialLiabilities.forEach(liability => addLiabilityInput(liability));
-            initialOtherIncome.forEach(income => addOtherIncomeInput(income));
+            // IMPORTANT: Removed the initial population of dynamic rows here.
+            // This is now handled by the Firestore listener to ensure consistency with persisted data.
+            // The Firestore listener will either load existing data or initialize with blank rows.
 
             initFirebase(); // Initialize Firebase and start data loading/listening
 
