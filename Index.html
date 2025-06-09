@@ -42,7 +42,7 @@
     const SHARED_DOC_ID = 'shared_inputs'; // A single document for all shared inputs
 
     // Revision Level
-    const appRevision = "1.1"; // Increment this for each code update (from 1.0)
+    const appRevision = "1.3"; // Incremented for retirement year change and income stopping logic
 
     // Predefined default values for dynamic sections
     const defaultInvestmentAccounts = [
@@ -745,7 +745,7 @@
             let currentMortgage = initialMortgageValue;
             let currentOtherLiabilitiesTotal = initialTotalLiabilities - initialMortgageValue;
             let currentBaseSalary = initialBaseSalary;
-            // CHANGE: Other Equity now remains constant at its initial nominal value
+            // Other Equity now remains constant at its initial nominal value
             let currentOtherEquity = otherEquityValueFromInitialAssets; 
 
             const startYear = new Date().getFullYear();
@@ -771,20 +771,23 @@
                 const year = startYear + i;
                 const age = currentProjectedAge;
 
-                let annualMy401kContributionCurrentYear = currentBaseSalary * my401kContributionRate;
-                let annualCompany401kContributionCurrentYear = currentBaseSalary * company401kContributionRate;
-                let annual529ContributionCurrentYear = monthly529Contribution * 12;
-                let annualHSAContributionCurrentYear = monthlyHSAContribution * 12;
-                let annualRothContributionCurrentYear = annualRothContribution;
+                // Initialize current year contributions to 0
+                let annualMy401kContributionCurrentYear = 0;
+                let annualCompany401kContributionCurrentYear = 0;
+                let annual529ContributionCurrentYear = 0;
+                let annualHSAContributionCurrentYear = 0;
+                let annualRothContributionCurrentYear = 0;
 
-                if (age >= retirementYearInput) {
-                    annualMy401kContributionCurrentYear = 0;
-                    annualCompany401kContributionCurrentYear = 0;
-                    annual529ContributionCurrentYear = 0;
-                    annualHSAContributionCurrentYear = 0;
-                    annualRothContributionCurrentYear = 0;
+                // Only add contributions if current age is less than the retirement year
+                if (age < retirementYearInput) {
+                    annualMy401kContributionCurrentYear = currentBaseSalary * my401kContributionRate;
+                    annualCompany401kContributionCurrentYear = currentBaseSalary * company401kContributionRate;
+                    annual529ContributionCurrentYear = monthly529Contribution * 12;
+                    annualHSAContributionCurrentYear = monthlyHSAContribution * 12;
+                    annualRothContributionCurrentYear = annualRothContribution;
                 }
-
+                
+                // Investments grow by stock appreciation
                 currentInvestments *= (1 + stockAppreciation);
 
                 let totalNewInvestmentMoneyCurrentYear = 0;
@@ -794,6 +797,7 @@
                 totalNewInvestmentMoneyCurrentYear += annualRothContributionCurrentYear;
                 totalNewInvestmentMoneyCurrentYear += annualCompany401kContributionCurrentYear;
 
+                // Other income continues indefinitely, regardless of retirement year
                 let currentAnnualOtherIncome = 0;
                 projectedOtherIncomes.forEach(income => {
                     income.value *= (1 + income.escalationRate);
@@ -856,8 +860,11 @@
                 row.insertCell().textContent = formatTableCurrency(currentNetWorth);
                 row.insertCell().textContent = formatTableCurrency(netWorthInTodaysDollars);
 
-                currentBaseSalary *= (1 + annualSalaryRaise);
-
+                // Salary only increases if not yet retired
+                if (age < retirementYearInput) {
+                    currentBaseSalary *= (1 + annualSalaryRaise);
+                }
+                
                 currentProjectedAge++;
             }
             renderChart(chartData);
@@ -1337,7 +1344,7 @@
         lg:fixed lg:top-0 lg:left-0 lg:h-screen lg:w-64 lg:flex-col lg:items-center lg:justify-start lg:p-6 lg:shadow-2xl lg:overflow-y-auto
     ">
         <h2 class="text-xl font-extrabold mb-4 text-center text-white w-full lg:text-3xl lg:mb-8">Your Snapshot</h2>
-        <span id="appRevisionDisplay" class="text-xs text-blue-200 font-semibold mb-4 lg:mb-6">v1.1</span>
+        <span id="appRevisionDisplay" class="text-xs text-blue-200 font-semibold mb-4 lg:mb-6">v1.3</span>
         <!-- Each summary item will be a div -->
         <div class="text-center mb-2 summary-item w-1/2 sm:w-1/3 md:w-1/4 lg:w-auto lg:text-center px-1">
             <p class="text-sm font-bold text-blue-200 lg:text-lg">Net Worth:</p>
@@ -1478,7 +1485,7 @@
                                 <label for="annualRothContribution" class="label-style">Other Annual Savings Contribution ($)</label>
                                 <input type="text" id="annualRothContribution" value="25000" class="input-field">
                             </div>
-                            <h3 class="text-xl font-semibold mt-8 mb-4 text-gray-800">Other Income (Monthly)</h3>
+                            <h3 class="text-xl font-semibold mt-8 mb-4 text-gray-800">Other Income (Continues Post-Retirement)</h3>
                             <!-- Labels for Other Income inputs -->
                             <div class="flex items-center text-sm font-semibold mb-2 ml-2">
                                 <div class="flex-1 min-w-[120px]">Income Description</div>
@@ -1540,7 +1547,7 @@
                                 <label for="retirementYear" class="label-style">Retirement Year (Age)</label>
                                 <div class="slider-input-wrapper">
                                     <span class="slider-value-display" id="retirementYearValue"></span>
-                                    <input type="range" id="retirementYear" min="38" max="100" value="65" step="1" class="w-full">
+                                    <input type="range" id="retirementYear" min="38" max="100" value="45" step="1" class="w-full">
                                 </div>
                             </div>
 
