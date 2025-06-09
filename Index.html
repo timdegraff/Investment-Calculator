@@ -41,6 +41,9 @@
     const PUBLIC_COLLECTION_PATH = `artifacts/${appId}/public/data/retirement_calculator`;
     const SHARED_DOC_ID = 'shared_inputs'; // A single document for all shared inputs
 
+    // Revision Level
+    const appRevision = "1.0"; // Increment this for each code update
+
 
         // Flag to prevent saving when data is being loaded from Firestore
         window.isLoadingFromFirestore = false;
@@ -105,6 +108,7 @@
         const otherIncomeContainer = document.getElementById('otherIncomeContainer');
         const addOtherIncomeBtn = document.getElementById('addOtherIncomeBtn');
         const chartContainer = document.getElementById('chart-container');
+        const appRevisionDisplay = document.getElementById('appRevisionDisplay'); // New: For revision display
 
         // References for the summary spans
         const totalInvestmentsSummary = document.getElementById('totalInvestmentsSummary');
@@ -1035,6 +1039,11 @@
 
         // Initial setup on page load
         document.addEventListener('DOMContentLoaded', () => {
+            // Display the current application revision
+            if (appRevisionDisplay) {
+                appRevisionDisplay.textContent = `v${appRevision}`;
+            }
+
             // Attempt Firebase initialization
             initFirebase().then(() => {
                 // Firebase init successful and listener set up, data should be populated by onSnapshot
@@ -1307,6 +1316,7 @@
         lg:fixed lg:top-0 lg:left-0 lg:h-screen lg:w-64 lg:flex-col lg:items-center lg:justify-start lg:p-6 lg:shadow-2xl lg:overflow-y-auto
     ">
         <h2 class="text-xl font-extrabold mb-4 text-center text-white w-full lg:text-3xl lg:mb-8">Your Snapshot</h2>
+        <span id="appRevisionDisplay" class="text-xs text-blue-200 font-semibold mb-4 lg:mb-6"></span>
         <!-- Each summary item will be a div -->
         <div class="text-center mb-2 summary-item w-1/2 sm:w-1/3 md:w-1/4 lg:w-auto lg:text-center px-1">
             <p class="text-sm font-bold text-blue-200 lg:text-lg">Net Worth:</p>
