@@ -11,7 +11,7 @@
     <!-- Firebase SDKs -->
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-    import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+    import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
     import { getFirestore, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
     // Your actual Firebase project configuration (COPY THIS EXACTLY FROM YOUR FIREBASE CONSOLE)
@@ -24,8 +24,8 @@
       appId: "1:943895110805:web:ba6e1e6177ae31d7af279c",
       measurementId: "G-F0CRPKLS7G"
     };
-    // NOTE: The lines below are still needed for proper Firebase initialization in Canvas
-    const appId = firebaseConfig.appId; // Use the actual appId from your config
+    // Use the actual appId from your config, and keep initialAuthToken for Canvas environment compatibility
+    const appId = firebaseConfig.appId;
     const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
 
 
@@ -179,21 +179,64 @@
                 db = getFirestore(app);
                 auth = getAuth(app);
 
-                // Sign in anonymously or with custom token if available
-                if (initialAuthToken) {
-                    await signInWithCustomToken(auth, initialAuthToken);
-                } else {
-                    await signInAnonymously(auth);
-                }
+                // Use onAuthStateChanged to manage the authentication state.
+                // This ensures we react to Firebase's internal auth state readiness.
+                await new Promise((resolve, reject) => {
+                    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+                        if (user) {
+                            // User is already signed in (e.g., from a previous session or custom token)
+                            userId = user.uid;
+                            console.log("Firebase initialized and user authenticated:", userId);
+                            unsubscribe(); // Unsubscribe after we get a valid user
+                            resolve();
+                        } else if (initialAuthToken) {
+                            // No user, but Canvas provided a custom token. Try to sign in with it.
+                            try {
+                                const userCredential = await signInWithCustomToken(auth, initialAuthToken);
+                                userId = userCredential.user.uid;
+                                console.log("Firebase initialized and user authenticated with custom token:", userId);
+                                unsubscribe();
+                                resolve();
+                            } catch (customTokenError) {
+                                console.warn("Custom token sign-in failed, attempting anonymous sign-in:", customTokenError);
+                                // Fallback to anonymous sign-in if custom token fails
+                                try {
+                                    const anonUserCredential = await signInAnonymously(auth);
+                                    userId = anonUserCredential.user.uid;
+                                    console.log("Firebase initialized and user authenticated anonymously (after custom token failure):", userId);
+                                    unsubscribe();
+                                    resolve();
+                                } catch (anonError) {
+                                    console.error("Anonymous sign-in failed:", anonError);
+                                    unsubscribe(); // Unsubscribe even on failure
+                                    reject(anonError);
+                                }
+                            }
+                        } else {
+                            // No user and no custom token, sign in anonymously.
+                            try {
+                                const anonUserCredential = await signInAnonymously(auth);
+                                userId = anonUserCredential.user.uid;
+                                console.log("Firebase initialized and user authenticated anonymously:", userId);
+                                unsubscribe();
+                                resolve();
+                            } catch (anonError) {
+                                console.error("Anonymous sign-in failed:", anonError);
+                                unsubscribe(); // Unsubscribe even on failure
+                                reject(anonError);
+                            }
+                        }
+                    }, (error) => {
+                        console.error("Error in onAuthStateChanged listener:", error);
+                        unsubscribe(); // Unsubscribe on listener error
+                        reject(error);
+                    });
+                });
 
-                userId = auth.currentUser?.uid || 'anonymous';
-                console.log("Firebase initialized and user authenticated:", userId);
-
-                setupRealtimeListener(); // Start listening for data changes
+                setupRealtimeListener(); // Start listening for data changes AFTER auth is resolved
             } catch (error) {
-                console.error("Error initializing Firebase or authenticating:", error);
-                // If Firebase fails, still run calculations with default/current DOM values
-                calculateFinancials(false);
+                console.error("Error initializing Firebase or authenticating (outer catch):", error);
+                calculateFinancials(false); // Fallback to local calculation
             }
         };
 
