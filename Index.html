@@ -101,7 +101,7 @@
         const liabilitiesContainer = document.getElementById('liabilitiesContainer');
         const addLiabilityBtn = document.getElementById('addLiabilityBtn');
         const otherIncomeContainer = document.getElementById('otherIncomeContainer');
-        const addOtherIncomeBtn = document = document.getElementById('addOtherIncomeBtn');
+        const addOtherIncomeBtn = document.getElementById('addOtherIncomeBtn');
         const chartContainer = document.getElementById('chart-container');
 
         // References for the summary spans
@@ -175,28 +175,78 @@
         const initFirebase = async () => {
             console.log("Initializing Firebase...");
             try {
-                // Initialize app and get services
+                // Ensure firebaseConfig is logged to confirm it's available
+                console.log("Firebase Config:", firebaseConfig);
+
+                // Initialize app and get services directly
                 app = initializeApp(firebaseConfig);
                 db = getFirestore(app);
                 auth = getAuth(app); // Get auth instance immediately
 
-                // Attempt sign-in directly
-                if (initialAuthToken) {
-                    console.log("Attempting sign-in with custom token...");
-                    await signInWithCustomToken(auth, initialAuthToken);
-                } else {
-                    console.log("Attempting anonymous sign-in...");
-                    await signInAnonymously(auth);
-                }
+                // Use onAuthStateChanged to manage the authentication state.
+                // This ensures we react to Firebase's internal auth state readiness.
+                // We'll resolve this promise once an auth state is determined (signed in or anonymous).
+                await new Promise((resolve, reject) => {
+                    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+                        // This callback fires when Firebase Auth is initialized and also on subsequent state changes.
+                        // We only want to attempt sign-in if there's no active user.
+                        if (!user) {
+                            // If no user is signed in, attempt sign-in based on token or anonymously
+                            if (initialAuthToken) {
+                                console.log("Attempting sign-in with custom token...");
+                                try {
+                                    await signInWithCustomToken(auth, initialAuthToken);
+                                    userId = auth.currentUser.uid;
+                                    console.log("Firebase authenticated with custom token. User ID:", userId);
+                                } catch (customTokenError) {
+                                    console.warn("Custom token sign-in failed, falling back to anonymous:", customTokenError);
+                                    // If custom token fails, try anonymous
+                                    try {
+                                        await signInAnonymously(auth);
+                                        userId = auth.currentUser.uid;
+                                        console.log("Firebase authenticated anonymously (after custom token fallback). User ID:", userId);
+                                    } catch (anonError) {
+                                        console.error("Anonymous sign-in failed:", anonError);
+                                        unsubscribe(); // Unsubscribe even on failure
+                                        reject(anonError); // Reject the promise if anonymous also fails
+                                        return; // Exit to prevent further execution in this branch
+                                    }
+                                }
+                            } else {
+                                // No custom token, just try anonymous sign-in
+                                console.log("Attempting anonymous sign-in...");
+                                try {
+                                    await signInAnonymously(auth);
+                                    userId = auth.currentUser.uid;
+                                    console.log("Firebase authenticated anonymously. User ID:", userId);
+                                } catch (anonError) {
+                                    console.error("Anonymous sign-in failed:", anonError);
+                                    unsubscribe(); // Unsubscribe even on failure
+                                    reject(anonError); // Reject the promise if anonymous fails
+                                    return; // Exit to prevent further execution in this branch
+                                }
+                            }
+                        } else {
+                            // User is already signed in (either from a previous session or via __initial_auth_token)
+                            userId = user.uid;
+                            console.log("Firebase auth state detected existing user:", userId);
+                        }
+                        unsubscribe(); // Unsubscribe after the first relevant state change
+                        resolve(); // Resolve the promise once auth state is settled
+                    }, (error) => {
+                        // Error during initial auth state observation
+                        console.error("Error observing Firebase auth state:", error);
+                        unsubscribe();
+                        reject(error);
+                    });
+                });
 
-                // After successful sign-in (either custom or anonymous), get the user ID
-                userId = auth.currentUser?.uid || 'anonymous-after-signin';
-                console.log("Firebase authenticated successfully. User ID:", userId);
-
-                setupRealtimeListener(); // Start listening for data changes
+                // Only proceed to setupRealtimeListener once authentication is confirmed
+                setupRealtimeListener();
             } catch (error) {
-                console.error("Error initializing Firebase or authenticating:", error);
-                calculateFinancials(false); // Fallback to local calculation
+                console.error("Critical error during Firebase initialization or authentication flow:", error);
+                // Even if Firebase auth fails, try to calculate financials with existing DOM data
+                calculateFinancials(false);
             }
         };
 
