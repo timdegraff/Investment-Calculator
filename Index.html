@@ -44,14 +44,14 @@
     const SHARED_DOC_ID = 'shared_inputs'; // A single document for all shared inputs
 
     // Revision Level
-    const appRevision = "1.16"; // Updated with new default values and retirement age
+    const appRevision = "1.20"; // Removed 529 plan entirely
 
     // Predefined default values for dynamic sections
     const defaultInvestmentAccounts = [
         { name: "401K", value: 500000 },
         { name: "Roth 1", value: 175000 },
         { name: "Roth 2", value: 150000 },
-        { name: "529", value: 50000 },
+        // { name: "529", value: 50000 }, // Removed 529
         { name: "HSA", value: 25000 },
         { name: "Gold", value: 10000 },
         { name: "Checking", value: 20000 }
@@ -108,13 +108,14 @@
             my401kContributionRate: document.getElementById('my401kContributionRate'),
             company401kContributionRate: document.getElementById('company401kContributionRate'),
             annualRothContribution: document.getElementById('annualRothContribution'),
-            monthly529Contribution: document.getElementById('monthly529Contribution'),
+            // monthly529Contribution: document.getElementById('monthly529Contribution'), // Removed 529
             monthlyHSAContribution: document.getElementById('monthlyHSAContribution'),
             annualSalaryRaise: document.getElementById('annualSalaryRaise'),
             stockAppreciation: document.getElementById('stockAppreciation'),
             housingAppreciation: document.getElementById('housingAppreciation'),
             inflation: document.getElementById('inflation'),
-            retirementDrawRate: document.getElementById('retirementDrawRate'),
+            retirementDrawRatePre62: document.getElementById('retirementDrawRatePre62'),
+            retirementDrawRatePost62: document.getElementById('retirementDrawRatePost62'),
             retirementYear: document.getElementById('retirementYear'),
             monthlyPrincipalPayment: document.getElementById('monthlyPrincipalPayment')
         };
@@ -125,11 +126,11 @@
         const annualIncomeDisplay = document.getElementById('annualIncomeDisplay');
         const annualSavingsDisplay = document.getElementById('annualSavingsDisplay');
         const todaysDrawDisplay = document.getElementById('todaysDraw');
-        const dynamicRetirementDrawLabel = document.getElementById('dynamicRetirementDrawLabel'); // New: Dynamic label for retirement draw
-        const dynamicRetirementDrawValue = document.getElementById('dynamicRetirementDrawValue'); // New: Dynamic value for retirement draw
+        const dynamicRetirementDrawLabel = document.getElementById('dynamicRetirementDrawLabel');
+        const dynamicRetirementDrawValue = document.getElementById('dynamicRetirementDrawValue');
         const sixtyTwoYODrawDisplay = document.getElementById('sixtyTwoYODraw');
-        const dynamicRetirementDrawLabelSticky = document.getElementById('dynamicRetirementDrawLabelSticky'); // New: Dynamic sticky label
-        const dynamicRetirementDrawValueSticky = document.getElementById('dynamicRetirementDrawValueSticky'); // New: Dynamic sticky value
+        const dynamicRetirementDrawLabelSticky = document.getElementById('dynamicRetirementDrawLabelSticky');
+        const dynamicRetirementDrawValueSticky = document.getElementById('dynamicRetirementDrawValueSticky');
         const projectionTableBody = document.getElementById('projectionTableBody');
         const investmentAccountsContainer = document.getElementById('investmentAccountsContainer');
         const addInvestmentBtn = document.getElementById('addInvestmentBtn');
@@ -140,7 +141,7 @@
         const otherIncomeContainer = document.getElementById('otherIncomeContainer');
         const addOtherIncomeBtn = document.getElementById('addOtherIncomeBtn');
         const chartContainer = document.getElementById('chart-container');
-        const appRevisionDisplay = document.getElementById('appRevisionDisplay'); // New: For revision display
+        const appRevisionDisplay = document.getElementById('appRevisionDisplay');
 
         // References for the summary spans
         const totalInvestmentsSummary = document.getElementById('totalInvestmentsSummary');
@@ -157,7 +158,8 @@
             { slider: staticInputs.stockAppreciation, valueDisplay: document.getElementById('stockAppreciationValue'), unit: '%' },
             { slider: staticInputs.housingAppreciation, valueDisplay: document.getElementById('housingAppreciationValue'), unit: '%' },
             { slider: staticInputs.inflation, valueDisplay: document.getElementById('inflationValue'), unit: '%' },
-            { slider: staticInputs.retirementDrawRate, valueDisplay: document.getElementById('retirementDrawRateValue'), unit: '%' },
+            { slider: staticInputs.retirementDrawRatePre62, valueDisplay: document.getElementById('retirementDrawRatePre62Value'), unit: '%' },
+            { slider: staticInputs.retirementDrawRatePost62, valueDisplay: document.getElementById('retirementDrawRatePost62Value'), unit: '%' },
             { slider: staticInputs.retirementYear, valueDisplay: document.getElementById('retirementYearValue'), unit: '' }
         ];
 
@@ -295,7 +297,7 @@
                     value = cleanInputNumber(staticInputs[key].value);
                 }
                 // Convert percentages to decimal for internal calculations and storage
-                if (['bonusRate', 'my401kContributionRate', 'company401kContributionRate', 'annualSalaryRaise', 'stockAppreciation', 'housingAppreciation', 'inflation', 'retirementDrawRate'].includes(key)) {
+                if (['bonusRate', 'my401kContributionRate', 'company401kContributionRate', 'annualSalaryRaise', 'stockAppreciation', 'housingAppreciation', 'inflation', 'retirementDrawRatePre62', 'retirementDrawRatePost62'].includes(key)) {
                     value = value / 100;
                 }
                 collectedData[key] = value;
@@ -384,7 +386,7 @@
                 if (data[key] !== undefined) {
                     let value = data[key];
                     // Special handling for percentage sliders to convert back to 0-100 range for display
-                    if (['bonusRate', 'my401kContributionRate', 'company401kContributionRate', 'annualSalaryRaise', 'stockAppreciation', 'housingAppreciation', 'inflation', 'retirementDrawRate'].includes(key)) {
+                    if (['bonusRate', 'my401kContributionRate', 'company401kContributionRate', 'annualSalaryRaise', 'stockAppreciation', 'housingAppreciation', 'inflation', 'retirementDrawRatePre62', 'retirementDrawRatePost62'].includes(key)) {
                         value = parseFloat(value) * 100; // Convert decimal back to percentage for UI
                     }
 
@@ -465,7 +467,6 @@
                 calculateFinancials(true); // Trigger save on blur
             });
             const nameInput = rowDiv.querySelector('.investment-name');
-            // FIX: Changed 'input' to 'blur' for triggering calculateFinancials for name field
             nameInput.addEventListener('blur', () => calculateFinancials(true)); // Trigger save on blur
 
             const deleteBtn = rowDiv.querySelector('.delete-item-btn');
@@ -495,7 +496,6 @@
                 calculateFinancials(true); // Trigger save on blur
             });
             const nameInput = rowDiv.querySelector('.asset-name');
-            // FIX: Changed 'input' to 'blur' for triggering calculateFinancials for name field
             nameInput.addEventListener('blur', () => calculateFinancials(true)); // Trigger save on blur
 
             const deleteBtn = rowDiv.querySelector('.delete-item-btn');
@@ -525,7 +525,6 @@
                 calculateFinancials(true); // Trigger save on blur
             });
             const nameInput = rowDiv.querySelector('.liability-name');
-            // FIX: Changed 'input' to 'blur' for triggering calculateFinancials for name field
             nameInput.addEventListener('blur', () => calculateFinancials(true)); // Trigger save on blur
 
             const deleteBtn = rowDiv.querySelector('.delete-item-btn');
@@ -561,7 +560,6 @@
                         calculateFinancials(true); // Trigger save on blur
                     });
                 } else if (input.classList.contains('income-name')) {
-                    // FIX: Changed 'input' to 'blur' for triggering calculateFinancials for name field
                     input.addEventListener('blur', () => calculateFinancials(true)); // Trigger save on blur
                 } else if (input.classList.contains('income-escalation-rate')) {
                     input.addEventListener('input', () => calculateFinancials(true)); // Still trigger on input for immediate feedback on escalation rate
@@ -593,10 +591,10 @@
                     value = cleanInputNumber(staticInputs[key].value);
                 }
                 // Convert percentages to decimal for internal calculations and storage
-                if (['bonusRate', 'my401kContributionRate', 'company401kContributionRate', 'annualSalaryRaise', 'stockAppreciation', 'housingAppreciation', 'inflation', 'retirementDrawRate'].includes(key)) {
+                if (['bonusRate', 'my401kContributionRate', 'company401kContributionRate', 'annualSalaryRaise', 'stockAppreciation', 'housingAppreciation', 'inflation', 'retirementDrawRatePre62', 'retirementDrawRatePost62'].includes(key)) {
                     value = value / 100;
                 }
-                currentFinancials[key] = value;
+                collectedData[key] = value;
             }
 
             // Read dynamic investment account values
@@ -650,14 +648,15 @@
             const my401kContributionRate = currentFinancials.my401kContributionRate;
             const company401kContributionRate = currentFinancials.company401kContributionRate;
             const annualRothContribution = currentFinancials.annualRothContribution;
-            const monthly529Contribution = currentFinancials.monthly529Contribution;
+            // const monthly529Contribution = currentFinancials.monthly529Contribution; // Removed 529
             const monthlyHSAContribution = currentFinancials.monthlyHSAContribution;
             const annualSalaryRaise = currentFinancials.annualSalaryRaise;
             const stockAppreciation = currentFinancials.stockAppreciation;
             const housingAppreciation = currentFinancials.housingAppreciation;
             const inflation = currentFinancials.inflation;
-            const retirementDrawRate = currentFinancials.retirementDrawRate;
-            const retirementYear = currentFinancials.retirementYear; // This is the dynamic retirement age
+            const retirementDrawRatePre62 = currentFinancials.retirementDrawRatePre62;
+            const retirementDrawRatePost62 = currentFinancials.retirementDrawRatePost62;
+            const retirementYear = currentFinancials.retirementYear;
             const monthlyPrincipalPayment = currentFinancials.monthlyPrincipalPayment;
             const annualPrincipalPayment = monthlyPrincipalPayment * 12;
 
@@ -687,20 +686,19 @@
             const totalAnnualOtherIncome = totalOtherMonthlyIncome * 12;
             const totalAnnualIncome = baseSalary + annualBonusIncome + totalAnnualOtherIncome;
 
-            // Calculate Total Annual Savings
+            // Calculate Total Annual Savings (only those that go into investments)
             const totalAnnualSavings =
                 (baseSalary * my401kContributionRate) +
                 (baseSalary * company401kContributionRate) +
-                (monthly529Contribution * 12) +
+                // (monthly529Contribution * 12) + // Removed 529
                 (monthlyHSAContribution * 12) +
-                annualRothContribution +
-                (monthlyPrincipalPayment * 12);
+                annualRothContribution; // Monthly Principal Payment is not investment savings, it's debt reduction
 
             // Display current values using new formatting
             currentNetWorthDisplay.textContent = formatLargeCurrency(currentNetWorth);
             currentNetInvestmentsDisplay.textContent = formatLargeCurrency(currentNetInvestments);
             annualIncomeDisplay.textContent = formatLargeCurrency(totalAnnualIncome);
-            annualSavingsDisplay.textContent = formatLargeCurrency(totalAnnualSavings);
+            annualSavingsDisplay.textContent = formatLargeCurrency(totalAnnualSavings); // Display only investment-related savings
 
             // Update the summary spans
             totalInvestmentsSummary.textContent = `(${formatLargeCurrency(totalInvestments)})`;
@@ -712,15 +710,17 @@
                           currentFinancials.otherAssets, // Pass the entire otherAssets array here
                           totalLiabilities, currentMortgageValue, baseSalary,
                           bonusRate, my401kContributionRate, company401kContributionRate,
-                          annualRothContribution, monthly529Contribution, monthlyHSAContribution,
+                          annualRothContribution, // monthly529Contribution removed
+                          monthlyHSAContribution,
                           annualSalaryRaise, stockAppreciation,
                           housingAppreciation, inflation, annualPrincipalPayment,
                           currentFinancials.otherIncome, // Pass the collected current other income state
                           currentAge,
-                          retirementDrawRate, todaysDrawDisplay, dynamicRetirementDrawValue, sixtyTwoYODrawDisplay,
+                          retirementDrawRatePre62, retirementDrawRatePost62, // Pass both draw rates
+                          todaysDrawDisplay, dynamicRetirementDrawValue, sixtyTwoYODrawDisplay,
                           retirementYear, // Pass the dynamic retirement year
-                          dynamicRetirementDrawValueSticky, // Pass the sticky element for update
-                          totalAnnualOtherIncome);
+                          dynamicRetirementDrawValueSticky // Pass the sticky element for update
+                          );
 
             // Trigger saving if flag is true AND it's not from a Firestore load
             if (shouldSaveData && !window.isLoadingFromFirestore) {
@@ -731,13 +731,15 @@
 
         function projectGrowth(initialNetInvestments, initialNetWorth, initialOtherAssetsList, initialTotalLiabilities, initialMortgageValue, initialBaseSalary,
                                bonusRate, my401kContributionRate, company401kContributionRate,
-                               annualRothContribution, monthly529Contribution, monthlyHSAContribution,
+                               annualRothContribution, // monthly529Contribution removed
+                               monthlyHSAContribution,
                                annualSalaryRaise, stockAppreciation,
                                housingAppreciation, inflation, annualPrincipalPayment,
                                currentOtherIncomesStateForProjection,
                                initialAge,
-                               retirementDrawRate, todaysDrawDisplay, dynamicRetirementDrawValue, sixtyTwoYODrawDisplay,
-                               retirementYearInput, dynamicRetirementDrawValueSticky, initialTotalOtherAnnualIncome) {
+                               retirementDrawRatePre62, retirementDrawRatePost62,
+                               todaysDrawDisplay, dynamicRetirementDrawValue, sixtyTwoYODrawDisplay,
+                               retirementYearInput, dynamicRetirementDrawValueSticky) {
 
             projectionTableBody.innerHTML = '';
             chartContainer.innerHTML = '';
@@ -761,7 +763,13 @@
 
             const chartData = [];
 
-            const todaysDrawValue = (initialNetInvestments * retirementDrawRate) + initialTotalOtherAnnualIncome;
+            // Calculate "Today's Draw" assuming the retirement is today for display purposes
+            // This is current investments * Pre-62 rate (from slider) + current total annual other income
+            let initialTotalOtherAnnualIncome = 0;
+            currentOtherIncomesStateForProjection.forEach(income => {
+                initialTotalOtherAnnualIncome += income.value * 12;
+            });
+            const todaysDrawValue = (initialNetInvestments * retirementDrawRatePre62) + initialTotalOtherAnnualIncome;
             todaysDrawDisplay.textContent = formatLargeCurrency(todaysDrawValue);
 
             chartData.push({
@@ -774,62 +782,74 @@
                 const year = startYear + i;
                 const age = currentProjectedAge;
 
-                let annualMy401kContributionCurrentYear = 0;
-                let annualCompany401kContributionCurrentYear = 0;
-                let annual529ContributionCurrentYear = 0;
-                let annualHSAContributionCurrentYear = 0;
-                let annualRothContributionCurrentYear = 0;
+                let annualContributionsToInvestments = 0;
+                let currentAnnualOtherIncomeForYear = 0;
 
+                // Calculate contributions if not retired
                 if (age < retirementYearInput) {
-                    annualMy401kContributionCurrentYear = currentBaseSalary * my401kContributionRate;
-                    annualCompany401kContributionCurrentYear = currentBaseSalary * company401kContributionRate;
-                    annual529ContributionCurrentYear = monthly529Contribution * 12;
-                    annualHSAContributionCurrentYear = monthlyHSAContribution * 12;
-                    annualRothContributionCurrentYear = annualRothContribution;
+                    annualContributionsToInvestments =
+                        (currentBaseSalary * my401kContributionRate) +
+                        (currentBaseSalary * company401kContributionRate) +
+                        // (monthly529Contribution * 12) + // Removed 529
+                        (monthlyHSAContribution * 12) +
+                        annualRothContribution;
                 }
-                
-                currentInvestments *= (1 + stockAppreciation);
 
-                let currentAnnualOtherIncome = 0;
+                // Update projected other incomes for the current year (always escalates)
                 projectedOtherIncomes.forEach(income => {
                     income.value *= (1 + income.escalationRate);
+                    // Round down rental income to nearest $100 if escalation applies
                     if (income.name.toLowerCase().includes("rental") && income.escalationRate > 0) {
                         income.value = Math.floor(income.value / 100) * 100;
                     }
-                    currentAnnualOtherIncome += income.value * 12;
+                    currentAnnualOtherIncomeForYear += income.value * 12;
                 });
 
-                currentInvestments += annualMy401kContributionCurrentYear;
-                currentInvestments += annualCompany401kContributionCurrentYear;
-                currentInvestments += annual529ContributionCurrentYear;
-                currentInvestments += annualHSAContributionCurrentYear;
-                currentInvestments += annualRothContributionCurrentYear;
-                currentInvestments += currentAnnualOtherIncome;
+                // Add contributions to investments
+                currentInvestments += annualContributionsToInvestments;
 
-                // Apply draw if at or after retirement year
+                // Apply investment growth
+                currentInvestments *= (1 + stockAppreciation);
+
+                let annualDrawFromInvestments = 0;
+                let effectiveDrawRateForYear = 0;
+
+                // Determine effective draw rate based on age relative to retirementYearInput and 62
                 if (age >= retirementYearInput) {
-                    const annualDrawAmount = 100000 * Math.pow((1 + inflationRate), i); 
-                    currentInvestments -= annualDrawAmount;
+                    if (age < 62) {
+                        effectiveDrawRateForYear = retirementDrawRatePre62; // Use pre-62 slider value
+                    } else {
+                        effectiveDrawRateForYear = retirementDrawRatePost62; // Use post-62 slider value
+                    }
+                    annualDrawFromInvestments = currentInvestments * effectiveDrawRateForYear;
+                    currentInvestments -= annualDrawFromInvestments;
                 }
 
+                // Calculate total income available for spending (for display only)
+                const totalAnnualIncomeAvailable = annualDrawFromInvestments + currentAnnualOtherIncomeForYear;
+
+
                 // Update the dynamic retirement draw value when the specific retirement year is reached
+                // Note: This display is only for the *initial* draw at the retirement age selected.
+                // It does not reflect the draw rate change at age 62 within the projection.
                 if (age === retirementYearInput) {
-                    const drawValue = (currentInvestments * retirementDrawRate) + currentAnnualOtherIncome;
-                    const drawValueInTodaysDollars = drawValue / Math.pow((1 + inflationRate), i);
+                    const drawValueInTodaysDollars = totalAnnualIncomeAvailable / Math.pow((1 + inflationRate), i);
                     dynamicRetirementDrawValue.textContent = formatLargeCurrency(drawValueInTodaysDollars);
                     dynamicRetirementDrawValueSticky.textContent = formatLargeCurrency(drawValueInTodaysDollars); // Update sticky value
                 }
 
                 // Keep 62 YO Draw display as a separate fixed value for comparison
+                // This will now use the retirementDrawRatePost62 once age 62 is hit
                 if (age === 62) {
-                    const drawValue = (currentInvestments * retirementDrawRate) + currentAnnualOtherIncome;
-                    const drawValueInTodaysDollars = drawValue / Math.pow((1 + inflationRate), i);
-                    sixtyTwoYODrawDisplay.textContent = formatLargeCurrency(drawValueInTodaysDollars);
+                    const drawAt62 = (currentInvestments * retirementDrawRatePost62) + currentAnnualOtherIncomeForYear;
+                    const drawValueInTodaysDollarsAt62 = drawAt62 / Math.pow((1 + inflationRate), i);
+                    sixtyTwoYODrawDisplay.textContent = formatLargeCurrency(drawValueInTodaysDollarsAt62);
                 }
 
                 // Apply housing appreciation only to Personal Home
                 currentHomeValue *= (1 + housingAppreciation);
                 
+                // Reduce mortgage if it exists
                 currentMortgage = Math.max(0, currentMortgage - annualPrincipalPayment);
 
                 // Calculate total projected assets for net worth
@@ -1044,7 +1064,7 @@
 
         // Function to handle sticky header on scroll for mobile
         function handleMobileStickyHeader() {
-            const stickyElement = document.getElementById('dynamicRetirementDrawSticky'); // Updated ID
+            const stickyElement = document.getElementById('dynamicRetirementDrawSticky');
             const leftStickyBanner = document.getElementById('leftStickyBanner');
             // Only apply on mobile (less than 1024px width, which is the 'lg' breakpoint in Tailwind)
             if (window.innerWidth < 1024 && stickyElement && leftStickyBanner) {
@@ -1347,7 +1367,7 @@
         lg:fixed lg:top-0 lg:left-0 lg:h-screen lg:w-64 lg:flex-col lg:items-center lg:justify-start lg:p-6 lg:shadow-2xl lg:overflow-y-auto
     ">
         <h2 class="text-xl font-extrabold mb-4 text-center text-white w-full lg:text-3xl lg:mb-8">Your Snapshot</h2>
-        <span id="appRevisionDisplay" class="text-xs text-blue-200 font-semibold mb-4 lg:mb-6">v1.16</span>
+        <span id="appRevisionDisplay" class="text-xs text-blue-200 font-semibold mb-4 lg:mb-6">v1.20</span>
         <!-- Each summary item will be a div -->
         <div class="text-center mb-2 summary-item w-1/2 sm:w-1/3 md:w-1/4 lg:w-auto lg:text-center px-1">
             <p class="text-sm font-bold text-blue-200 lg:text-lg">Net Worth:</p>
@@ -1475,10 +1495,12 @@
                                 </div>
                             </div>
 
-                            <div class="mb-4">
+                            <!-- Removed 529 contribution field -->
+                            <!-- <div class="mb-4">
                                 <label for="monthly529Contribution" class="label-style">Monthly 529 Contribution ($)</label>
                                 <input type="text" id="monthly529Contribution" value="400" class="input-field">
-                            </div>
+                            </div> -->
+
                             <div class="mb-4">
                                 <label for="monthlyHSAContribution" class="label-style">Monthly HSA Contribution ($)</label>
                                 <input type="text" id="monthlyHSAContribution" value="600" class="input-field">
@@ -1538,11 +1560,21 @@
                                 </div>
                             </div>
 
+                            <!-- NEW SLIDER: Pre-62 YO Draw Rate -->
                             <div class="mb-2">
-                                <label for="retirementDrawRate" class="label-style">Retirement Draw (%)</label>
+                                <label for="retirementDrawRatePre62" class="label-style">Pre-62 YO Draw (%)</label>
                                 <div class="slider-input-wrapper">
-                                    <span class="slider-value-display" id="retirementDrawRateValue"></span>
-                                    <input type="range" id="retirementDrawRate" min="0" max="10" value="7" step="0.5" class="w-full">
+                                    <span class="slider-value-display" id="retirementDrawRatePre62Value"></span>
+                                    <input type="range" id="retirementDrawRatePre62" min="0" max="10" value="7" step="0.5" class="w-full">
+                                </div>
+                            </div>
+
+                            <!-- NEW SLIDER: Post-62 YO Draw Rate -->
+                            <div class="mb-2">
+                                <label for="retirementDrawRatePost62" class="label-style">Post-62 YO Draw (%)</label>
+                                <div class="slider-input-wrapper">
+                                    <span class="slider-value-display" id="retirementDrawRatePost62Value"></span>
+                                    <input type="range" id="retirementDrawRatePost62" min="0" max="5" value="5" step="0.5" class="w-full">
                                 </div>
                             </div>
 
