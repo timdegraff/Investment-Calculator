@@ -11,25 +11,25 @@
     <!-- Firebase SDKs -->
 <script type="module">
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-    // Changed import paths to use .js versions from firebasejs/11.6.1 for better compatibility
     import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
     import { getFirestore, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-    // Dynamically retrieve Firebase configuration provided by the Canvas environment
-    // Fallback to a placeholder if running outside Canvas (for local development testing)
-    const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {
-        apiKey: "YOUR_API_KEY",
-        authDomain: "YOUR_AUTH_DOMAIN",
-        projectId: "YOUR_PROJECT_ID",
-        storageBucket: "YOUR_STORAGE_BUCKET",
-        messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
-        appId: "YOUR_APP_ID",
-        measurementId: "YOUR_MEASUREMENT_ID"
+    // Your actual web app's Firebase configuration (obtained from Firebase Console)
+    const firebaseConfig = {
+      apiKey: "AIzaSyCC1UKUPFRUnWyQ09hGFkJxVEVBBkZ7X40",
+      authDomain: "investment-calculator-931f2.firebaseapp.com",
+      databaseURL: "https://investment-calculator-931f2-default-rtdb.firebaseio.com",
+      projectId: "investment-calculator-931f2",
+      storageBucket: "investment-calculator-931f2.firebasestorage.app",
+      messagingSenderId: "943895110805",
+      appId: "1:943895110805:web:ba6e1e6177ae31d7af279c",
+      measurementId: "G-F0CRPKLS7G"
     };
 
-    // Use the actual appId from the Canvas environment, or fallback to the config's appId, then a default
-    const appId = typeof __app_id !== 'undefined' ? __app_id : firebaseConfig.appId || 'default-app-id';
-    const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+    // Use the actual appId from your firebaseConfig when hosting on GitHub Pages
+    const appId = firebaseConfig.appId;
+    // initialAuthToken is only provided in Canvas, so it will be null here, leading to anonymous sign-in
+    const initialAuthToken = null;
 
 
     // Global Firebase vars
@@ -39,11 +39,12 @@
     let userId; // Will store the authenticated user ID
 
     // Firestore Paths - Using a public collection for shared data
+    // The appId ensures that data is scoped to this specific application instance
     const PUBLIC_COLLECTION_PATH = `artifacts/${appId}/public/data/retirement_calculator`;
     const SHARED_DOC_ID = 'shared_inputs'; // A single document for all shared inputs
 
     // Revision Level
-    const appRevision = "1.9"; // Fix: Reverted Firebase SDK import paths for stability
+    const appRevision = "1.12"; // Updated Firebase config for GitHub Pages and live sharing
 
     // Predefined default values for dynamic sections
     const defaultInvestmentAccounts = [
@@ -57,12 +58,15 @@
     ];
 
     const defaultOtherAssets = [
-        { name: "Home Value", value: 979500 },
+        { name: "Personal Home", value: 599000 },
+        { name: "Rental House", value: 199000 },
+        { name: "Lake House", value: 199000 },
         { name: "Other Equity (car, tractor, camper)", value: 90601 }
     ];
 
     const defaultLiabilities = [
-        { name: "Mortgage", value: 202212 }
+        { name: "Mortgage", value: 202212 },
+        { name: "Home Depot CC", value: 17500 }
     ];
 
     const defaultOtherIncomes = [
@@ -117,6 +121,7 @@
 
         // Get references to display elements
         const currentNetWorthDisplay = document.getElementById('currentNetWorth');
+        // FIX: Removed duplicated 'document =' which was causing the TypeError.
         const currentNetInvestmentsDisplay = document.getElementById('currentNetInvestments');
         const annualIncomeDisplay = document.getElementById('annualIncomeDisplay');
         const annualSavingsDisplay = document.getElementById('annualSavingsDisplay');
@@ -213,49 +218,24 @@
 
                 // Use onAuthStateChanged to manage the authentication state.
                 // This ensures we react to Firebase's internal auth state readiness.
-                // We'll resolve this promise once an auth state is determined (signed in or anonymous).
+                // For GitHub Pages, we'll primarily rely on anonymous sign-in.
                 await new Promise((resolve, reject) => {
                     const unsubscribe = onAuthStateChanged(auth, async (user) => {
-                        // This callback fires when Firebase Auth is initialized and also on subsequent state changes.
-                        // We only want to attempt sign-in if there's no active user.
                         if (!user) {
-                            // If no user is signed in, attempt sign-in based on token or anonymously
-                            if (initialAuthToken) {
-                                console.log("Attempting sign-in with custom token...");
-                                try {
-                                    await signInWithCustomToken(auth, initialAuthToken);
-                                    userId = auth.currentUser.uid;
-                                    console.log("Firebase authenticated with custom token. User ID:", userId);
-                                } catch (customTokenError) {
-                                    console.warn("Custom token sign-in failed, falling back to anonymous:", customTokenError);
-                                    // If custom token fails, try anonymous
-                                    try {
-                                        await signInAnonymously(auth);
-                                        userId = auth.currentUser.uid;
-                                        console.log("Firebase authenticated anonymously (after custom token fallback). User ID:", userId);
-                                    } catch (anonError) {
-                                        console.error("Anonymous sign-in failed:", anonError);
-                                        unsubscribe(); // Unsubscribe even on failure
-                                        reject(anonError); // Reject the promise if anonymous also fails
-                                        return; // Exit to prevent further execution in this branch
-                                    }
-                                }
-                            } else {
-                                // No custom token, just try anonymous sign-in
-                                console.log("Attempting anonymous sign-in...");
-                                try {
-                                    await signInAnonymously(auth);
-                                    userId = auth.currentUser.uid;
-                                    console.log("Firebase authenticated anonymously. User ID:", userId);
-                                } catch (anonError) {
-                                    console.error("Anonymous sign-in failed:", anonError);
-                                    unsubscribe(); // Unsubscribe even on failure
-                                    reject(anonError); // Reject the promise if anonymous fails
-                                    return; // Exit to prevent further execution in this branch
-                                }
+                            // If no user is signed in, attempt anonymous sign-in
+                            console.log("Attempting anonymous sign-in...");
+                            try {
+                                await signInAnonymously(auth);
+                                userId = auth.currentUser.uid;
+                                console.log("Firebase authenticated anonymously. User ID:", userId);
+                            } catch (anonError) {
+                                console.error("Anonymous sign-in failed:", anonError);
+                                unsubscribe(); // Unsubscribe even on failure
+                                reject(anonError); // Reject the promise if anonymous fails
+                                return; // Exit to prevent further execution in this branch
                             }
                         } else {
-                            // User is already signed in (either from a previous session or via __initial_auth_token)
+                            // User is already signed in (e.g., from a previous anonymous session)
                             userId = user.uid;
                             console.log("Firebase auth state detected existing user:", userId);
                         }
@@ -714,14 +694,13 @@
 
             // Project growth over years
             projectGrowth(currentNetInvestments, currentNetWorth,
-                          currentFinancials.otherAssets.find(asset => asset.name === "Home Value")?.value || 0,
+                          currentFinancials.otherAssets, // Pass the entire otherAssets array here
                           totalLiabilities, currentMortgageValue, baseSalary,
                           bonusRate, my401kContributionRate, company401kContributionRate,
                           annualRothContribution, monthly529Contribution, monthlyHSAContribution,
                           annualSalaryRaise, stockAppreciation,
                           housingAppreciation, inflation, annualPrincipalPayment,
                           currentFinancials.otherIncome, // Pass the collected current other income state
-                          currentFinancials.otherAssets.find(asset => asset.name === "Other Equity (car, tractor, camper)")?.value || 0,
                           currentAge,
                           retirementDrawRate, todaysDrawDisplay, dynamicRetirementDrawValue, sixtyTwoYODrawDisplay,
                           retirementYear, // Pass the dynamic retirement year
@@ -735,13 +714,12 @@
         }
 
 
-        function projectGrowth(initialNetInvestments, initialNetWorth, initialHomeValue, initialTotalLiabilities, initialMortgageValue, initialBaseSalary,
+        function projectGrowth(initialNetInvestments, initialNetWorth, initialOtherAssetsList, initialTotalLiabilities, initialMortgageValue, initialBaseSalary,
                                bonusRate, my401kContributionRate, company401kContributionRate,
                                annualRothContribution, monthly529Contribution, monthlyHSAContribution,
                                annualSalaryRaise, stockAppreciation,
                                housingAppreciation, inflation, annualPrincipalPayment,
                                currentOtherIncomesStateForProjection,
-                               otherEquityValueFromInitialAssets,
                                initialAge,
                                retirementDrawRate, todaysDrawDisplay, dynamicRetirementDrawValue, sixtyTwoYODrawDisplay,
                                retirementYearInput, dynamicRetirementDrawValueSticky, initialTotalOtherAnnualIncome) {
@@ -750,11 +728,15 @@
             chartContainer.innerHTML = '';
 
             let currentInvestments = initialNetInvestments;
-            let currentHomeValue = initialHomeValue;
+            // Initialize from the passed list of assets
+            let currentHomeValue = initialOtherAssetsList.find(asset => asset.name === "Personal Home")?.value || 0;
             let currentMortgage = initialMortgageValue;
             let currentOtherLiabilitiesTotal = initialTotalLiabilities - initialMortgageValue;
             let currentBaseSalary = initialBaseSalary;
-            let currentOtherEquity = otherEquityValueFromInitialAssets; 
+            let currentOtherEquity = initialOtherAssetsList.find(asset => asset.name === "Other Equity (car, tractor, camper)")?.value || 0;
+            let currentRentalHouseValue = initialOtherAssetsList.find(asset => asset.name === "Rental House")?.value || 0;
+            let currentLakeHouseValue = initialOtherAssetsList.find(asset => asset.name === "Lake House")?.value || 0;
+            
 
             const startYear = new Date().getFullYear();
             let currentProjectedAge = initialAge;
@@ -830,12 +812,18 @@
                     sixtyTwoYODrawDisplay.textContent = formatLargeCurrency(drawValueInTodaysDollars);
                 }
 
+                // Apply housing appreciation only to Personal Home
                 currentHomeValue *= (1 + housingAppreciation);
+                
                 currentMortgage = Math.max(0, currentMortgage - annualPrincipalPayment);
 
-                const currentHomeEquity = currentHomeValue - currentMortgage;
+                // Calculate total projected assets for net worth
+                let totalProjectedOtherAssets = currentHomeValue + currentRentalHouseValue + currentLakeHouseValue + currentOtherEquity;
+
+                // Re-calculating net worth based on projected investments, projected total assets, and projected liabilities
                 const currentTotalLiabilitiesInProjection = currentMortgage + currentOtherLiabilitiesTotal;
-                let currentNetWorth = currentInvestments + currentHomeEquity + currentOtherEquity - currentTotalLiabilitiesInProjection;
+                let currentNetWorth = currentInvestments + totalProjectedOtherAssets - currentTotalLiabilitiesInProjection;
+
                 const netWorthInTodaysDollars = currentNetWorth / Math.pow((1 + inflationRate), i);
 
                 chartData.push({
@@ -1340,7 +1328,7 @@
         lg:fixed lg:top-0 lg:left-0 lg:h-screen lg:w-64 lg:flex-col lg:items-center lg:justify-start lg:p-6 lg:shadow-2xl lg:overflow-y-auto
     ">
         <h2 class="text-xl font-extrabold mb-4 text-center text-white w-full lg:text-3xl lg:mb-8">Your Snapshot</h2>
-        <span id="appRevisionDisplay" class="text-xs text-blue-200 font-semibold mb-4 lg:mb-6">v1.9</span>
+        <span id="appRevisionDisplay" class="text-xs text-blue-200 font-semibold mb-4 lg:mb-6">v1.12</span>
         <!-- Each summary item will be a div -->
         <div class="text-center mb-2 summary-item w-1/2 sm:w-1/3 md:w-1/4 lg:w-auto lg:text-center px-1">
             <p class="text-sm font-bold text-blue-200 lg:text-lg">Net Worth:</p>
@@ -1404,12 +1392,12 @@
 
                         <!-- Other Assets -->
                         <div>
-                            <h3 class="text-xl font-semibold mb-4 text-gray-800">Other Assets <span class="font-bold text-green-600" id="totalOtherAssetsSummary"></span></h3>
+                            <h3 class="text-xl font-semibold mb-4 text-gray-800">Assets <span class="font-bold text-green-600" id="totalOtherAssetsSummary"></span></h3>
                             <div id="otherAssetsContainer" class="mb-4 space-y-4">
                                 <!-- Dynamic other assets inputs will be added here by JavaScript -->
                             </div>
                             <button id="addOtherAssetBtn" type="button" class="mt-4 bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg shadow-md">
-                                + Add Other Asset
+                                + Add Asset
                             </button>
 
                             <!-- Liabilities - Moved here, no longer spanning two columns -->
@@ -1543,7 +1531,7 @@
                                 <label for="retirementYear" class="label-style">Retirement Year (Age)</label>
                                 <div class="slider-input-wrapper">
                                     <span class="slider-value-display" id="retirementYearValue"></span>
-                                    <input type="range" id="retirementYear" min="38" max="80" value="42" step="1" class="w-full">
+                                    <input type="range" id="retirementYear" min="38" max="80" value="45" step="1" class="w-full">
                                 </div>
                             </div>
 
