@@ -44,29 +44,29 @@
     const SHARED_DOC_ID = 'shared_inputs'; // A single document for all shared inputs
 
     // Revision Level
-    const appRevision = "1.13"; // Updated for mobile keyboard fix
+    const appRevision = "1.15"; // Updated for mobile keyboard fix on name inputs
 
     // Predefined default values for dynamic sections
     const defaultInvestmentAccounts = [
-        { name: "401K", value: 524620 },
-        { name: "Roth 1", value: 177474 },
-        { name: "Roth 2", value: 156407 },
-        { name: "529", value: 55485 },
-        { name: "HSA", value: 25187 },
-        { name: "Gold", value: 6600 },
-        { name: "Checking", value: 17522 }
+        { name: "401K", value: 500000 },
+        { name: "Roth 1", value: 175000 },
+        { name: "Roth 2", value: 150000 },
+        { name: "529", value: 50000 },
+        { name: "HSA", value: 25000 },
+        { name: "Gold", value: 10000 },
+        { name: "Checking", value: 20000 }
     ];
 
     const defaultOtherAssets = [
-        { name: "Personal Home", value: 599000 },
-        { name: "Rental House", value: 199000 },
-        { name: "Lake House", value: 199000 },
-        { name: "Other Equity (car, tractor, camper)", value: 90601 }
+        { name: "Personal Home", value: 500000 },
+        { name: "Rental House", value: 200000 },
+        { name: "Lake House", value: 200000 },
+        { name: "Other Equity (car, tractor, camper)", value: 80000 }
     ];
 
     const defaultLiabilities = [
-        { name: "Mortgage", value: 202212 },
-        { name: "Home Depot CC", value: 17500 }
+        { name: "Mortgage", value: 200000 },
+        { name: "Credit Cards", value: 0 }
     ];
 
     const defaultOtherIncomes = [
@@ -121,7 +121,6 @@
 
         // Get references to display elements
         const currentNetWorthDisplay = document.getElementById('currentNetWorth');
-        // FIX: Removed duplicated 'document =' which was causing the TypeError.
         const currentNetInvestmentsDisplay = document.getElementById('currentNetInvestments');
         const annualIncomeDisplay = document.getElementById('annualIncomeDisplay');
         const annualSavingsDisplay = document.getElementById('annualSavingsDisplay');
@@ -458,8 +457,6 @@
             investmentAccountsContainer.appendChild(rowDiv);
 
             const valueInput = rowDiv.querySelector('.investment-value');
-            // FIX: Changed 'input' to 'blur' for triggering calculateFinancials
-            // and added an 'input' event to format the number on blur for better UX
             valueInput.addEventListener('input', (event) => {
                 // Allow typing freely, no formatting on input
             });
@@ -468,7 +465,8 @@
                 calculateFinancials(true); // Trigger save on blur
             });
             const nameInput = rowDiv.querySelector('.investment-name');
-            nameInput.addEventListener('input', () => calculateFinancials(true)); // Trigger save
+            // FIX: Changed 'input' to 'blur' for triggering calculateFinancials for name field
+            nameInput.addEventListener('blur', () => calculateFinancials(true)); // Trigger save on blur
 
             const deleteBtn = rowDiv.querySelector('.delete-item-btn');
             deleteBtn.addEventListener('click', () => {
@@ -489,8 +487,6 @@
             otherAssetsContainer.appendChild(rowDiv);
 
             const valueInput = rowDiv.querySelector('.asset-value');
-            // FIX: Changed 'input' to 'blur' for triggering calculateFinancials
-            // and added an 'input' event to format the number on blur for better UX
             valueInput.addEventListener('input', (event) => {
                 // Allow typing freely, no formatting on input
             });
@@ -499,7 +495,8 @@
                 calculateFinancials(true); // Trigger save on blur
             });
             const nameInput = rowDiv.querySelector('.asset-name');
-            nameInput.addEventListener('input', () => calculateFinancials(true)); // Trigger save
+            // FIX: Changed 'input' to 'blur' for triggering calculateFinancials for name field
+            nameInput.addEventListener('blur', () => calculateFinancials(true)); // Trigger save on blur
 
             const deleteBtn = rowDiv.querySelector('.delete-item-btn');
             deleteBtn.addEventListener('click', () => {
@@ -520,8 +517,6 @@
             liabilitiesContainer.appendChild(rowDiv);
 
             const valueInput = rowDiv.querySelector('.liability-value');
-            // FIX: Changed 'input' to 'blur' for triggering calculateFinancials
-            // and added an 'input' event to format the number on blur for better UX
             valueInput.addEventListener('input', (event) => {
                 // Allow typing freely, no formatting on input
             });
@@ -530,7 +525,8 @@
                 calculateFinancials(true); // Trigger save on blur
             });
             const nameInput = rowDiv.querySelector('.liability-name');
-            nameInput.addEventListener('input', () => calculateFinancials(true)); // Trigger save
+            // FIX: Changed 'input' to 'blur' for triggering calculateFinancials for name field
+            nameInput.addEventListener('blur', () => calculateFinancials(true)); // Trigger save on blur
 
             const deleteBtn = rowDiv.querySelector('.delete-item-btn');
             deleteBtn.addEventListener('click', () => {
@@ -557,8 +553,6 @@
             // Attach event listeners for value and escalation rate, and for name changes
             rowDiv.querySelectorAll('input').forEach(input => {
                 if (input.classList.contains('income-value')) {
-                    // FIX: Changed 'input' to 'blur' for triggering calculateFinancials
-                    // and added an 'input' event to format the number on blur for better UX
                     input.addEventListener('input', (event) => {
                         // Allow typing freely, no formatting on input
                     });
@@ -566,8 +560,11 @@
                         event.target.value = formatInputNumber(event.target.value); // Format on blur
                         calculateFinancials(true); // Trigger save on blur
                     });
-                } else {
-                    input.addEventListener('input', () => calculateFinancials(true)); // Trigger save for name/escalation
+                } else if (input.classList.contains('income-name')) {
+                    // FIX: Changed 'input' to 'blur' for triggering calculateFinancials for name field
+                    input.addEventListener('blur', () => calculateFinancials(true)); // Trigger save on blur
+                } else if (input.classList.contains('income-escalation-rate')) {
+                    input.addEventListener('input', () => calculateFinancials(true)); // Still trigger on input for immediate feedback on escalation rate
                 }
             });
 
@@ -1019,11 +1016,9 @@
                 staticInputs[key].addEventListener('input', () => updateSliderValueDisplay(staticInputs[key], sliderPairs.find(p => p.slider === staticInputs[key]).valueDisplay, sliderPairs.find(p => p.slider === staticInputs[key]).unit));
                 staticInputs[key].addEventListener('change', () => calculateFinancials(true)); // Trigger save on 'change' (when slider is released)
             } else { // Text inputs
-                // FIX: Changed 'input' to 'blur' for triggering calculateFinancials
-                // and added an 'input' event to format the number on blur for better UX
-                staticInputs[key].addEventListener('input', (event) => {
-                    // Allow typing freely, no formatting on input
-                });
+                // Allow typing freely, no formatting on input
+                staticInputs[key].addEventListener('input', (event) => { /* no-op */ });
+                // Trigger formatting and calculation on blur
                 staticInputs[key].addEventListener('blur', (event) => {
                     event.target.value = formatInputNumber(event.target.value); // Format on blur
                     calculateFinancials(true); // Trigger save on blur
@@ -1352,7 +1347,7 @@
         lg:fixed lg:top-0 lg:left-0 lg:h-screen lg:w-64 lg:flex-col lg:items-center lg:justify-start lg:p-6 lg:shadow-2xl lg:overflow-y-auto
     ">
         <h2 class="text-xl font-extrabold mb-4 text-center text-white w-full lg:text-3xl lg:mb-8">Your Snapshot</h2>
-        <span id="appRevisionDisplay" class="text-xs text-blue-200 font-semibold mb-4 lg:mb-6">v1.13</span>
+        <span id="appRevisionDisplay" class="text-xs text-blue-200 font-semibold mb-4 lg:mb-6">v1.15</span>
         <!-- Each summary item will be a div -->
         <div class="text-center mb-2 summary-item w-1/2 sm:w-1/3 md:w-1/4 lg:w-auto lg:text-center px-1">
             <p class="text-sm font-bold text-blue-200 lg:text-lg">Net Worth:</p>
@@ -1555,7 +1550,7 @@
                                 <label for="retirementYear" class="label-style">Retirement Year (Age)</label>
                                 <div class="slider-input-wrapper">
                                     <span class="slider-value-display" id="retirementYearValue"></span>
-                                    <input type="range" id="retirementYear" min="38" max="80" value="45" step="1" class="w-full">
+                                    <input type="range" id="retirementYear" min="38" max="80" value="62" step="1" class="w-full">
                                 </div>
                             </div>
 
