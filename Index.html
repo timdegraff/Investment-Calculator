@@ -44,7 +44,7 @@
     const SHARED_DOC_ID = 'shared_inputs'; // A single document for all shared inputs
 
     // Revision Level
-    const appRevision = "1.26"; // Fixed collectedData ReferenceError, updated SS slider label.
+    const appRevision = "1.28"; // Added Social Security Start Age slider, dynamic SS label, and updated 62 YO Draw calculation.
 
     // Predefined default values for dynamic sections
     const defaultInvestmentAccounts = [
@@ -113,6 +113,7 @@
             retirementDrawRatePost62: document.getElementById('retirementDrawRatePost62'),
             retirementYear: document.getElementById('retirementYear'),
             monthlyPrincipalPayment: document.getElementById('monthlyPrincipalPayment'),
+            socialSecurityStartAge: document.getElementById('socialSecurityStartAge'), // NEW
             socialSecurityMonthly: document.getElementById('socialSecurityMonthly')
         };
 
@@ -124,7 +125,7 @@
         const todaysDrawDisplay = document.getElementById('todaysDraw');
         const dynamicRetirementDrawLabel = document.getElementById('dynamicRetirementDrawLabel');
         const dynamicRetirementDrawValue = document.getElementById('dynamicRetirementDrawValue');
-        const sixtyTwoYODrawDisplay = document.getElementById('sixtyTwoYODraw');
+        const sixtyTwoYODrawDisplay = document.getElementById('sixtyTwoYODraw'); // Keeping this ID but label will be dynamic
         const dynamicRetirementDrawLabelSticky = document.getElementById('dynamicRetirementDrawLabelSticky');
         const dynamicRetirementDrawValueSticky = document.getElementById('dynamicRetirementDrawValueSticky');
         const projectionTableBody = document.getElementById('projectionTableBody');
@@ -144,6 +145,11 @@
         const totalOtherAssetsSummary = document.getElementById('totalOtherAssetsSummary');
         const totalLiabilitiesSummary = document.getElementById('totalLiabilitiesSummary');
 
+        // New references for labels
+        const socialSecurityMonthlyLabel = document.getElementById('socialSecurityMonthlyLabel');
+        const ssStartAgeDrawLabel = document.getElementById('ssStartAgeDrawLabel');
+
+
         // Get references to slider input and value display pairs
         const sliderPairs = [
             { slider: staticInputs.currentAge, valueDisplay: document.getElementById('currentAgeValue'), unit: '' },
@@ -157,6 +163,7 @@
             { slider: staticInputs.retirementDrawRatePre62, valueDisplay: document.getElementById('retirementDrawRatePre62Value'), unit: '%' },
             { slider: staticInputs.retirementDrawRatePost62, valueDisplay: document.getElementById('retirementDrawRatePost62Value'), unit: '%' },
             { slider: staticInputs.retirementYear, valueDisplay: document.getElementById('retirementYearValue'), unit: '' },
+            { slider: staticInputs.socialSecurityStartAge, valueDisplay: document.getElementById('socialSecurityStartAgeValue'), unit: '' }, // NEW
             { slider: staticInputs.socialSecurityMonthly, valueDisplay: document.getElementById('socialSecurityMonthlyValue'), unit: '' }
         ];
 
@@ -282,7 +289,7 @@
          * @returns {Object} An object containing all current financial input data.
          */
         function collectAllCurrentInputs() {
-            let collectedData = {}; // FIXED: Declare collectedData here
+            let collectedData = {};
 
             // Collect static input values
             for (const key in staticInputs) {
@@ -329,13 +336,11 @@
 
             // Collect dynamic other income values
             collectedData.otherIncome = [];
-            let totalOtherMonthlyIncome = 0; // This is not collectedData property, just a local var
             document.querySelectorAll('.other-income-row').forEach(row => {
                 const name = row.querySelector('.income-name').value;
                 const value = cleanInputNumber(row.querySelector('.income-value').value);
                 const escalationRate = parseFloat(row.querySelector('.income-escalation-rate').value) / 100 || 0;
                 collectedData.otherIncome.push({ name, value, escalationRate });
-                totalOtherMonthlyIncome += value; // Keep sum for current display
             });
 
             return collectedData;
@@ -663,6 +668,7 @@
             const retirementDrawRatePost62 = currentFinancials.retirementDrawRatePost62;
             const retirementYear = currentFinancials.retirementYear;
             const monthlyPrincipalPayment = currentFinancials.monthlyPrincipalPayment;
+            const socialSecurityStartAge = currentFinancials.socialSecurityStartAge; // NEW
             const socialSecurityMonthly = currentFinancials.socialSecurityMonthly;
             const annualPrincipalPayment = monthlyPrincipalPayment * 12;
 
@@ -683,6 +689,11 @@
             // Update dynamic retirement draw labels based on slider value
             dynamicRetirementDrawLabel.textContent = `${retirementYear} YO Draw (Today's $):`;
             dynamicRetirementDrawLabelSticky.textContent = `${retirementYear} YO Draw (Today's $):`;
+
+            // Dynamically update the Social Security Monthly slider label
+            socialSecurityMonthlyLabel.textContent = `Social Security at ${socialSecurityStartAge} ($)`;
+            // Dynamically update the SS Start Age Draw snapshot label
+            ssStartAgeDrawLabel.textContent = `${socialSecurityStartAge} YO Draw (Today's $):`;
 
 
             // Calculate Net Worth and Net Investments
@@ -728,6 +739,7 @@
                           todaysDrawDisplay, dynamicRetirementDrawValue, sixtyTwoYODrawDisplay,
                           retirementYear,
                           dynamicRetirementDrawValueSticky,
+                          socialSecurityStartAge, // NEW: Pass the SS Start Age
                           socialSecurityMonthly
                           );
 
@@ -749,6 +761,7 @@
                                retirementDrawRatePre62, retirementDrawRatePost62,
                                todaysDrawDisplay, dynamicRetirementDrawValue, sixtyTwoYODrawDisplay,
                                retirementYearInput, dynamicRetirementDrawValueSticky,
+                               socialSecurityStartAge, // NEW: Receive SS Start Age
                                socialSecurityMonthly
                                ) {
 
@@ -776,7 +789,7 @@
 
             // Calculate "Today's Draw" for snapshot display:
             // This is current investments * Pre-62 rate (from slider) + current total annual other income (from dynamic list)
-            // Social Security is NOT included here as it only starts at 62
+            // Social Security is NOT included here as it only starts at the chosen SS age
             let initialTotalOtherAnnualIncomeSnapshot = 0;
             currentOtherIncomesStateForProjection.forEach(income => {
                 initialTotalOtherAnnualIncomeSnapshot += income.value * 12;
@@ -787,7 +800,8 @@
             chartData.push({
                 age: initialAge,
                 investments: initialNetInvestments,
-                netWorth: initialNetWorth / Math.pow((1 + inflationRate), 0)
+                netWorth: initialNetWorth, // Keep original net worth in future dollars for this line
+                netWorthTodaysDollars: initialNetWorth / Math.pow((1 + inflationRate), 0) // Net worth in today's dollars
             });
 
             for (let i = 1; currentProjectedAge <= 80; i++) {
@@ -827,13 +841,13 @@
                 let effectiveDrawRateForYear = 0;
                 let annualSocialSecurityBenefit = 0;
 
-                // Determine effective draw rate based on age relative to retirementYearInput and 62
+                // Determine effective draw rate based on age relative to retirementYearInput and socialSecurityStartAge
                 if (age >= retirementYearInput) {
-                    if (age < 62) {
+                    if (age < socialSecurityStartAge) { // Use dynamic socialSecurityStartAge
                         effectiveDrawRateForYear = retirementDrawRatePre62; // Use pre-62 slider value
-                    } else {
+                    } else { // age >= socialSecurityStartAge
                         effectiveDrawRateForYear = retirementDrawRatePost62; // Use post-62 slider value
-                        annualSocialSecurityBenefit = socialSecurityMonthly * 12; // Social Security starts at 62
+                        annualSocialSecurityBenefit = socialSecurityMonthly * 12; // Social Security starts at the chosen age
                     }
                     annualDrawFromInvestments = currentInvestments * effectiveDrawRateForYear;
                     currentInvestments -= annualDrawFromInvestments;
@@ -850,12 +864,11 @@
                     dynamicRetirementDrawValueSticky.textContent = formatLargeCurrency(drawValueInTodaysDollars); // Update sticky value
                 }
 
-                // Keep 62 YO Draw display as a separate fixed value for comparison
-                if (age === 62) {
-                    // This now includes the post-62 draw from investments + the escalated other incomes at age 62 + Social Security
-                    const drawAt62 = (currentInvestments * retirementDrawRatePost62) + currentAnnualOtherIncomeForYear + (socialSecurityMonthly * 12);
-                    const drawValueInTodaysDollarsAt62 = drawAt62 / Math.pow((1 + inflationRate), i);
-                    sixtyTwoYODrawDisplay.textContent = formatLargeCurrency(drawValueInTodaysDollarsAt62);
+                // Update the SS Start Age Draw display (label is now dynamic)
+                if (age === socialSecurityStartAge) { // Use dynamic socialSecurityStartAge
+                    const drawAtSSStartAge = (currentInvestments * retirementDrawRatePost62) + currentAnnualOtherIncomeForYear + (socialSecurityMonthly * 12);
+                    const drawValueInTodaysDollarsAtSSStartAge = drawAtSSStartAge / Math.pow((1 + inflationRate), i);
+                    sixtyTwoYODrawDisplay.textContent = formatLargeCurrency(drawValueInTodaysDollarsAtSSStartAge);
                 }
 
                 // Apply housing appreciation only to Personal Home
@@ -876,7 +889,8 @@
                 chartData.push({
                     age: age,
                     investments: currentInvestments,
-                    netWorth: netWorthInTodaysDollars
+                    netWorth: currentNetWorth, // Full net worth in future dollars
+                    netWorthTodaysDollars: netWorthInTodaysDollars // Net worth in today's dollars
                 });
 
                 const row = projectionTableBody.insertRow();
@@ -921,8 +935,9 @@
                 .domain(d3.extent(data, d => d.age))
                 .range([0, width]);
 
-            const yMax = d3.max(data, d => Math.max(d.investments, d.netWorth));
-            const yMin = d3.min(data, d => Math.min(d.investments, d.netWorth));
+            // Adjust yMax and yMin to account for the new netWorthTodaysDollars line
+            const yMax = d3.max(data, d => Math.max(d.investments, d.netWorth, d.netWorthTodaysDollars));
+            const yMin = d3.min(data, d => Math.min(d.investments, d.netWorth, d.netWorthTodaysDollars));
 
             const yScale = d3.scaleLinear()
                 .domain([yMin * 0.95, yMax * 1.05])
@@ -955,6 +970,11 @@
             const lineNetWorth = d3.line()
                 .x(d => xScale(d.age))
                 .y(d => yScale(d.netWorth));
+            
+            // NEW: Line generator for Net Worth (Today's $)
+            const lineNetWorthTodaysDollars = d3.line()
+                .x(d => xScale(d.age))
+                .y(d => yScale(d.netWorthTodaysDollars));
 
             svg.append("path")
                 .datum(data)
@@ -967,6 +987,13 @@
                 .attr("class", "line line-networth")
                 .attr("fill", "none")
                 .attr("d", lineNetWorth);
+            
+            // NEW: Append path for Net Worth (Today's $)
+            svg.append("path")
+                .datum(data)
+                .attr("class", "line line-networth-todays-dollars")
+                .attr("fill", "none")
+                .attr("d", lineNetWorthTodaysDollars);
 
             svg.append("text")
                 .attr("transform", `translate(${width / 2}, ${height + margin.bottom - 10})`)
@@ -1002,8 +1029,8 @@
                 .attr("height", height)
                 .style("fill", "none")
                 .style("pointer-events", "all")
-                .on("mouseover", function() { focusInvestment.style("display", null); focusNetWorth.style("display", null); tooltip.style("opacity", 1); })
-                .on("mouseout", function() { focusInvestment.style("display", "none"); focusNetWorth.style("display", "none"); tooltip.style("opacity", 0); })
+                .on("mouseover", function() { focusInvestment.style("display", null); focusNetWorth.style("display", null); focusNetWorthTodaysDollars.style("display", null); tooltip.style("opacity", 1); }) // NEW: Show new focus
+                .on("mouseout", function() { focusInvestment.style("display", "none"); focusNetWorth.style("display", "none"); focusNetWorthTodaysDollars.style("display", "none"); tooltip.style("opacity", 0); }) // NEW: Hide new focus
                 .on("mousemove", mousemove);
 
             const focusInvestment = svg.append("g")
@@ -1021,6 +1048,15 @@
             focusNetWorth.append("circle")
                 .attr("r", 5)
                 .attr("fill", "#10b981");
+            
+            // NEW: Focus for Net Worth (Today's $)
+            const focusNetWorthTodaysDollars = svg.append("g")
+                .attr("class", "focus")
+                .style("display", "none");
+
+            focusNetWorthTodaysDollars.append("circle")
+                .attr("r", 5)
+                .attr("fill", "#800080"); // Purple color
 
             function mousemove(event) {
                 const x0 = xScale.invert(d3.pointer(event)[0]);
@@ -1032,8 +1068,9 @@
 
                 focusInvestment.attr("transform", `translate(${xScale(d.age)},${yScale(d.investments)})`);
                 focusNetWorth.attr("transform", `translate(${xScale(d.age)},${yScale(d.netWorth)})`);
+                focusNetWorthTodaysDollars.attr("transform", `translate(${xScale(d.age)},${yScale(d.netWorthTodaysDollars)})`); // NEW: Update new focus
 
-                tooltip.html(`Age: ${d.age}<br>Investments: ${formatTableCurrency(d.investments)}<br>Net Worth (Today's $): ${formatTableCurrency(d.netWorth)}`)
+                tooltip.html(`Age: ${d.age}<br>Investments: ${formatTableCurrency(d.investments)}<br>Net Worth: ${formatTableCurrency(d.netWorth)}<br>Net Worth (Today's $): ${formatTableCurrency(d.netWorthTodaysDollars)}`) // NEW: Update tooltip
                     .style("left", (event.pageX + 10) + "px")
                     .style("top", (event.pageY - 20) + "px");
             }
@@ -1255,6 +1292,9 @@
         .line-networth {
             stroke: #10b981; /* Green for net worth */
         }
+        .line-networth-todays-dollars {
+            stroke: #800080; /* Purple for Net Worth (Today's $) */
+        }
         .axis text {
             font-size: 0.8rem;
             fill: #6b7280; /* Gray text for axes */
@@ -1385,7 +1425,7 @@
         lg:fixed lg:top-0 lg:left-0 lg:h-screen lg:w-64 lg:flex-col lg:items-center lg:justify-start lg:p-6 lg:shadow-2xl lg:overflow-y-auto
     ">
         <h2 class="text-xl font-extrabold mb-4 text-center text-white w-full lg:text-3xl lg:mb-8">Your Snapshot</h2>
-        <span id="appRevisionDisplay" class="text-xs text-blue-200 font-semibold mb-4 lg:mb-6">v1.26</span>
+        <span id="appRevisionDisplay" class="text-xs text-blue-200 font-semibold mb-4 lg:mb-6">v1.28</span>
         <!-- Each summary item will be a div -->
         <div class="text-center mb-2 summary-item w-1/2 sm:w-1/3 md:w-1/4 lg:w-auto lg:text-center px-1">
             <p class="text-sm font-bold text-blue-200 lg:text-lg">Net Worth:</p>
@@ -1412,7 +1452,7 @@
             <p id="dynamicRetirementDrawValue" class="text-xl font-semibold text-white mt-1 lg:text-3xl">$0</p>
         </div>
         <div class="text-center mb-2 summary-item w-1/2 sm:w-1/3 md:w-1/4 lg:w-auto lg:text-center px-1">
-            <p class="text-sm font-bold text-blue-200 lg:text-lg">62 YO Draw (Today's $):</p>
+            <p class="text-sm font-bold text-blue-200 lg:text-lg" id="ssStartAgeDrawLabel">62 YO Draw (Today's $):</p>
             <p id="sixtyTwoYODraw" class="text-xl font-semibold text-white mt-1 lg:text-3xl">$0</p>
         </div>
     </div>
@@ -1590,12 +1630,21 @@
                                 </div>
                             </div>
 
+                            <!-- NEW SLIDER: Social Security Start Age -->
+                            <div class="mb-2">
+                                <label for="socialSecurityStartAge" class="label-style">Social Security Start Age</label>
+                                <div class="slider-input-wrapper">
+                                    <span class="slider-value-display" id="socialSecurityStartAgeValue"></span>
+                                    <input type="range" id="socialSecurityStartAge" min="62" max="70" value="62" step="1" class="w-full">
+                                </div>
+                            </div>
+
                             <!-- UPDATED SLIDER: Social Security Monthly -->
                             <div class="mb-2">
-                                <label for="socialSecurityMonthly" class="label-style">Social Security at 62 ($)</label>
+                                <label for="socialSecurityMonthly" class="label-style" id="socialSecurityMonthlyLabel">Social Security at 62 ($)</label>
                                 <div class="slider-input-wrapper">
                                     <span class="slider-value-display" id="socialSecurityMonthlyValue"></span>
-                                    <input type="range" id="socialSecurityMonthly" min="0" max="5000" value="2800" step="200" class="w-full">
+                                    <input type="range" id="socialSecurityMonthly" min="0" max="5000" value="2800" step="100" class="w-full">
                                 </div>
                             </div>
 
@@ -1629,6 +1678,10 @@
                     </div>
                     <div class="flex items-center">
                         <span class="inline-block w-4 h-4 rounded-full mr-2" style="background-color: #10b981;"></span>
+                        Net Worth
+                    </div>
+                    <div class="flex items-center">
+                        <span class="inline-block w-4 h-4 rounded-full mr-2" style="background-color: #800080;"></span>
                         Net Worth (Today's $)
                     </div>
                 </div>
