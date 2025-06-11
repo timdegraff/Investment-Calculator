@@ -44,15 +44,16 @@
     const SHARED_DOC_ID = 'shared_inputs'; // A single document for all shared inputs
 
     // Revision Level
-    const appRevision = "1.29"; // Added right Y-axis, separated Homes from Other Assets, implemented distinct growth for Investments, Homes, and static Other Assets.
+    const appRevision = "1.32"; // Added 72(t) Distribution Calculator (Section 5).
 
     // Predefined default values for dynamic sections
     const defaultInvestmentAccounts = [
-        { name: "401K", value: 486840 },
-        { name: "Roth 1", value: 167169 },
-        { name: "Roth 2", value: 148545 },
-        { name: "HSA", value: 23550 },
-        { name: "529", value: 50513 }
+        { name: "401K", value: 527030 },
+        { name: "Roth 1", value: 178181 },
+        { name: "Roth 2", value: 157347 },
+        { name: "529", value: 55836 },
+        { name: "HSA", value: 25340 },
+        { name: "Gold", value: 6600 }
     ];
 
     const defaultHomes = [
@@ -72,6 +73,26 @@
         { name: "Home Mortgage", value: 202212 },
         { name: "Credit Cards", value: 0 }
     ];
+
+    const defaultOtherIncomes = []; // Initializing as empty, will add dynamically if needed
+
+    // Uniform Lifetime Table (Simplified for ages relevant to 72(t) starting points)
+    // Source: IRS Publication 590-B, Appendix B, Table III (Uniform Lifetime Table) for 2023
+    // Note: This table is subject to change by the IRS. For official calculations, always refer to the latest IRS publications.
+    const uniformLifetimeTable = {
+        1: 61.1, 2: 60.1, 3: 59.1, 4: 58.1, 5: 57.1, 6: 56.1, 7: 55.1, 8: 54.1, 9: 53.1, 10: 52.2,
+        11: 51.2, 12: 50.2, 13: 49.2, 14: 48.3, 15: 47.3, 16: 46.4, 17: 45.4, 18: 44.5, 19: 43.5, 20: 42.6,
+        21: 41.7, 22: 40.7, 23: 39.8, 24: 38.9, 25: 38.0, 26: 37.1, 27: 36.2, 28: 35.3, 29: 34.4, 30: 33.5,
+        31: 32.6, 32: 31.7, 33: 30.8, 34: 29.9, 35: 29.1, 36: 28.2, 37: 27.4, 38: 26.5, 39: 25.6, 40: 24.7,
+        41: 23.8, 42: 22.9, 43: 22.0, 44: 21.2, 45: 20.3, 46: 19.5, 47: 18.7, 48: 17.9, 49: 17.1, 50: 16.3,
+        51: 15.5, 52: 14.8, 53: 14.0, 54: 13.3, 55: 12.6, 56: 11.9, 57: 11.2, 58: 10.5, 59: 9.9, 60: 9.3,
+        61: 8.7, 62: 8.2, 63: 7.7, 64: 7.2, 65: 6.7, 66: 6.3, 67: 5.9, 68: 5.5, 69: 5.1, 70: 4.7,
+        71: 4.4, 72: 4.1, 73: 3.8, 74: 3.6, 75: 3.3, 76: 3.1, 77: 2.9, 78: 2.7, 79: 2.5, 80: 2.4,
+        81: 2.2, 82: 2.1, 83: 1.9, 84: 1.8, 85: 1.7, 86: 1.6, 87: 1.5, 88: 1.4, 89: 1.3, 90: 1.2,
+        91: 1.1, 92: 1.1, 93: 1.0, 94: 1.0, 95: 0.9, 96: 0.9, 97: 0.8, 98: 0.8, 99: 0.7, 100: 0.7,
+        101: 0.6, 102: 0.6, 103: 0.5, 104: 0.5, 105: 0.5, 106: 0.4, 107: 0.4, 108: 0.4, 109: 0.3, 110: 0.3,
+        111: 0.3, 112: 0.2, 113: 0.2, 114: 0.2, 115: 0.2, 116: 0.1, 117: 0.1, 118: 0.1, 119: 0.1, 120: 0.1
+    };
 
 
         // Flag to prevent saving when data is being loaded from Firestore
@@ -117,7 +138,11 @@
             retirementYear: document.getElementById('retirementYear'),
             monthlyPrincipalPayment: document.getElementById('monthlyPrincipalPayment'),
             socialSecurityStartAge: document.getElementById('socialSecurityStartAge'),
-            socialSecurityMonthly: document.getElementById('socialSecurityMonthly')
+            socialSecurityMonthly: document.getElementById('socialSecurityMonthly'),
+            // New 72(t) inputs
+            seventyTwoTAccountBalance: document.getElementById('seventyTwoTAccountBalance'),
+            seventyTwoTStartAge: document.getElementById('seventyTwoTStartAge'),
+            seventyTwoTInterestRate: document.getElementById('seventyTwoTInterestRate')
         };
 
         // Get references to display elements
@@ -155,6 +180,17 @@
         const socialSecurityMonthlyLabel = document.getElementById('socialSecurityMonthlyLabel');
         const ssStartAgeDrawLabel = document.getElementById('ssStartAgeDrawLabel');
 
+        // 72(t) Result Displays
+        const rmdAnnualDisplay = document.getElementById('rmdAnnual');
+        const rmdMonthlyDisplay = document.getElementById('rmdMonthly');
+        const amortizationAnnualDisplay = document.getElementById('amortizationAnnual');
+        const amortizationMonthlyDisplay = document.getElementById('amortizationMonthly');
+        const annuitizationAnnualDisplay = document.getElementById('annuitizationAnnual');
+        const annuitizationMonthlyDisplay = document.getElementById('annuitizationMonthly');
+        const lifeExpectancyUsedDisplay = document.getElementById('lifeExpectancyUsed');
+        const seventyTwoTProjectionTableBody = document.getElementById('seventyTwoTProjectionTableBody');
+        const seventyTwoTChartContainer = document.getElementById('seventyTwoTChartContainer');
+
 
         // Get references to slider input and value display pairs
         const sliderPairs = [
@@ -170,7 +206,10 @@
             { slider: staticInputs.retirementDrawRatePost62, valueDisplay: document.getElementById('retirementDrawRatePost62Value'), unit: '%' },
             { slider: staticInputs.retirementYear, valueDisplay: document.getElementById('retirementYearValue'), unit: '' },
             { slider: staticInputs.socialSecurityStartAge, valueDisplay: document.getElementById('socialSecurityStartAgeValue'), unit: '' },
-            { slider: staticInputs.socialSecurityMonthly, valueDisplay: document.getElementById('socialSecurityMonthlyValue'), unit: '' }
+            { slider: staticInputs.socialSecurityMonthly, valueDisplay: document.getElementById('socialSecurityMonthlyValue'), unit: '' },
+            // New 72(t) slider pairs
+            { slider: staticInputs.seventyTwoTStartAge, valueDisplay: document.getElementById('seventyTwoTStartAgeValue'), unit: '' },
+            { slider: staticInputs.seventyTwoTInterestRate, valueDisplay: document.getElementById('seventyTwoTInterestRateValue'), unit: '%' }
         ];
 
         // Function to format numbers as currency, rounded to nearest thousand, without K/M (for table)
@@ -213,6 +252,17 @@
         function updateSliderValueDisplay(slider, valueDisplay, unit) {
             const val = parseFloat(slider.value);
             valueDisplay.textContent = `${val.toFixed(slider.step === '0.1' || slider.step === '0.5' ? 1 : 0)}${unit}`;
+        }
+
+        // NEW: Helper function to format percentage for APY display
+        function formatPercentageAPY(rate) {
+            const percentage = rate * 100;
+            // Show one decimal place if there is a fractional part (e.g., 9.5%), otherwise show as whole number (e.g., 10%)
+            if (percentage % 1 !== 0) {
+                return percentage.toFixed(1);
+            } else {
+                return percentage.toFixed(0);
+            }
         }
 
         // Firebase Initialization
@@ -309,7 +359,7 @@
                         value = cleanInputNumber(staticInputs[key].value);
                     }
                     // Convert percentages to decimal for internal calculations and storage
-                    if (['bonusRate', 'my401kContributionRate', 'company401kContributionRate', 'annualSalaryRaise', 'stockAppreciation', 'housingAppreciation', 'inflation', 'retirementDrawRatePre62', 'retirementDrawRatePost62'].includes(key)) {
+                    if (['bonusRate', 'my401kContributionRate', 'company401kContributionRate', 'annualSalaryRaise', 'stockAppreciation', 'housingAppreciation', 'inflation', 'retirementDrawRatePre62', 'retirementDrawRatePost62', 'seventyTwoTInterestRate'].includes(key)) {
                         value = value / 100;
                     }
                     collectedData[key] = value;
@@ -410,7 +460,7 @@
                 if (staticInputs[key] && data[key] !== undefined) {
                     let value = data[key];
                     // Special handling for percentage sliders to convert back to 0-100 range for display
-                    if (['bonusRate', 'my401kContributionRate', 'company401kContributionRate', 'annualSalaryRaise', 'stockAppreciation', 'housingAppreciation', 'inflation', 'retirementDrawRatePre62', 'retirementDrawRatePost62'].includes(key)) {
+                    if (['bonusRate', 'my401kContributionRate', 'company401kContributionRate', 'annualSalaryRaise', 'stockAppreciation', 'housingAppreciation', 'inflation', 'retirementDrawRatePre62', 'retirementDrawRatePost62', 'seventyTwoTInterestRate'].includes(key)) {
                         value = parseFloat(value) * 100; // Convert decimal back to percentage for UI
                     }
 
@@ -630,6 +680,226 @@
             });
         }
 
+        // Function to project 401K balance to a specific age
+        function project401kBalanceToAge(startAge, targetAge, initial401kBalance, baseSalary, my401kRate, company401kRate, annualSalaryRaise, stockAppreciation) {
+            let current401k = initial401kBalance;
+            let currentSalary = baseSalary;
+
+            for (let age = startAge; age < targetAge; age++) {
+                const myContribution = currentSalary * my401kRate;
+                const companyContribution = currentSalary * company401kRate;
+                current401k += myContribution + companyContribution;
+                current401k *= (1 + stockAppreciation); // Apply growth after contributions
+                currentSalary *= (1 + annualSalaryRaise); // Increase salary for next year's contributions
+            }
+            return current401k;
+        }
+
+        // Function to calculate 72(t) distributions
+        function calculate72tDistributions(accountBalance, age, interestRate) {
+            const lifeExpectancy = uniformLifetimeTable[age];
+            if (!lifeExpectancy) {
+                console.error(`Life expectancy not found for age ${age}.`);
+                lifeExpectancyUsedDisplay.textContent = `N/A (Age ${age} not in table)`;
+                return { rmdAnnual: 0, rmdMonthly: 0, amortizationAnnual: 0, amortizationMonthly: 0, annuitizationAnnual: 0, annuitizationMonthly: 0 };
+            }
+
+            lifeExpectancyUsedDisplay.textContent = `${lifeExpectancy} years`;
+
+            // 1. Required Minimum Distribution (RMD) Method
+            const rmdAnnual = accountBalance / lifeExpectancy;
+            const rmdMonthly = rmdAnnual / 12;
+
+            // 2. Fixed Amortization Method
+            // IRS defines max interest rate as 120% of the federal mid-term rate or 5%, whichever is greater.
+            // For this calculator, we'll use the user-defined interestRate, assuming it's within IRS limits.
+            const monthlyInterestRate = interestRate / 12;
+            const numberOfMonths = lifeExpectancy * 12;
+            let amortizationMonthly = 0;
+            if (monthlyInterestRate > 0) {
+                amortizationMonthly = accountBalance * (monthlyInterestRate / (1 - Math.pow(1 + monthlyInterestRate, -numberOfMonths)));
+            } else { // Handle 0 interest rate for fixed amortization
+                amortizationMonthly = accountBalance / numberOfMonths;
+            }
+            const amortizationAnnual = amortizationMonthly * 12;
+
+            // 3. Fixed Annuitization Method
+            // This is a complex actuarial calculation based on IRS tables.
+            // A common approximation uses the annual interest rate and life expectancy.
+            // Using a simple annuity formula: PMT = PV * [ i / (1 - (1 + i)^-n) ]
+            // Where i = annual interest rate, n = life expectancy.
+            // Note: This is an approximation and might not match official IRS annuity factors precisely.
+            let annuitizationAnnual = 0;
+            if (interestRate > 0) {
+                annuitizationAnnual = accountBalance * (interestRate / (1 - Math.pow(1 + interestRate, -lifeExpectancy)));
+            } else { // Handle 0 interest rate for fixed annuitization
+                annuitizationAnnual = accountBalance / lifeExpectancy;
+            }
+            const annuitizationMonthly = annuitizationAnnual / 12;
+
+            return { rmdAnnual, rmdMonthly, amortizationAnnual, amortizationMonthly, annuitizationAnnual, annuitizationMonthly };
+        }
+
+        // D3.js Chart Rendering Function for 72(t) Projection
+        function render72tChart(data) {
+            d3.select(seventyTwoTChartContainer).select("svg").remove();
+
+            const parentWidth = seventyTwoTChartContainer.offsetWidth;
+            const margin = { top: 40, right: 60, bottom: 50, left: 80 };
+            const width = parentWidth - margin.left - margin.right;
+            const height = 400 - margin.top - margin.bottom;
+
+            const svg = d3.select(seventyTwoTChartContainer).append("svg")
+                .attr("width", width + margin.left + margin.right)
+                .attr("height", height + margin.top + margin.bottom)
+                .attr("class", "chart-svg")
+                .append("g")
+                .attr("transform", `translate(${margin.left},${margin.top})`);
+
+            const xScale = d3.scaleLinear()
+                .domain(d3.extent(data, d => d.age))
+                .range([0, width]);
+
+            const yMax = d3.max(data, d => Math.max(d.accountValue, d.annualDistribution));
+            const yMin = d3.min(data, d => Math.min(d.accountValue, d.annualDistribution));
+
+
+            const yScale = d3.scaleLinear()
+                .domain([yMin * 0.95, yMax * 1.05])
+                .range([height, 0]);
+
+            const xAxis = d3.axisBottom(xScale).tickFormat(d3.format("d"));
+            const yAxisLeft = d3.axisLeft(yScale).tickFormat(d => formatProjectedChartAxisLabel(d, yMax));
+            const yAxisRight = d3.axisRight(yScale).tickFormat(d => formatProjectedChartAxisLabel(d, yMax));
+
+            svg.append("g")
+                .attr("class", "x axis")
+                .attr("transform", `translate(0,${height})`)
+                .call(xAxis);
+
+            svg.append("g")
+                .attr("class", "y axis-left")
+                .call(yAxisLeft);
+            
+            svg.append("g")
+                .attr("class", "y axis-right")
+                .attr("transform", `translate(${width}, 0)`)
+                .call(yAxisRight);
+
+            svg.append("g")
+                .attr("class", "grid")
+                .call(d3.axisLeft(yScale)
+                    .tickSize(-width)
+                    .tickFormat("")
+                );
+
+            const lineAccountValue = d3.line()
+                .x(d => xScale(d.age))
+                .y(d => yScale(d.accountValue));
+
+            const lineAnnualDistribution = d3.line()
+                .x(d => xScale(d.age))
+                .y(d => yScale(d.annualDistribution));
+            
+
+            svg.append("path")
+                .datum(data)
+                .attr("class", "line")
+                .attr("fill", "none")
+                .attr("stroke", "#2563eb") // Blue for account value
+                .attr("stroke-width", 3)
+                .attr("d", lineAccountValue);
+
+            svg.append("path")
+                .datum(data)
+                .attr("class", "line")
+                .attr("fill", "none")
+                .attr("stroke", "#f97316") // Orange for annual distribution
+                .attr("stroke-width", 3)
+                .attr("d", lineAnnualDistribution);
+
+            svg.append("text")
+                .attr("transform", `translate(${width / 2}, ${height + margin.bottom - 10})`)
+                .style("text-anchor", "middle")
+                .attr("font-size", "0.9rem")
+                .text("Age");
+
+            svg.append("text")
+                .attr("transform", "rotate(-90)")
+                .attr("y", 0 - margin.left + 20)
+                .attr("x", 0 - (height / 2))
+                .attr("dy", "1em")
+                .style("text-anchor", "middle")
+                .attr("font-size", "0.9rem")
+                .text("Value ($)");
+
+            svg.append("text")
+                .attr("transform", "rotate(90)")
+                .attr("y", width + margin.right - 20)
+                .attr("x", height / 2)
+                .attr("dy", "-1em")
+                .style("text-anchor", "middle")
+                .attr("font-size", "0.9rem")
+                .text("Value ($)");
+
+            svg.append("text")
+                .attr("x", (width / 2))
+                .attr("y", 0 - (margin.top / 2))
+                .attr("text-anchor", "middle")
+                .attr("font-size", "1.2rem")
+                .attr("font-weight", "bold")
+                .text("72(t) Account Projection");
+
+            const tooltip = d3.select("body").append("div")
+                .attr("class", "tooltip")
+                .style("opacity", 0)
+                .style("position", "absolute");
+
+            svg.append("rect")
+                .attr("class", "overlay")
+                .attr("width", width)
+                .attr("height", height)
+                .style("fill", "none")
+                .style("pointer-events", "all")
+                .on("mouseover", function() { focusAccountValue.style("display", null); focusAnnualDistribution.style("display", null); tooltip.style("opacity", 1); })
+                .on("mouseout", function() { focusAccountValue.style("display", "none"); focusAnnualDistribution.style("display", "none"); tooltip.style("opacity", 0); })
+                .on("mousemove", mousemove72t);
+
+            const focusAccountValue = svg.append("g")
+                .attr("class", "focus")
+                .style("display", "none");
+
+            focusAccountValue.append("circle")
+                .attr("r", 5)
+                .attr("fill", "#2563eb");
+
+            const focusAnnualDistribution = svg.append("g")
+                .attr("class", "focus")
+                .style("display", "none");
+
+            focusAnnualDistribution.append("circle")
+                .attr("r", 5)
+                .attr("fill", "#f97316");
+
+            function mousemove72t(event) {
+                const x0 = xScale.invert(d3.pointer(event)[0]);
+                const bisect = d3.bisector(d => d.age).left;
+                const i = bisect(data, x0, 1);
+                const d0 = data[i - 1];
+                const d1 = data[i];
+                const d = x0 - d0.age > d1.age - x0 ? d1 : d0;
+
+                focusAccountValue.attr("transform", `translate(${xScale(d.age)},${yScale(d.accountValue)})`);
+                focusAnnualDistribution.attr("transform", `translate(${xScale(d.age)},${yScale(d.annualDistribution)})`);
+
+                tooltip.html(`Age: ${d.age}<br>Account Value: ${formatTableCurrency(d.accountValue)}<br>Annual Distribution: ${formatTableCurrency(d.annualDistribution)}`)
+                    .style("left", (event.pageX + 10) + "px")
+                    .style("top", (event.pageY - 20) + "px");
+            }
+            seventyTwoTChartContainer.__chartData__ = data; // Store data for resize handling
+        }
+
+
         // Main calculation function (now accepts a shouldSave flag)
         function calculateFinancials(shouldSaveData = true) {
             let totalInvestments = 0;
@@ -651,7 +921,7 @@
                         value = cleanInputNumber(staticInputs[key].value);
                     }
                     // Convert percentages to decimal for internal calculations and storage
-                    if (['bonusRate', 'my401kContributionRate', 'company401kContributionRate', 'annualSalaryRaise', 'stockAppreciation', 'housingAppreciation', 'inflation', 'retirementDrawRatePre62', 'retirementDrawRatePost62'].includes(key)) {
+                    if (['bonusRate', 'my401kContributionRate', 'company401kContributionRate', 'annualSalaryRaise', 'stockAppreciation', 'housingAppreciation', 'inflation', 'retirementDrawRatePre62', 'retirementDrawRatePost62', 'seventyTwoTInterestRate'].includes(key)) {
                         value = value / 100;
                     }
                     currentFinancials[key] = value;
@@ -731,6 +1001,9 @@
             const socialSecurityMonthly = currentFinancials.socialSecurityMonthly;
             const annualPrincipalPayment = monthlyPrincipalPayment * 12;
 
+            const seventyTwoTStartAge = currentFinancials.seventyTwoTStartAge;
+            const seventyTwoTInterestRate = currentFinancials.seventyTwoTInterestRate;
+
             // Update min for retirementYear slider dynamically based on currentAge
             staticInputs.retirementYear.min = currentAge;
             if (retirementYear < currentAge) {
@@ -779,8 +1052,8 @@
             annualSavingsDisplay.textContent = formatLargeCurrency(totalAnnualSavings); // Display only investment-related savings
 
             // Update the summary spans
-            totalInvestmentsSummary.textContent = `(${formatLargeCurrency(totalInvestments)}) ${(stockAppreciation * 100).toFixed(0)}% APY`;
-            totalHomesSummary.textContent = `(${formatLargeCurrency(totalHomes)}) ${(housingAppreciation * 100).toFixed(0)}% APY`;
+            totalInvestmentsSummary.textContent = `(${formatLargeCurrency(totalInvestments)}) ${formatPercentageAPY(stockAppreciation)}% APY`;
+            totalHomesSummary.textContent = `(${formatLargeCurrency(totalHomes)}) ${formatPercentageAPY(housingAppreciation)}% APY`;
             totalOtherStaticAssetsSummary.textContent = `(${formatLargeCurrency(totalOtherStaticAssets)})`; // No APY for static assets
             totalLiabilitiesSummary.textContent = `(${formatLargeCurrency(totalLiabilities)})`;
 
@@ -802,6 +1075,42 @@
                           socialSecurityStartAge,
                           socialSecurityMonthly
                           );
+            
+            // Calculate and display 72(t) distributions
+            const initial401kBalance = currentFinancials.investmentAccounts.find(acc => acc.name === "401K")?.value || 0;
+            const projected401kBalanceAt72tStart = project401kBalanceToAge(
+                currentAge,
+                seventyTwoTStartAge,
+                initial401kBalance,
+                baseSalary,
+                my401kContributionRate,
+                company401kContributionRate,
+                annualSalaryRaise,
+                stockAppreciation
+            );
+            staticInputs.seventyTwoTAccountBalance.value = formatInputNumber(projected401kBalanceAt72tStart);
+
+            const seventyTwoTCalculations = calculate72tDistributions(
+                projected401kBalanceAt72tStart,
+                seventyTwoTStartAge,
+                seventyTwoTInterestRate
+            );
+
+            rmdAnnualDisplay.textContent = formatLargeCurrency(seventyTwoTCalculations.rmdAnnual);
+            rmdMonthlyDisplay.textContent = formatLargeCurrency(seventyTwoTCalculations.rmdMonthly);
+            amortizationAnnualDisplay.textContent = formatLargeCurrency(seventyTwoTCalculations.amortizationAnnual);
+            amortizationMonthlyDisplay.textContent = formatLargeCurrency(seventyTwoTCalculations.amortizationMonthly);
+            annuitizationAnnualDisplay.textContent = formatLargeCurrency(seventyTwoTCalculations.annuitizationAnnual);
+            annuitizationMonthlyDisplay.textContent = formatLargeCurrency(seventyTwoTCalculations.annuitizationMonthly);
+
+            // Project 72(t) account growth for chart and table
+            project72tAccountGrowth(
+                seventyTwoTStartAge,
+                projected401kBalanceAt72tStart,
+                seventyTwoTInterestRate,
+                seventyTwoTCalculations.amortizationAnnual // Use Fixed Amortization for projection as it's common
+            );
+
 
             // Trigger saving if flag is true AND it's not from a Firestore load
             if (shouldSaveData && !window.isLoadingFromFirestore) {
@@ -975,6 +1284,52 @@
             }
             renderChart(chartData);
         }
+
+        function project72tAccountGrowth(startAge, initialBalance, interestRate, annualDistribution) {
+            seventyTwoTProjectionTableBody.innerHTML = '';
+            seventyTwoTChartContainer.innerHTML = ''; // Clear previous chart
+
+            let currentAccountValue = initialBalance;
+            const chartData = [];
+            const startYear = new Date().getFullYear() + (startAge - staticInputs.currentAge.value); // Calculate start year for 72t projection based on current age
+
+            // Add initial point for chart and table
+            chartData.push({
+                age: startAge,
+                accountValue: initialBalance,
+                annualDistribution: annualDistribution
+            });
+
+            // The 72(t) distributions must continue for 5 years OR until age 59 1/2, whichever is longer.
+            // For simplicity in projection, we'll project for 10 years or until age 70, whichever comes first,
+            // or until the account runs out.
+            const projectionEndAge = Math.min(startAge + 15, 70); // Project for up to 15 years or until age 70 for visualization
+
+            for (let age = startAge + 1; age <= projectionEndAge; age++) {
+                currentAccountValue *= (1 + interestRate); // Apply growth
+                currentAccountValue -= annualDistribution; // Deduct distribution
+
+                currentAccountValue = Math.max(0, currentAccountValue); // Account cannot go below zero
+
+                chartData.push({
+                    age: age,
+                    accountValue: currentAccountValue,
+                    annualDistribution: annualDistribution // Distribution remains fixed
+                });
+
+                const row = seventyTwoTProjectionTableBody.insertRow();
+                row.classList.add('hover:bg-blue-50');
+                if (age % 5 === 0) {
+                    row.classList.add('bg-blue-100');
+                }
+                row.insertCell().textContent = age;
+                row.insertCell().textContent = startYear + (age - startAge);
+                row.insertCell().textContent = formatTableCurrency(currentAccountValue);
+                row.insertCell().textContent = formatTableCurrency(annualDistribution);
+            }
+            render72tChart(chartData);
+        }
+
 
         // D3.js Chart Rendering Function for Projected Growth
         function renderChart(data) {
@@ -1255,6 +1610,10 @@
                 if (projectedData) {
                     renderChart(projectedData);
                 }
+                const projected72tData = seventyTwoTChartContainer.__chartData__;
+                if (projected72tData) {
+                    render72tChart(projected72tData);
+                }
                 handleMobileStickyHeader(); // Adjust sticky header on resize
             });
 
@@ -1504,7 +1863,7 @@
         lg:fixed lg:top-0 lg:left-0 lg:h-screen lg:w-64 lg:flex-col lg:items-center lg:justify-start lg:p-6 lg:shadow-2xl lg:overflow-y-auto
     ">
         <h2 class="text-xl font-extrabold mb-4 text-center text-white w-full lg:text-3xl lg:mb-8">Your Snapshot</h2>
-        <span id="appRevisionDisplay" class="text-xs text-blue-200 font-semibold mb-4 lg:mb-6">v1.29</span>
+        <span id="appRevisionDisplay" class="text-xs text-blue-200 font-semibold mb-4 lg:mb-6">v1.32</span>
         <!-- Each summary item will be a div -->
         <div class="text-center mb-2 summary-item w-1/2 sm:w-1/3 md:w-1/4 lg:w-auto lg:text-center px-1">
             <p class="text-sm font-bold text-blue-200 lg:text-lg">Net Worth:</p>
@@ -1803,6 +2162,88 @@
                             <!-- Rows will be inserted here by JavaScript -->
                         </tbody>
                     </table>
+                </div>
+            </div>
+
+            <!-- Section 5: 72(t) Distribution Calculator -->
+            <div class="bg-blue-50 p-6 rounded-lg shadow-md mt-8 border border-blue-200">
+                <h2 class="text-2xl font-bold mb-4 text-blue-700">5. 72(t) Distribution Calculator</h2>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
+                    <div>
+                        <h3 class="text-xl font-semibold mb-4 text-gray-800">72(t) Inputs</h3>
+                        <div class="mb-2">
+                            <label for="seventyTwoTStartAge" class="label-style">Age to Start 72(t) Distributions</label>
+                            <div class="slider-input-wrapper">
+                                <span class="slider-value-display" id="seventyTwoTStartAgeValue"></span>
+                                <input type="range" id="seventyTwoTStartAge" min="40" max="70" value="55" step="1" class="w-full">
+                            </div>
+                        </div>
+                        <div class="mb-2">
+                            <label for="seventyTwoTInterestRate" class="label-style">Assumed Annual Interest Rate for 72(t) (%)</label>
+                            <div class="slider-input-wrapper">
+                                <span class="slider-value-display" id="seventyTwoTInterestRateValue"></span>
+                                <input type="range" id="seventyTwoTInterestRate" min="0.1" max="5.0" value="5.0" step="0.1" class="w-full">
+                            </div>
+                            <p class="text-xs text-gray-600 mt-1">Note: This is often limited to 120% of the federal mid-term rate or 5%, whichever is higher, per IRS guidelines.</p>
+                        </div>
+                        <div class="mb-4">
+                            <label for="seventyTwoTAccountBalance" class="label-style">Initial 72(t) Account Balance ($)</label>
+                            <input type="text" id="seventyTwoTAccountBalance" value="0" class="input-field" disabled>
+                            <p class="text-xs text-gray-600 mt-1">This balance will auto-populate from your projected 401K at the selected start age.</p>
+                        </div>
+                    </div>
+                    <div>
+                        <h3 class="text-xl font-semibold mb-4 text-gray-800">72(t) Distribution Calculations</h3>
+                        <div id="seventyTwoTResults" class="space-y-4">
+                            <div class="bg-white p-4 rounded-lg shadow">
+                                <h4 class="font-semibold text-lg text-blue-700">Required Minimum Distribution (RMD) Method</h4>
+                                <p class="text-gray-700">Annual: <span id="rmdAnnual" class="font-bold">$0</span></p>
+                                <p class="text-gray-700">Monthly: <span id="rmdMonthly" class="font-bold">$0</span></p>
+                            </div>
+                            <div class="bg-white p-4 rounded-lg shadow">
+                                <h4 class="font-semibold text-lg text-blue-700">Fixed Amortization Method</h4>
+                                <p class="text-gray-700">Annual: <span id="amortizationAnnual" class="font-bold">$0</span></p>
+                                <p class="text-gray-700">Monthly: <span id="amortizationMonthly" class="font-bold">$0</span></p>
+                            </div>
+                            <div class="bg-white p-4 rounded-lg shadow">
+                                <h4 class="font-semibold text-lg text-blue-700">Fixed Annuitization Method</h4>
+                                <p class="text-gray-700">Annual: <span id="annuitizationAnnual" class="font-bold">$0</span></p>
+                                <p class="text-gray-700">Monthly: <span id="annuitizationMonthly" class="font-bold">$0</span></p>
+                            </div>
+                            <p class="text-sm text-gray-600">Life Expectancy used (Uniform Lifetime Table): <span id="lifeExpectancyUsed" class="font-semibold">N/A</span> years</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="bg-white p-4 rounded-lg shadow mt-8">
+                    <h3 class="text-xl font-semibold mb-4 text-gray-800">72(t) Account Projection</h3>
+                    <div id="seventyTwoTChartContainer" class="w-full overflow-x-auto">
+                        <!-- D3.js chart for 72(t) projection will be rendered here -->
+                    </div>
+                    <div class="flex justify-center mt-4 space-x-6 text-gray-700 font-semibold">
+                        <div class="flex items-center">
+                            <span class="inline-block w-4 h-4 rounded-full mr-2 bg-blue-500"></span>
+                            72(t) Account Value
+                        </div>
+                        <div class="flex items-center">
+                            <span class="inline-block w-4 h-4 rounded-full mr-2 bg-orange-500"></span>
+                            Annual Distribution
+                        </div>
+                    </div>
+                    <div class="overflow-x-auto rounded-lg border border-gray-200 shadow-sm mt-8">
+                        <table class="min-w-full bg-white">
+                            <thead class="bg-blue-600 text-white uppercase text-sm leading-normal">
+                                <tr>
+                                    <th class="py-3 px-6 text-left">Age</th>
+                                    <th class="py-3 px-6 text-left">Year</th>
+                                    <th class="py-3 px-6 text-left">Account Balance</th>
+                                    <th class="py-3 px-6 text-left">Annual Distribution</th>
+                                </tr>
+                            </thead>
+                            <tbody id="seventyTwoTProjectionTableBody" class="text-gray-700 text-sm font-light divide-y divide-gray-200">
+                                <!-- Rows will be inserted here by JavaScript -->
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
         </div>
