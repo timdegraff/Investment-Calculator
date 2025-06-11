@@ -44,34 +44,30 @@
     const SHARED_DOC_ID = 'shared_inputs'; // A single document for all shared inputs
 
     // Revision Level
-    const appRevision = "1.20"; // Removed 529 plan entirely
+    const appRevision = "1.24"; // Updated annual raise to 4%, pre-62 draw to 6%, clarified contribution stop at retirement.
 
     // Predefined default values for dynamic sections
     const defaultInvestmentAccounts = [
-        { name: "401K", value: 500000 },
-        { name: "Roth 1", value: 175000 },
-        { name: "Roth 2", value: 150000 },
-        // { name: "529", value: 50000 }, // Removed 529
-        { name: "HSA", value: 25000 },
-        { name: "Gold", value: 10000 },
-        { name: "Checking", value: 20000 }
+        { name: "401K", value: 486840 },
+        { name: "Roth 1", value: 167169 },
+        { name: "Roth 2", value: 148545 },
+        { name: "HSA", value: 23550 },
+        { name: "Checking", value: 16296 }
     ];
 
     const defaultOtherAssets = [
-        { name: "Personal Home", value: 500000 },
-        { name: "Rental House", value: 200000 },
-        { name: "Lake House", value: 200000 },
-        { name: "Other Equity (car, tractor, camper)", value: 80000 }
+        { name: "Personal Home", value: 1017000 },
+        { name: "Other Equity (car, tractor, camper)", value: 85000 }
     ];
 
     const defaultLiabilities = [
-        { name: "Mortgage", value: 200000 },
-        { name: "Credit Cards", value: 0 }
+        { name: "Mortgage", value: 203000 },
+        { name: "Credit Cards", value: 0 } // Not specified in original data, keeping default
     ];
 
     const defaultOtherIncomes = [
         { name: "Cell Tower", value: 1200, escalationRate: 0.015 },
-        { name: "Rental House", value: 1300, escalationRate: 0.03 }
+        { name: "Rental House", value: 1300, escalationRate: 0.04 }
     ];
 
 
@@ -108,7 +104,6 @@
             my401kContributionRate: document.getElementById('my401kContributionRate'),
             company401kContributionRate: document.getElementById('company401kContributionRate'),
             annualRothContribution: document.getElementById('annualRothContribution'),
-            // monthly529Contribution: document.getElementById('monthly529Contribution'), // Removed 529
             monthlyHSAContribution: document.getElementById('monthlyHSAContribution'),
             annualSalaryRaise: document.getElementById('annualSalaryRaise'),
             stockAppreciation: document.getElementById('stockAppreciation'),
@@ -289,18 +284,21 @@
 
             // Collect static input values
             for (const key in staticInputs) {
-                let value;
-                // For range inputs, parse directly
-                if (staticInputs[key].type === 'range') {
-                    value = parseFloat(staticInputs[key].value);
-                } else { // For text inputs, clean the formatted string
-                    value = cleanInputNumber(staticInputs[key].value);
+                // Ensure the element actually exists before trying to access its value
+                if (staticInputs[key]) {
+                    let value;
+                    // For range inputs, parse directly
+                    if (staticInputs[key].type === 'range') {
+                        value = parseFloat(staticInputs[key].value);
+                    } else { // For text inputs, clean the formatted string
+                        value = cleanInputNumber(staticInputs[key].value);
+                    }
+                    // Convert percentages to decimal for internal calculations and storage
+                    if (['bonusRate', 'my401kContributionRate', 'company401kContributionRate', 'annualSalaryRaise', 'stockAppreciation', 'housingAppreciation', 'inflation', 'retirementDrawRatePre62', 'retirementDrawRatePost62'].includes(key)) {
+                        value = value / 100;
+                    }
+                    collectedData[key] = value;
                 }
-                // Convert percentages to decimal for internal calculations and storage
-                if (['bonusRate', 'my401kContributionRate', 'company401kContributionRate', 'annualSalaryRaise', 'stockAppreciation', 'housingAppreciation', 'inflation', 'retirementDrawRatePre62', 'retirementDrawRatePost62'].includes(key)) {
-                    value = value / 100;
-                }
-                collectedData[key] = value;
             }
 
             // Collect dynamic investment account values
@@ -348,8 +346,8 @@
             }
             console.log("Setting up real-time Firestore listener.");
             const docRef = doc(db, PUBLIC_COLLECTION_PATH, SHARED_DOC_ID);
-            onSnapshot(docRef, async (docSnap) => { // Made async to allow awaiting `saveDataToFirestore`
-                window.isLoadingFromFirestore = true; // Set flag when loading from Firestore
+            onSnapshot(docRef, async (docSnap) => {
+                window.isLoadingFromFirestore = true;
                 if (docSnap.exists()) {
                     const data = docSnap.data();
                     console.log("Data loaded from Firestore:", data);
@@ -371,11 +369,11 @@
                     // Call calculateFinancials to update display and save the initial state with defaults
                     calculateFinancials(true);
                 }
-                window.isLoadingFromFirestore = false; // Reset flag after processing
+                window.isLoadingFromFirestore = false;
             }, (error) => {
                 console.error("Error listening to Firestore document:", error);
                 calculateFinancials(false); // Fallback to local calculation
-                window.isLoadingFromFirestore = false; // Reset flag on error
+                window.isLoadingFromFirestore = false;
             });
         }
 
@@ -383,7 +381,8 @@
         function populateInputsFromFirestore(data) {
             // Update static inputs
             for (const key in staticInputs) {
-                if (data[key] !== undefined) {
+                // Ensure the target element exists before trying to set its value
+                if (staticInputs[key] && data[key] !== undefined) {
                     let value = data[key];
                     // Special handling for percentage sliders to convert back to 0-100 range for display
                     if (['bonusRate', 'my401kContributionRate', 'company401kContributionRate', 'annualSalaryRaise', 'stockAppreciation', 'housingAppreciation', 'inflation', 'retirementDrawRatePre62', 'retirementDrawRatePost62'].includes(key)) {
@@ -584,17 +583,20 @@
 
             // Collect static input values
             for (const key in staticInputs) {
-                let value;
-                if (staticInputs[key].type === 'range') {
-                    value = parseFloat(staticInputs[key].value);
-                } else { // Text inputs
-                    value = cleanInputNumber(staticInputs[key].value);
+                // Check if the element exists before trying to access its value
+                if (staticInputs[key]) {
+                    let value;
+                    if (staticInputs[key].type === 'range') {
+                        value = parseFloat(staticInputs[key].value);
+                    } else { // Text inputs
+                        value = cleanInputNumber(staticInputs[key].value);
+                    }
+                    // Convert percentages to decimal for internal calculations and storage
+                    if (['bonusRate', 'my401kContributionRate', 'company401kContributionRate', 'annualSalaryRaise', 'stockAppreciation', 'housingAppreciation', 'inflation', 'retirementDrawRatePre62', 'retirementDrawRatePost62'].includes(key)) {
+                        value = value / 100;
+                    }
+                    currentFinancials[key] = value;
                 }
-                // Convert percentages to decimal for internal calculations and storage
-                if (['bonusRate', 'my401kContributionRate', 'company401kContributionRate', 'annualSalaryRaise', 'stockAppreciation', 'housingAppreciation', 'inflation', 'retirementDrawRatePre62', 'retirementDrawRatePost62'].includes(key)) {
-                    value = value / 100;
-                }
-                collectedData[key] = value;
             }
 
             // Read dynamic investment account values
@@ -648,7 +650,6 @@
             const my401kContributionRate = currentFinancials.my401kContributionRate;
             const company401kContributionRate = currentFinancials.company401kContributionRate;
             const annualRothContribution = currentFinancials.annualRothContribution;
-            // const monthly529Contribution = currentFinancials.monthly529Contribution; // Removed 529
             const monthlyHSAContribution = currentFinancials.monthlyHSAContribution;
             const annualSalaryRaise = currentFinancials.annualSalaryRaise;
             const stockAppreciation = currentFinancials.stockAppreciation;
@@ -668,7 +669,10 @@
 
             // Update slider value displays (already done in populateInputsFromFirestore or event listeners)
             sliderPairs.forEach(pair => {
-                updateSliderValueDisplay(pair.slider, pair.valueDisplay, pair.unit);
+                // Ensure the slider and display elements exist before updating
+                if (pair.slider && pair.valueDisplay) {
+                    updateSliderValueDisplay(pair.slider, pair.valueDisplay, pair.unit);
+                }
             });
 
             // Update dynamic retirement draw labels based on slider value
@@ -681,18 +685,18 @@
             const currentNetWorth = currentTotalAssets - totalLiabilities;
             const currentNetInvestments = totalInvestments;
 
-            // Calculate Annual Income
+            // Calculate Annual Income (for display only in Snapshot)
             const annualBonusIncome = baseSalary * bonusRate;
             const totalAnnualOtherIncome = totalOtherMonthlyIncome * 12;
             const totalAnnualIncome = baseSalary + annualBonusIncome + totalAnnualOtherIncome;
 
-            // Calculate Total Annual Savings (only those that go into investments)
+            // Calculate Total Annual Savings (only those explicitly going into investments)
+            // Removed any implicit surplus calculation from income - expenses
             const totalAnnualSavings =
                 (baseSalary * my401kContributionRate) +
                 (baseSalary * company401kContributionRate) +
-                // (monthly529Contribution * 12) + // Removed 529
                 (monthlyHSAContribution * 12) +
-                annualRothContribution; // Monthly Principal Payment is not investment savings, it's debt reduction
+                annualRothContribution;
 
             // Display current values using new formatting
             currentNetWorthDisplay.textContent = formatLargeCurrency(currentNetWorth);
@@ -707,19 +711,19 @@
 
             // Project growth over years
             projectGrowth(currentNetInvestments, currentNetWorth,
-                          currentFinancials.otherAssets, // Pass the entire otherAssets array here
+                          currentFinancials.otherAssets,
                           totalLiabilities, currentMortgageValue, baseSalary,
                           bonusRate, my401kContributionRate, company401kContributionRate,
-                          annualRothContribution, // monthly529Contribution removed
+                          annualRothContribution,
                           monthlyHSAContribution,
                           annualSalaryRaise, stockAppreciation,
                           housingAppreciation, inflation, annualPrincipalPayment,
-                          currentFinancials.otherIncome, // Pass the collected current other income state
+                          currentFinancials.otherIncome,
                           currentAge,
-                          retirementDrawRatePre62, retirementDrawRatePost62, // Pass both draw rates
+                          retirementDrawRatePre62, retirementDrawRatePost62,
                           todaysDrawDisplay, dynamicRetirementDrawValue, sixtyTwoYODrawDisplay,
-                          retirementYear, // Pass the dynamic retirement year
-                          dynamicRetirementDrawValueSticky // Pass the sticky element for update
+                          retirementYear,
+                          dynamicRetirementDrawValueSticky
                           );
 
             // Trigger saving if flag is true AND it's not from a Firestore load
@@ -731,7 +735,7 @@
 
         function projectGrowth(initialNetInvestments, initialNetWorth, initialOtherAssetsList, initialTotalLiabilities, initialMortgageValue, initialBaseSalary,
                                bonusRate, my401kContributionRate, company401kContributionRate,
-                               annualRothContribution, // monthly529Contribution removed
+                               annualRothContribution,
                                monthlyHSAContribution,
                                annualSalaryRaise, stockAppreciation,
                                housingAppreciation, inflation, annualPrincipalPayment,
@@ -745,12 +749,12 @@
             chartContainer.innerHTML = '';
 
             let currentInvestments = initialNetInvestments;
-            // Initialize from the passed list of assets
             let currentHomeValue = initialOtherAssetsList.find(asset => asset.name === "Personal Home")?.value || 0;
             let currentMortgage = initialMortgageValue;
             let currentOtherLiabilitiesTotal = initialTotalLiabilities - initialMortgageValue;
             let currentBaseSalary = initialBaseSalary;
             let currentOtherEquity = initialOtherAssetsList.find(asset => asset.name === "Other Equity (car, tractor, camper)")?.value || 0;
+            
             let currentRentalHouseValue = initialOtherAssetsList.find(asset => asset.name === "Rental House")?.value || 0;
             let currentLakeHouseValue = initialOtherAssetsList.find(asset => asset.name === "Lake House")?.value || 0;
             
@@ -763,13 +767,13 @@
 
             const chartData = [];
 
-            // Calculate "Today's Draw" assuming the retirement is today for display purposes
+            // Calculate "Today's Draw" for snapshot display:
             // This is current investments * Pre-62 rate (from slider) + current total annual other income
-            let initialTotalOtherAnnualIncome = 0;
+            let initialTotalOtherAnnualIncomeSnapshot = 0;
             currentOtherIncomesStateForProjection.forEach(income => {
-                initialTotalOtherAnnualIncome += income.value * 12;
+                initialTotalOtherAnnualIncomeSnapshot += income.value * 12;
             });
-            const todaysDrawValue = (initialNetInvestments * retirementDrawRatePre62) + initialTotalOtherAnnualIncome;
+            const todaysDrawValue = (initialNetInvestments * retirementDrawRatePre62) + initialTotalOtherAnnualIncomeSnapshot;
             todaysDrawDisplay.textContent = formatLargeCurrency(todaysDrawValue);
 
             chartData.push({
@@ -783,29 +787,29 @@
                 const age = currentProjectedAge;
 
                 let annualContributionsToInvestments = 0;
-                let currentAnnualOtherIncomeForYear = 0;
+                let currentAnnualOtherIncomeForYear = 0; // This is income for spending, not for investment growth
 
-                // Calculate contributions if not retired
+                // Calculate contributions only if not retired (explicit contributions)
+                // Contributions stop once current age reaches or exceeds the retirement year input
                 if (age < retirementYearInput) {
                     annualContributionsToInvestments =
                         (currentBaseSalary * my401kContributionRate) +
                         (currentBaseSalary * company401kContributionRate) +
-                        // (monthly529Contribution * 12) + // Removed 529
                         (monthlyHSAContribution * 12) +
                         annualRothContribution;
                 }
 
-                // Update projected other incomes for the current year (always escalates)
+                // Update projected other incomes for the current year (always escalates for total income available for spending)
                 projectedOtherIncomes.forEach(income => {
                     income.value *= (1 + income.escalationRate);
                     // Round down rental income to nearest $100 if escalation applies
                     if (income.name.toLowerCase().includes("rental") && income.escalationRate > 0) {
                         income.value = Math.floor(income.value / 100) * 100;
                     }
-                    currentAnnualOtherIncomeForYear += income.value * 12;
+                    currentAnnualOtherIncomeForYear += income.value * 12; // Sum up for available income
                 });
 
-                // Add contributions to investments
+                // Add explicit contributions to investments
                 currentInvestments += annualContributionsToInvestments;
 
                 // Apply investment growth
@@ -825,13 +829,11 @@
                     currentInvestments -= annualDrawFromInvestments;
                 }
 
-                // Calculate total income available for spending (for display only)
+                // Calculate total income available for spending (investment draw + other incomes)
                 const totalAnnualIncomeAvailable = annualDrawFromInvestments + currentAnnualOtherIncomeForYear;
 
 
                 // Update the dynamic retirement draw value when the specific retirement year is reached
-                // Note: This display is only for the *initial* draw at the retirement age selected.
-                // It does not reflect the draw rate change at age 62 within the projection.
                 if (age === retirementYearInput) {
                     const drawValueInTodaysDollars = totalAnnualIncomeAvailable / Math.pow((1 + inflationRate), i);
                     dynamicRetirementDrawValue.textContent = formatLargeCurrency(drawValueInTodaysDollars);
@@ -839,8 +841,8 @@
                 }
 
                 // Keep 62 YO Draw display as a separate fixed value for comparison
-                // This will now use the retirementDrawRatePost62 once age 62 is hit
                 if (age === 62) {
+                    // This now includes the post-62 draw from investments + the escalated other incomes at age 62
                     const drawAt62 = (currentInvestments * retirementDrawRatePost62) + currentAnnualOtherIncomeForYear;
                     const drawValueInTodaysDollarsAt62 = drawAt62 / Math.pow((1 + inflationRate), i);
                     sixtyTwoYODrawDisplay.textContent = formatLargeCurrency(drawValueInTodaysDollarsAt62);
@@ -1031,18 +1033,21 @@
 
         // Add event listeners to all static input fields
         for (const key in staticInputs) {
-            // Slider inputs still trigger on 'input' to update their visual display value
-            if (staticInputs[key].type === 'range') {
-                staticInputs[key].addEventListener('input', () => updateSliderValueDisplay(staticInputs[key], sliderPairs.find(p => p.slider === staticInputs[key]).valueDisplay, sliderPairs.find(p => p.slider === staticInputs[key]).unit));
-                staticInputs[key].addEventListener('change', () => calculateFinancials(true)); // Trigger save on 'change' (when slider is released)
-            } else { // Text inputs
-                // Allow typing freely, no formatting on input
-                staticInputs[key].addEventListener('input', (event) => { /* no-op */ });
-                // Trigger formatting and calculation on blur
-                staticInputs[key].addEventListener('blur', (event) => {
-                    event.target.value = formatInputNumber(event.target.value); // Format on blur
-                    calculateFinancials(true); // Trigger save on blur
-                });
+            // Ensure the element exists before adding event listeners
+            if (staticInputs[key]) {
+                // Slider inputs still trigger on 'input' to update their visual display value
+                if (staticInputs[key].type === 'range') {
+                    staticInputs[key].addEventListener('input', () => updateSliderValueDisplay(staticInputs[key], sliderPairs.find(p => p.slider === staticInputs[key]).valueDisplay, sliderPairs.find(p => p.slider === staticInputs[key]).unit));
+                    staticInputs[key].addEventListener('change', () => calculateFinancials(true)); // Trigger save on 'change' (when slider is released)
+                } else { // Text inputs
+                    // Allow typing freely, no formatting on input
+                    staticInputs[key].addEventListener('input', (event) => { /* no-op */ });
+                    // Trigger formatting and calculation on blur
+                    staticInputs[key].addEventListener('blur', (event) => {
+                        event.target.value = formatInputNumber(event.target.value); // Format on blur
+                        calculateFinancials(true); // Trigger save on blur
+                    });
+                }
             }
         }
 
@@ -1057,9 +1062,12 @@
 
         // Attach event listeners for slider value display updates and trigger save
         sliderPairs.forEach(pair => {
-            pair.slider.addEventListener('input', () => updateSliderValueDisplay(pair.slider, pair.valueDisplay, pair.unit));
-            pair.slider.addEventListener('change', () => calculateFinancials(true)); // Change also triggers save
-            // Initial display update handled by populateInputsFromFirestore
+            // Ensure the slider and display elements exist before attaching listeners
+            if (pair.slider && pair.valueDisplay) {
+                pair.slider.addEventListener('input', () => updateSliderValueDisplay(pair.slider, pair.valueDisplay, pair.unit));
+                pair.slider.addEventListener('change', () => calculateFinancials(true)); // Change also triggers save
+                // Initial display update handled by populateInputsFromFirestore
+            }
         });
 
         // Function to handle sticky header on scroll for mobile
@@ -1193,7 +1201,7 @@
         /* Slider value display wrapper */
         .slider-input-wrapper {
             display: flex; /* Use flexbox for horizontal alignment */
-            align-items: center; /* Vertically center items */
+            align-items: center; /* Vertically center center items */
             margin-bottom: 0.5rem; /* Space between slider groups */
             /* No fixed height needed as content flows horizontally */
             /* Removed padding-top as value is no longer above thumb */
@@ -1367,7 +1375,7 @@
         lg:fixed lg:top-0 lg:left-0 lg:h-screen lg:w-64 lg:flex-col lg:items-center lg:justify-start lg:p-6 lg:shadow-2xl lg:overflow-y-auto
     ">
         <h2 class="text-xl font-extrabold mb-4 text-center text-white w-full lg:text-3xl lg:mb-8">Your Snapshot</h2>
-        <span id="appRevisionDisplay" class="text-xs text-blue-200 font-semibold mb-4 lg:mb-6">v1.20</span>
+        <span id="appRevisionDisplay" class="text-xs text-blue-200 font-semibold mb-4 lg:mb-6">v1.24</span>
         <!-- Each summary item will be a div -->
         <div class="text-center mb-2 summary-item w-1/2 sm:w-1/3 md:w-1/4 lg:w-auto lg:text-center px-1">
             <p class="text-sm font-bold text-blue-200 lg:text-lg">Net Worth:</p>
@@ -1483,7 +1491,7 @@
                                 <label for="my401kContributionRate" class="label-style">My 401K Contribution Rate (% of Base Salary)</label>
                                 <div class="slider-input-wrapper">
                                     <span class="slider-value-display" id="my401kContributionRateValue"></span>
-                                    <input type="range" id="my401kContributionRate" min="0" max="20" value="13" step="0.5" class="w-full">
+                                    <input type="range" id="my401kContributionRate" min="0" max="20" value="6" step="0.5" class="w-full">
                                 </div>
                             </div>
 
@@ -1495,12 +1503,6 @@
                                 </div>
                             </div>
 
-                            <!-- Removed 529 contribution field -->
-                            <!-- <div class="mb-4">
-                                <label for="monthly529Contribution" class="label-style">Monthly 529 Contribution ($)</label>
-                                <input type="text" id="monthly529Contribution" value="400" class="input-field">
-                            </div> -->
-
                             <div class="mb-4">
                                 <label for="monthlyHSAContribution" class="label-style">Monthly HSA Contribution ($)</label>
                                 <input type="text" id="monthlyHSAContribution" value="600" class="input-field">
@@ -1508,7 +1510,7 @@
 
                             <div class="mb-4">
                                 <label for="annualRothContribution" class="label-style">Other Annual Savings Contribution ($)</label>
-                                <input type="text" id="annualRothContribution" value="25000" class="input-field">
+                                <input type="text" id="annualRothContribution" value="0" class="input-field">
                             </div>
                             <h3 class="text-xl font-semibold mt-8 mb-4 text-gray-800">Other Income (Continues Post-Retirement)</h3>
                             <!-- Labels for Other Income inputs -->
@@ -1532,7 +1534,7 @@
                                 <label for="annualSalaryRaise" class="label-style">Annual Salary Raise (%)</label>
                                 <div class="slider-input-wrapper">
                                     <span class="slider-value-display" id="annualSalaryRaiseValue"></span>
-                                    <input type="range" id="annualSalaryRaise" min="0" max="10" value="3.8" step="0.1" class="w-full">
+                                    <input type="range" id="annualSalaryRaise" min="0" max="10" value="4" step="0.1" class="w-full">
                                 </div>
                             </div>
 
@@ -1540,7 +1542,7 @@
                                 <label for="stockAppreciation" class="label-style">Stock Appreciation (%)</label>
                                 <div class="slider-input-wrapper">
                                     <span class="slider-value-display" id="stockAppreciationValue"></span>
-                                    <input type="range" id="stockAppreciation" min="0" max="15" value="10" step="0.5" class="w-full">
+                                    <input type="range" id="stockAppreciation" min="0" max="15" value="9" step="0.5" class="w-full">
                                 </div>
                             </div>
 
@@ -1565,7 +1567,7 @@
                                 <label for="retirementDrawRatePre62" class="label-style">Pre-62 YO Draw (%)</label>
                                 <div class="slider-input-wrapper">
                                     <span class="slider-value-display" id="retirementDrawRatePre62Value"></span>
-                                    <input type="range" id="retirementDrawRatePre62" min="0" max="10" value="7" step="0.5" class="w-full">
+                                    <input type="range" id="retirementDrawRatePre62" min="0" max="10" value="6" step="0.5" class="w-full">
                                 </div>
                             </div>
 
