@@ -65,7 +65,7 @@
     const appId = typeof __app_id !== 'undefined' ? __app_id : firebaseConfig.appId;
 
     // Revision Level
-    const appRevision = "1.41";
+    const appRevision = "1.42";
 
 
     let app;
@@ -152,8 +152,7 @@
     const liabilitiesContainer = document.getElementById('liabilitiesContainer');
     const addLiabilityBtn = document.getElementById('addLiabilityBtn');
     const otherIncomeContainer = document.getElementById('otherIncomeContainer');
-    // Corrected the problematic line:
-    const addOtherIncomeBtn = document.getElementById('addOtherIncomeBtn');
+    const addOtherIncomeBtn = document.getElementById('addOtherIncomeBtn'); // Corrected assignment
 
     const chartContainer = document.getElementById('chart-container');
     const appRevisionDisplay = document.getElementById('appRevisionDisplay');
@@ -732,9 +731,7 @@
         currentOtherIncomesStateForProjection.forEach(income => {
             initialTotalOtherAnnualIncomeSnapshot += income.value * 12;
         });
-        const todaysDrawValue = (initial401kBalance * retirementDrawRatePre62) + (initialOtherInvestmentsBalance * retirementDrawRatePre62) + initialTotalOtherAnnualIncomeSnapshot;
-        todaysDrawDisplay.textContent = formatLargeCurrency(todaysDrawValue);
-
+        
         // Calculate fixed 72(t) distribution ONCE at the start of projection
         const seventyTwoTStartAge = staticInputs.seventyTwoTStartAge ? parseFloat(staticInputs.seventyTwoTStartAge.value) : initialAge;
         const seventyTwoTInterestRate = staticInputs.seventyTwoTInterestRate ? parseFloat(staticInputs.seventyTwoTInterestRate.value) / 100 : 0.04;
@@ -746,6 +743,22 @@
             fixedAnnual72tDistribution = initial401kBalance / annuityFactor;
             fixedAnnual72tDistribution = Math.round(fixedAnnual72tDistribution * 100) / 100;
         }
+
+        // Calculate Today's Draw for snapshot based on initialAge and defined rules
+        let currentTodays401kDraw = 0;
+        let currentTodaysOtherInvestmentsDraw = 0;
+
+        if (initialAge >= seventyTwoTStartAge && initialAge < 60) {
+            currentTodays401kDraw = fixedAnnual72tDistribution;
+            currentTodaysOtherInvestmentsDraw = initialOtherInvestmentsBalance * retirementDrawRatePre62;
+        } else if (initialAge >= 60) {
+            const effectiveRate = (initialAge < socialSecurityStartAge) ? retirementDrawRatePre62 : retirementDrawRatePost62;
+            currentTodays401kDraw = initial401kBalance * effectiveRate;
+            currentTodaysOtherInvestmentsDraw = initialOtherInvestmentsBalance * effectiveRate;
+        }
+        const todaysDrawValue = currentTodays401kDraw + currentTodaysOtherInvestmentsDraw + initialTotalOtherAnnualIncomeSnapshot;
+        todaysDrawDisplay.textContent = formatLargeCurrency(todaysDrawValue);
+
 
         // First data point represents the current state (Age, Year, Investments, Net Worth, Net Worth in Today's Dollars)
         chartData.push({
@@ -1048,16 +1061,20 @@
 
         const yMaxBalance = d3.max(data, d => d.balance);
         const yMaxDistribution = d3.max(data, d => d.distribution);
-        const yMax = Math.max(yMaxBalance, yMaxDistribution) * 1.05;
-        const yMin = 0;
+        
+        // Define separate y-scales for balance (left) and distribution (right)
+        const yScaleLeft = d3.scaleLinear()
+            .domain([0, yMaxBalance * 1.05]) // Scale for balance
+            .range([height, 0]);
 
-        const yScale = d3.scaleLinear()
-            .domain([yMin, yMax])
+        const yScaleRight = d3.scaleLinear()
+            .domain([0, yMaxDistribution * 1.05]) // Scale for distribution
             .range([height, 0]);
 
         const xAxis = d3.axisBottom(xScale).tickFormat(d3.format("d"));
-        const yAxisLeft = d3.axisLeft(yScale).tickFormat(d => formatProjectedChartAxisLabel(d, yMax));
-        const yAxisRight = d3.axisRight(yScale).tickFormat(d => formatProjectedChartAxisLabel(d, yMax));
+        // Use separate y-axes based on their respective scales
+        const yAxisLeft = d3.axisLeft(yScaleLeft).tickFormat(d => formatProjectedChartAxisLabel(d, yMaxBalance));
+        const yAxisRight = d3.axisRight(yScaleRight).tickFormat(d => formatProjectedChartAxisLabel(d, yMaxDistribution));
 
         svg.append("g")
             .attr("class", "x axis")
@@ -1075,18 +1092,18 @@
 
         svg.append("g")
             .attr("class", "grid")
-            .call(d3.axisLeft(yScale)
+            .call(d3.axisLeft(yScaleLeft) // Grid lines based on left axis
                 .tickSize(-width)
                 .tickFormat("")
             );
 
         const lineBalance = d3.line()
             .x(d => xScale(d.age))
-            .y(d => yScale(d.balance));
+            .y(d => yScaleLeft(d.balance)); // Use yScaleLeft for balance line
 
         const lineDistribution = d3.line()
             .x(d => xScale(d.age))
-            .y(d => yScale(d.distribution));
+            .y(d => yScaleRight(d.distribution)); // Use yScaleRight for distribution line
 
         svg.append("path")
             .datum(data)
@@ -1122,7 +1139,7 @@
             .attr("dy", "-1em")
             .style("text-anchor", "middle")
             .attr("font-size", "0.9rem")
-            .text("Value ($)");
+            .text("Distribution ($)"); // Changed label for right axis
 
         svg.append("text")
             .attr("x", (width / 2))
@@ -1143,7 +1160,7 @@
             .attr("height", height)
             .style("fill", "none")
             .style("pointer-events", "all")
-            .on("mouseover", function() { focusBalance.style("display", null); focusDistribution.style("display", null); tooltip.style("opacity", 1); })
+            .on("mouseover", function(event) { focusBalance.style("display", null); focusDistribution.style("display", null); tooltip.style("opacity", 1); })
             .on("mouseout", function() { focusBalance.style("display", "none"); focusDistribution.style("display", "none"); tooltip.style("opacity", 0); })
             .on("mousemove", mousemove72t);
 
@@ -1171,8 +1188,8 @@
             const d1 = data[i];
             const d = x0 - d0.age > d1.age - x0 ? d1 : d0;
 
-            focusBalance.attr("transform", `translate(${xScale(d.age)},${yScale(d.balance)})`);
-            focusDistribution.attr("transform", `translate(${xScale(d.age)},${yScale(d.distribution)})`);
+            focusBalance.attr("transform", `translate(${xScale(d.age)},${yScaleLeft(d.balance)})`); // Use yScaleLeft
+            focusDistribution.attr("transform", `translate(${xScale(d.age)},${yScaleRight(d.distribution)})`); // Use yScaleRight
 
             tooltip.html(`Age: ${d.age}<br>Balance: ${formatTableCurrency(d.balance)}<br>Distribution: ${formatTableCurrency(d.distribution)}`)
                 .style("left", (event.pageX + 10) + "px")
@@ -1216,7 +1233,8 @@
             console.warn(`Cannot calculate 72(t) fixed distribution for age ${seventyTwoTStartAge} or interest rate. Distribution will be 0.`);
         }
 
-        for (let age = seventyTwoTStartAge; age <= 120; age += 0.5) {
+        // Cap 72(t) projection at age 80
+        for (let age = seventyTwoTStartAge; age <= 80; age += 0.5) { 
             if (current401kBalance < 0.01 && age > seventyTwoTStartAge) break;
 
             current401kBalance *= (1 + stockAppreciation);
@@ -1922,7 +1940,7 @@
                 </div>
 
                 <h3 class="text-xl font-semibold mb-4 text-gray-800">Projected 72(t) Distributions</h3>
-                <div id="seventyTwoTChartContainer" class="w-full overflow-x-auto mb-8">
+                <div id="seventyTwoTChartContainer" class="w-full overflow-x-auto">
                     </div>
                  <div class="flex justify-center mt-4 space-x-6 text-gray-700 font-semibold">
                     <div class="flex items-center">
