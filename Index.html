@@ -44,7 +44,7 @@
     const SHARED_DOC_ID = 'shared_inputs'; // A single document for all shared inputs
 
     // Revision Level
-    const appRevision = "1.32"; // Added 72(t) Distribution Calculator (Section 5).
+    const appRevision = "1.33"; // Updated 72(t) account balance calculation to specifically target "401k" investments.
 
     // Predefined default values for dynamic sections
     const defaultInvestmentAccounts = [
@@ -1077,7 +1077,11 @@
                           );
             
             // Calculate and display 72(t) distributions
-            const initial401kBalance = currentFinancials.investmentAccounts.find(acc => acc.name === "401K")?.value || 0;
+            // Find the 401K balance, robustly checking for case and parentheses
+            const initial401kBalance = currentFinancials.investmentAccounts.find(acc => 
+                acc.name.toLowerCase().includes("401k")
+            )?.value || 0;
+
             const projected401kBalanceAt72tStart = project401kBalanceToAge(
                 currentAge,
                 seventyTwoTStartAge,
@@ -1863,7 +1867,7 @@
         lg:fixed lg:top-0 lg:left-0 lg:h-screen lg:w-64 lg:flex-col lg:items-center lg:justify-start lg:p-6 lg:shadow-2xl lg:overflow-y-auto
     ">
         <h2 class="text-xl font-extrabold mb-4 text-center text-white w-full lg:text-3xl lg:mb-8">Your Snapshot</h2>
-        <span id="appRevisionDisplay" class="text-xs text-blue-200 font-semibold mb-4 lg:mb-6">v1.32</span>
+        <span id="appRevisionDisplay" class="text-xs text-blue-200 font-semibold mb-4 lg:mb-6">v1.33</span>
         <!-- Each summary item will be a div -->
         <div class="text-center mb-2 summary-item w-1/2 sm:w-1/3 md:w-1/4 lg:w-auto lg:text-center px-1">
             <p class="text-sm font-bold text-blue-200 lg:text-lg">Net Worth:</p>
@@ -2032,7 +2036,7 @@
                             </div>
                             <button id="addOtherIncomeBtn" type="button" class="mt-4 bg-purple-500 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded-lg shadow-md">
                                 + Add Other Income
-                            </button>
+                                </button>
                         </div>
 
                         <div>
