@@ -44,7 +44,7 @@
     const SHARED_DOC_ID = 'shared_inputs'; // A single document for all shared inputs
 
     // Revision Level
-    const appRevision = "1.33"; // Updated 72(t) account balance calculation to specifically target "401k" investments.
+    const appRevision = "1.35"; // Implemented dual Y-axis for 72(t) projection chart.
 
     // Predefined default values for dynamic sections
     const defaultInvestmentAccounts = [
@@ -119,6 +119,353 @@
             const cleaned = stringValue.replace(/[^\d.-]/g, '');
             return parseFloat(cleaned) || 0;
         }
+
+        // Function to format numbers as currency, rounded to nearest thousand, without K/M (for table)
+        const formatTableCurrency = (amount) => {
+            const roundedAmount = Math.round(amount / 1000) * 1000;
+            return new Intl.NumberFormat('en-US', {
+                style: 'currency',
+                currency: 'USD',
+                minimumFractionDigits: 0,
+                maximumFractionDigits: 0
+            }).format(roundedAmount);
+        };
+
+        // Function to format numbers as currency with K/M and specified decimal places (for summary displays)
+        const formatLargeCurrency = (amount) => {
+            if (Math.abs(amount) >= 1000000) {
+                return `$${(amount / 1000000).toFixed(2)}M`;
+            }
+            if (Math.abs(amount) >= 1000) {
+                return `$${(amount / 1000).toFixed(0)}K`;
+            }
+            return new Intl.NumberFormat('en-US', {
+                style: 'currency',
+                currency: 'USD',
+                minimumFractionDigits: 0,
+                maximumFractionDigits: 0
+            }).format(amount);
+        };
+
+        // Function to format Y-axis labels dynamically based on max value in the chart
+        function formatProjectedChartAxisLabel(value, maxChartValue) {
+            if (maxChartValue < 5000000) { // If max value is under 5 million, show in thousands
+                return `$${(value / 1000).toFixed(0)}K`; // No decimals for K
+            } else { // Otherwise, show in millions
+                return `$${(value / 1000000).toFixed(0)}M`; // No decimals for M
+            }
+        }
+
+        // Function to update slider value display
+        function updateSliderValueDisplay(slider, valueDisplay, unit) {
+            const val = parseFloat(slider.value);
+            valueDisplay.textContent = `${val.toFixed(slider.step === '0.1' || slider.step === '0.5' ? 1 : 0)}${unit}`;
+        }
+
+        // Helper function to format percentage for APY display
+        function formatPercentageAPY(rate) {
+            const percentage = rate * 100;
+            // Show one decimal place if there is a fractional part (e.g., 9.5%), otherwise show as whole number (e.g., 10%)
+            if (percentage % 1 !== 0) {
+                return percentage.toFixed(1);
+            } else {
+                return percentage.toFixed(0);
+            }
+        }
+
+        /**
+         * Projects the balance of a specific 401K account to a target age.
+         * For 72(t) calculations, this function is called with zero contributions
+         * to reflect only the growth of the existing balance.
+         */
+        function project401kBalanceToAge(startAge, targetAge, initial401kBalance, baseSalary, my401kRate, company401kRate, annualSalaryRaise, stockAppreciation) {
+            let current401k = initial401kBalance;
+            let currentSalary = baseSalary; // This will be used for future contribution calculations
+
+            for (let age = startAge; age < targetAge; age++) {
+                const myContribution = currentSalary * my401kRate;
+                const companyContribution = currentSalary * company401kRate;
+                current401k += myContribution + companyContribution; // Add contributions (will be 0 if rates/salary are 0)
+                current401k *= (1 + stockAppreciation); // Apply growth after contributions
+                currentSalary *= (1 + annualSalaryRaise); // Increase salary (will not increase if annualSalaryRaise is 0)
+            }
+            return current401k;
+        }
+
+        // Function to calculate 72(t) distributions
+        function calculate72tDistributions(accountBalance, age, interestRate) {
+            const lifeExpectancy = uniformLifetimeTable[age];
+            if (!lifeExpectancy) {
+                console.error(`Life expectancy not found for age ${age}.`);
+                lifeExpectancyUsedDisplay.textContent = `N/A (Age ${age} not in table)`;
+                return { rmdAnnual: 0, rmdMonthly: 0, amortizationAnnual: 0, amortizationMonthly: 0, annuitizationAnnual: 0, annuitizationMonthly: 0 };
+            }
+
+            lifeExpectancyUsedDisplay.textContent = `${lifeExpectancy} years`;
+
+            // 1. Required Minimum Distribution (RMD) Method
+            const rmdAnnual = accountBalance / lifeExpectancy;
+            const rmdMonthly = rmdAnnual / 12;
+
+            // 2. Fixed Amortization Method
+            // IRS defines max interest rate as 120% of the federal mid-term rate or 5%, whichever is greater.
+            // For this calculator, we'll use the user-defined interestRate, assuming it's within IRS limits.
+            const monthlyInterestRate = interestRate / 12;
+            const numberOfMonths = lifeExpectancy * 12;
+            let amortizationMonthly = 0;
+            if (monthlyInterestRate > 0) {
+                amortizationMonthly = accountBalance * (monthlyInterestRate / (1 - Math.pow(1 + monthlyInterestRate, -numberOfMonths)));
+            } else { // Handle 0 interest rate for fixed amortization
+                amortizationMonthly = accountBalance / numberOfMonths;
+            }
+            const amortizationAnnual = amortizationMonthly * 12;
+
+            // 3. Fixed Annuitization Method
+            // This is a complex actuarial calculation based on IRS tables.
+            // A common approximation uses the annual interest rate and life expectancy.
+            // Using a simple annuity formula: PMT = PV * [ i / (1 - (1 + i)^-n) ]
+            // Where i = annual interest rate, n = life expectancy.
+            // Note: This is an approximation and might not match official IRS annuity factors precisely.
+            let annuitizationAnnual = 0;
+            if (interestRate > 0) {
+                annuitizationAnnual = accountBalance * (interestRate / (1 - Math.pow(1 + interestRate, -lifeExpectancy)));
+            } else { // Handle 0 interest rate for fixed annuitization
+                annuitizationAnnual = accountBalance / lifeExpectancy;
+            }
+            const annuitizationMonthly = annuitizationAnnual / 12;
+
+            return { rmdAnnual, rmdMonthly, amortizationAnnual, amortizationMonthly, annuitizationAnnual, annuitizationMonthly };
+        }
+
+        /**
+         * Projects the 72(t) account value over time, deducting distributions.
+         * The account grows at the main stock appreciation rate.
+         * @param {number} startAge The age at which 72(t) distributions begin.
+         * @param {number} initialBalance The starting balance of the 72(t) account.
+         * @param {number} growthRate The annual growth rate of the account (from main stockAppreciation).
+         * @param {number} annualDistribution The fixed annual distribution amount (e.g., from Amortization method).
+         */
+        function project72tAccountGrowth(startAge, initialBalance, growthRate, annualDistribution) {
+            seventyTwoTProjectionTableBody.innerHTML = '';
+            seventyTwoTChartContainer.innerHTML = ''; // Clear previous chart
+
+            let currentAccountValue = initialBalance;
+            const chartData = [];
+            const currentAge = staticInputs.currentAge.value; // Get current age from UI
+            const startYear = new Date().getFullYear() + (startAge - currentAge); // Calculate start year for 72t projection
+
+            // Add initial point for chart and table
+            chartData.push({
+                age: startAge,
+                accountValue: initialBalance,
+                annualDistribution: annualDistribution
+            });
+
+            // The 72(t) distributions must continue for 5 years OR until age 59 1/2, whichever is longer.
+            // For simplicity in projection, we'll project until account runs out or age 90.
+            const projectionEndAge = 90; // Project further to show long-term impact
+
+            for (let age = startAge + 1; age <= projectionEndAge; age++) {
+                currentAccountValue *= (1 + growthRate); // Apply growth using stockAppreciation
+                currentAccountValue -= annualDistribution; // Deduct distribution
+
+                currentAccountValue = Math.max(0, currentAccountValue); // Account cannot go below zero
+
+                chartData.push({
+                    age: age,
+                    accountValue: currentAccountValue,
+                    annualDistribution: annualDistribution // Distribution remains fixed
+                });
+
+                const row = seventyTwoTProjectionTableBody.insertRow();
+                row.classList.add('hover:bg-blue-50');
+                if (age % 5 === 0) {
+                    row.classList.add('bg-blue-100');
+                }
+                row.insertCell().textContent = age;
+                row.insertCell().textContent = startYear + (age - startAge);
+                row.insertCell().textContent = formatTableCurrency(currentAccountValue);
+                row.insertCell().textContent = formatTableCurrency(annualDistribution);
+
+                // Stop projection if account runs out
+                if (currentAccountValue <= 0 && annualDistribution > 0) {
+                    break;
+                }
+            }
+            render72tChart(chartData);
+        }
+
+        // D3.js Chart Rendering Function for 72(t) Projection
+        function render72tChart(data) {
+            d3.select(seventyTwoTChartContainer).select("svg").remove();
+
+            if (!data || data.length === 0) {
+                // Display a message if no data to chart
+                seventyTwoTChartContainer.innerHTML = '<p class="text-center text-gray-500">No data available for 72(t) projection chart.</p>';
+                return;
+            }
+
+            const parentWidth = seventyTwoTChartContainer.offsetWidth;
+            const margin = { top: 40, right: 60, bottom: 50, left: 80 };
+            const width = parentWidth - margin.left - margin.right;
+            const height = 400 - margin.top - margin.bottom;
+
+            const svg = d3.select(seventyTwoTChartContainer).append("svg")
+                .attr("width", width + margin.left + margin.right)
+                .attr("height", height + margin.top + margin.bottom)
+                .attr("class", "chart-svg")
+                .append("g")
+                .attr("transform", `translate(${margin.left},${margin.top})`);
+
+            const xScale = d3.scaleLinear()
+                .domain(d3.extent(data, d => d.age))
+                .range([0, width]);
+
+            // Left Y-axis scale for Account Value
+            const yMaxAccount = d3.max(data, d => d.accountValue);
+            const yMinAccount = d3.min(data, d => d.accountValue);
+            const yScaleLeft = d3.scaleLinear()
+                .domain([yMinAccount * 0.95, yMaxAccount * 1.05])
+                .range([height, 0]);
+
+            // Right Y-axis scale for Annual Distribution
+            const yMaxDistribution = d3.max(data, d => d.annualDistribution);
+            const yMinDistribution = d3.min(data, d => d.annualDistribution);
+            const yScaleRight = d3.scaleLinear()
+                .domain([yMinDistribution * 0.95, yMaxDistribution * 1.05])
+                .range([height, 0]);
+
+            const xAxis = d3.axisBottom(xScale).tickFormat(d3.format("d"));
+            const yAxisLeft = d3.axisLeft(yScaleLeft).tickFormat(d => formatProjectedChartAxisLabel(d, yMaxAccount));
+            const yAxisRight = d3.axisRight(yScaleRight).tickFormat(d => formatProjectedChartAxisLabel(d, yMaxDistribution));
+
+            svg.append("g")
+                .attr("class", "x axis")
+                .attr("transform", `translate(0,${height})`)
+                .call(xAxis);
+
+            svg.append("g")
+                .attr("class", "y axis-left")
+                .call(yAxisLeft);
+            
+            svg.append("g")
+                .attr("class", "y axis-right")
+                .attr("transform", `translate(${width}, 0)`)
+                .call(yAxisRight);
+
+            svg.append("g")
+                .attr("class", "grid")
+                .call(d3.axisLeft(yScaleLeft) // Grid lines based on left axis
+                    .tickSize(-width)
+                    .tickFormat("")
+                );
+
+            const lineAccountValue = d3.line()
+                .x(d => xScale(d.age))
+                .y(d => yScaleLeft(d.accountValue)); // Use yScaleLeft
+
+            const lineAnnualDistribution = d3.line()
+                .x(d => xScale(d.age))
+                .y(d => yScaleRight(d.annualDistribution)); // Use yScaleRight
+            
+
+            svg.append("path")
+                .datum(data)
+                .attr("class", "line")
+                .attr("fill", "none")
+                .attr("stroke", "#2563eb") // Blue for account value
+                .attr("stroke-width", 3)
+                .attr("d", lineAccountValue);
+
+            svg.append("path")
+                .datum(data)
+                .attr("class", "line")
+                .attr("fill", "none")
+                .attr("stroke", "#f97316") // Orange for annual distribution
+                .attr("stroke-width", 3)
+                .attr("d", lineAnnualDistribution);
+
+            svg.append("text")
+                .attr("transform", `translate(${width / 2}, ${height + margin.bottom - 10})`)
+                .style("text-anchor", "middle")
+                .attr("font-size", "0.9rem")
+                .text("Age");
+
+            svg.append("text")
+                .attr("transform", "rotate(-90)")
+                .attr("y", 0 - margin.left + 20)
+                .attr("x", 0 - (height / 2))
+                .attr("dy", "1em")
+                .style("text-anchor", "middle")
+                .attr("font-size", "0.9rem")
+                .text("Account Value ($)"); // Specific label for left axis
+
+            svg.append("text")
+                .attr("transform", "rotate(90)")
+                .attr("y", width + margin.right - 20)
+                .attr("x", height / 2)
+                .attr("dy", "-1em")
+                .style("text-anchor", "middle")
+                .attr("font-size", "0.9rem")
+                .text("Annual Distribution ($)"); // Specific label for right axis
+
+            svg.append("text")
+                .attr("x", (width / 2))
+                .attr("y", 0 - (margin.top / 2))
+                .attr("text-anchor", "middle")
+                .attr("font-size", "1.2rem")
+                .attr("font-weight", "bold")
+                .text("72(t) Account Projection");
+
+            const tooltip = d3.select("body").append("div")
+                .attr("class", "tooltip")
+                .style("opacity", 0)
+                .style("position", "absolute");
+
+            svg.append("rect")
+                .attr("class", "overlay")
+                .attr("width", width)
+                .attr("height", height)
+                .style("fill", "none")
+                .style("pointer-events", "all")
+                .on("mouseover", function() { focusAccountValue.style("display", null); focusAnnualDistribution.style("display", null); tooltip.style("opacity", 1); })
+                .on("mouseout", function() { focusAccountValue.style("display", "none"); focusAnnualDistribution.style("display", "none"); tooltip.style("opacity", 0); })
+                .on("mousemove", mousemove72t);
+
+            const focusAccountValue = svg.append("g")
+                .attr("class", "focus")
+                .style("display", "none");
+
+            focusAccountValue.append("circle")
+                .attr("r", 5)
+                .attr("fill", "#2563eb");
+
+            const focusAnnualDistribution = svg.append("g")
+                .attr("class", "focus")
+                .style("display", "none");
+
+            focusAnnualDistribution.append("circle")
+                .attr("r", 5)
+                .attr("fill", "#f97316");
+
+            function mousemove72t(event) {
+                const x0 = xScale.invert(d3.pointer(event)[0]);
+                const bisect = d3.bisector(d => d.age).left;
+                const i = bisect(data, x0, 1);
+                const d0 = data[i - 1];
+                const d1 = data[i];
+                const d = x0 - d0.age > d1.age - x0 ? d1 : d0;
+
+                focusAccountValue.attr("transform", `translate(${xScale(d.age)},${yScaleLeft(d.accountValue)})`); // Use yScaleLeft
+                focusAnnualDistribution.attr("transform", `translate(${xScale(d.age)},${yScaleRight(d.annualDistribution)})`); // Use yScaleRight
+
+                tooltip.html(`Age: ${d.age}<br>Account Value: ${formatTableCurrency(d.accountValue)}<br>Annual Distribution: ${formatTableCurrency(d.annualDistribution)}`)
+                    .style("left", (event.pageX + 10) + "px")
+                    .style("top", (event.pageY - 20) + "px");
+            }
+            seventyTwoTChartContainer.__chartData__ = data; // Store data for resize handling
+        }
+
 
         // Get references to all static input elements
         const staticInputs = {
@@ -211,694 +558,6 @@
             { slider: staticInputs.seventyTwoTStartAge, valueDisplay: document.getElementById('seventyTwoTStartAgeValue'), unit: '' },
             { slider: staticInputs.seventyTwoTInterestRate, valueDisplay: document.getElementById('seventyTwoTInterestRateValue'), unit: '%' }
         ];
-
-        // Function to format numbers as currency, rounded to nearest thousand, without K/M (for table)
-        const formatTableCurrency = (amount) => {
-            const roundedAmount = Math.round(amount / 1000) * 1000;
-            return new Intl.NumberFormat('en-US', {
-                style: 'currency',
-                currency: 'USD',
-                minimumFractionDigits: 0,
-                maximumFractionDigits: 0
-            }).format(roundedAmount);
-        };
-
-        // Function to format numbers as currency with K/M and specified decimal places (for summary displays)
-        const formatLargeCurrency = (amount) => {
-            if (Math.abs(amount) >= 1000000) {
-                return `$${(amount / 1000000).toFixed(2)}M`;
-            }
-            if (Math.abs(amount) >= 1000) {
-                return `$${(amount / 1000).toFixed(0)}K`;
-            }
-            return new Intl.NumberFormat('en-US', {
-                style: 'currency',
-                currency: 'USD',
-                minimumFractionDigits: 0,
-                maximumFractionDigits: 0
-            }).format(amount);
-        };
-
-        // Function to format Y-axis labels dynamically based on max value in the chart
-        function formatProjectedChartAxisLabel(value, maxChartValue) {
-            if (maxChartValue < 5000000) { // If max value is under 5 million, show in thousands
-                return `$${(value / 1000).toFixed(0)}K`; // No decimals for K
-            } else { // Otherwise, show in millions
-                return `$${(value / 1000000).toFixed(0)}M`; // No decimals for M
-            }
-        }
-
-        // Function to update slider value display
-        function updateSliderValueDisplay(slider, valueDisplay, unit) {
-            const val = parseFloat(slider.value);
-            valueDisplay.textContent = `${val.toFixed(slider.step === '0.1' || slider.step === '0.5' ? 1 : 0)}${unit}`;
-        }
-
-        // NEW: Helper function to format percentage for APY display
-        function formatPercentageAPY(rate) {
-            const percentage = rate * 100;
-            // Show one decimal place if there is a fractional part (e.g., 9.5%), otherwise show as whole number (e.g., 10%)
-            if (percentage % 1 !== 0) {
-                return percentage.toFixed(1);
-            } else {
-                return percentage.toFixed(0);
-            }
-        }
-
-        // Firebase Initialization
-        const initFirebase = async () => {
-            console.log("Initializing Firebase...");
-            try {
-                // Ensure firebaseConfig is logged to confirm it's available
-                console.log("Firebase Config:", firebaseConfig);
-
-                // Initialize app and get services directly
-                app = initializeApp(firebaseConfig);
-                db = getFirestore(app);
-                auth = getAuth(app); // Get auth instance immediately
-
-                // Use onAuthStateChanged to manage the authentication state.
-                // This ensures we react to Firebase's internal auth state readiness.
-                // For GitHub Pages, we'll primarily rely on anonymous sign-in.
-                await new Promise((resolve, reject) => {
-                    const unsubscribe = onAuthStateChanged(auth, async (user) => {
-                        if (!user) {
-                            // If no user is signed in, attempt anonymous sign-in
-                            console.log("Attempting anonymous sign-in...");
-                            try {
-                                await signInAnonymously(auth);
-                                userId = auth.currentUser.uid;
-                                console.log("Firebase authenticated anonymously. User ID:", userId);
-                            } catch (anonError) {
-                                console.error("Anonymous sign-in failed:", anonError);
-                                unsubscribe(); // Unsubscribe even on failure
-                                reject(anonError); // Reject the promise if anonymous fails
-                                return; // Exit to prevent further execution in this branch
-                            }
-                        } else {
-                            // User is already signed in (e.g., from a previous anonymous session)
-                            userId = user.uid;
-                            console.log("Firebase auth state detected existing user:", userId);
-                        }
-                        unsubscribe(); // Unsubscribe after the first relevant state change
-                        resolve(); // Resolve the promise once auth state is settled
-                    }, (error) => {
-                        // Error during initial auth state observation
-                        console.error("Error observing Firebase auth state:", error);
-                        unsubscribe();
-                        reject(error);
-                    });
-                });
-
-                // Only proceed to setupRealtimeListener once authentication is confirmed
-                setupRealtimeListener();
-            } catch (error) {
-                console.error("Critical error during Firebase initialization or authentication flow:", error);
-                throw error; // Re-throw to be caught by the DOMContentLoaded catch block
-            }
-        };
-
-        // Function to save data to Firestore
-        async function saveDataToFirestore(data) {
-            if (!db || !userId) {
-                console.warn("Firestore not initialized or user not authenticated. Data not saved.");
-                return;
-            }
-            // Prevent saving if the update came from Firestore itself
-            if (window.isLoadingFromFirestore) {
-                console.log("Skipping save: Data currently being loaded from Firestore.");
-                return;
-            }
-            console.log("Attempting to save data to Firestore:", data);
-            try {
-                const docRef = doc(db, PUBLIC_COLLECTION_PATH, SHARED_DOC_ID);
-                await setDoc(docRef, data, { merge: true }); // Merge to update specific fields
-                console.log("Data successfully saved to Firestore.");
-            } catch (error) {
-                console.error("Error saving data to Firestore:", error);
-            }
-        }
-
-        /**
-         * Gathers all current input values (static and dynamic) from the DOM.
-         * This function is used to create a snapshot of the current UI state to save to Firestore.
-         * @returns {Object} An object containing all current financial input data.
-         */
-        function collectAllCurrentInputs() {
-            let collectedData = {};
-
-            // Collect static input values
-            for (const key in staticInputs) {
-                // Ensure the element actually exists before trying to access its value
-                if (staticInputs[key]) {
-                    let value;
-                    // For range inputs, parse directly
-                    if (staticInputs[key].type === 'range') {
-                        value = parseFloat(staticInputs[key].value);
-                    } else { // For text inputs, clean the formatted string
-                        value = cleanInputNumber(staticInputs[key].value);
-                    }
-                    // Convert percentages to decimal for internal calculations and storage
-                    if (['bonusRate', 'my401kContributionRate', 'company401kContributionRate', 'annualSalaryRaise', 'stockAppreciation', 'housingAppreciation', 'inflation', 'retirementDrawRatePre62', 'retirementDrawRatePost62', 'seventyTwoTInterestRate'].includes(key)) {
-                        value = value / 100;
-                    }
-                    collectedData[key] = value;
-                }
-            }
-
-            // Collect dynamic investment account values
-            collectedData.investmentAccounts = [];
-            document.querySelectorAll('.investment-row').forEach(row => {
-                const name = row.querySelector('.investment-name').value;
-                const value = cleanInputNumber(row.querySelector('.investment-value').value);
-                collectedData.investmentAccounts.push({ name, value });
-            });
-
-            // Collect dynamic homes values
-            collectedData.homes = [];
-            document.querySelectorAll('.home-row').forEach(row => {
-                const name = row.querySelector('.home-name').value;
-                const value = cleanInputNumber(row.querySelector('.home-value').value);
-                collectedData.homes.push({ name, value });
-            });
-
-            // Collect dynamic other static asset values
-            collectedData.otherStaticAssets = [];
-            document.querySelectorAll('.other-static-asset-row').forEach(row => {
-                const name = row.querySelector('.static-asset-name').value;
-                const value = cleanInputNumber(row.querySelector('.static-asset-value').value);
-                collectedData.otherStaticAssets.push({ name, value });
-            });
-
-            // Collect dynamic liability values
-            collectedData.liabilities = [];
-            document.querySelectorAll('.liability-row').forEach(row => {
-                const name = row.querySelector('.liability-name').value;
-                const value = cleanInputNumber(row.querySelector('.liability-value').value);
-                collectedData.liabilities.push({ name, value });
-            });
-
-            // Collect dynamic other income values
-            collectedData.otherIncome = [];
-            document.querySelectorAll('.other-income-row').forEach(row => {
-                const name = row.querySelector('.income-name').value;
-                const value = cleanInputNumber(row.querySelector('.income-value').value);
-                const escalationRate = parseFloat(row.querySelector('.income-escalation-rate').value) / 100 || 0;
-                collectedData.otherIncome.push({ name, value, escalationRate });
-            });
-
-            return collectedData;
-        }
-
-
-        // Function to set up real-time listener for data
-        function setupRealtimeListener() {
-            if (!db || !userId) {
-                console.warn("Firestore not initialized or user not authenticated. Cannot set up listener.");
-                return;
-            }
-            console.log("Setting up real-time Firestore listener.");
-            const docRef = doc(db, PUBLIC_COLLECTION_PATH, SHARED_DOC_ID);
-            onSnapshot(docRef, async (docSnap) => {
-                window.isLoadingFromFirestore = true;
-                if (docSnap.exists()) {
-                    const data = docSnap.data();
-                    console.log("Data loaded from Firestore:", data);
-                    populateInputsFromFirestore(data);
-                } else {
-                    console.log("No shared data found in Firestore. Initializing with provided values and saving this state.");
-                    // Explicitly clear dynamic inputs
-                    investmentAccountsContainer.innerHTML = '';
-                    homesContainer.innerHTML = '';
-                    otherStaticAssetsContainer.innerHTML = '';
-                    liabilitiesContainer.innerHTML = '';
-                    otherIncomeContainer.innerHTML = '';
-
-                    // Add dynamic rows with user-provided default values
-                    defaultInvestmentAccounts.forEach(account => addInvestmentAccountInput(account));
-                    defaultHomes.forEach(home => addHomeInput(home));
-                    defaultOtherStaticAssets.forEach(asset => addOtherStaticAssetInput(asset));
-                    defaultLiabilities.forEach(liability => addLiabilityInput(liability));
-                    defaultOtherIncomes.forEach(income => addOtherIncomeInput(income));
-                    
-                    // Call calculateFinancials to update display and save the initial state with defaults
-                    calculateFinancials(true);
-                }
-                window.isLoadingFromFirestore = false;
-            }, (error) => {
-                console.error("Error listening to Firestore document:", error);
-                calculateFinancials(false); // Fallback to local calculation
-                window.isLoadingFromFirestore = false;
-            });
-        }
-
-        // Function to populate inputs from Firestore data
-        function populateInputsFromFirestore(data) {
-            // Update static inputs
-            for (const key in staticInputs) {
-                // Ensure the target element exists before trying to set its value
-                if (staticInputs[key] && data[key] !== undefined) {
-                    let value = data[key];
-                    // Special handling for percentage sliders to convert back to 0-100 range for display
-                    if (['bonusRate', 'my401kContributionRate', 'company401kContributionRate', 'annualSalaryRaise', 'stockAppreciation', 'housingAppreciation', 'inflation', 'retirementDrawRatePre62', 'retirementDrawRatePost62', 'seventyTwoTInterestRate'].includes(key)) {
-                        value = parseFloat(value) * 100; // Convert decimal back to percentage for UI
-                    }
-
-                    if (staticInputs[key].type === 'range') {
-                         staticInputs[key].value = value;
-                    } else {
-                         staticInputs[key].value = formatInputNumber(value);
-                    }
-                    // Update the visual display for sliders
-                    const pair = sliderPairs.find(p => p.slider === staticInputs[key]);
-                    if (pair) {
-                        updateSliderValueDisplay(pair.slider, pair.valueDisplay, pair.unit);
-                    }
-                }
-            }
-
-            // Update dynamic inputs (investments, homes, other static assets, liabilities, other income)
-            // Clear existing dynamic rows first to avoid duplicates
-            investmentAccountsContainer.innerHTML = '';
-            homesContainer.innerHTML = '';
-            otherStaticAssetsContainer.innerHTML = '';
-            liabilitiesContainer.innerHTML = '';
-            otherIncomeContainer.innerHTML = '';
-
-            // Handle Investment Accounts
-            if (data.investmentAccounts && data.investmentAccounts.length > 0) {
-                data.investmentAccounts.forEach(account => addInvestmentAccountInput(account));
-            } else {
-                defaultInvestmentAccounts.forEach(account => addInvestmentAccountInput(account));
-            }
-
-            // Handle Homes
-            if (data.homes && data.homes.length > 0) {
-                data.homes.forEach(home => addHomeInput(home));
-            } else {
-                defaultHomes.forEach(home => addHomeInput(home));
-            }
-
-            // Handle Other Static Assets
-            if (data.otherStaticAssets && data.otherStaticAssets.length > 0) {
-                data.otherStaticAssets.forEach(asset => addOtherStaticAssetInput(asset));
-            } else {
-                defaultOtherStaticAssets.forEach(asset => addOtherStaticAssetInput(asset));
-            }
-
-            // Handle Liabilities
-            if (data.liabilities && data.liabilities.length > 0) {
-                data.liabilities.forEach(liability => addLiabilityInput(liability));
-            } else {
-                defaultLiabilities.forEach(liability => addLiabilityInput(liability));
-            }
-
-            // Handle Other Income
-            if (data.otherIncome && data.otherIncome.length > 0) {
-                data.otherIncome.forEach(income => addOtherIncomeInput(income));
-            } else {
-                defaultOtherIncomes.forEach(income => addOtherIncomeInput(income));
-            }
-
-            // After populating, recalculate to update summaries and chart (but don't save yet)
-            calculateFinancials(false);
-        }
-
-        // Function to add a new investment account input row
-        function addInvestmentAccountInput(account = { name: '', value: 0 }) {
-            const rowDiv = document.createElement('div');
-            rowDiv.classList.add('investment-row', 'flex', 'flex-wrap', 'items-center', 'mb-4', 'space-y-2', 'md:space-y-0', 'md:space-x-2');
-            rowDiv.innerHTML = `
-                <input type="text" placeholder="Account Name" value="${account.name}" class="input-field investment-name flex-1 min-w-[120px]">
-                <input type="text" placeholder="Value ($)" value="${formatInputNumber(account.value)}" class="input-field investment-value flex-1 min-w-[100px]">
-                <button type="button" class="delete-item-btn text-red-500 hover:text-red-700 font-bold px-2 py-1 rounded-md transition duration-200 ease-in-out">X</button>
-            `;
-            investmentAccountsContainer.appendChild(rowDiv);
-
-            const valueInput = rowDiv.querySelector('.investment-value');
-            valueInput.addEventListener('input', (event) => {
-                // Allow typing freely, no formatting on input
-            });
-            valueInput.addEventListener('blur', (event) => {
-                event.target.value = formatInputNumber(event.target.value); // Format on blur
-                calculateFinancials(true); // Trigger save on blur
-            });
-            const nameInput = rowDiv.querySelector('.investment-name');
-            nameInput.addEventListener('blur', () => calculateFinancials(true)); // Trigger save on blur
-
-            const deleteBtn = rowDiv.querySelector('.delete-item-btn');
-            deleteBtn.addEventListener('click', () => {
-                rowDiv.remove();
-                calculateFinancials(true); // Trigger save
-            });
-        }
-
-        // NEW: Function to add a new home input row
-        function addHomeInput(home = { name: '', value: 0 }) {
-            const rowDiv = document.createElement('div');
-            rowDiv.classList.add('home-row', 'flex', 'flex-wrap', 'items-center', 'mb-4', 'space-y-2', 'md:space-y-0', 'md:space-x-2');
-            rowDiv.innerHTML = `
-                <input type="text" placeholder="Home Name" value="${home.name}" class="input-field home-name flex-1 min-w-[120px]">
-                <input type="text" placeholder="Value ($)" value="${formatInputNumber(home.value)}" class="input-field home-value flex-1 min-w-[100px]">
-                <button type="button" class="delete-item-btn text-red-500 hover:text-red-700 font-bold px-2 py-1 rounded-md transition duration-200 ease-in-out">X</button>
-            `;
-            homesContainer.appendChild(rowDiv);
-
-            const valueInput = rowDiv.querySelector('.home-value');
-            valueInput.addEventListener('input', (event) => {
-                // Allow typing freely, no formatting on input
-            });
-            valueInput.addEventListener('blur', (event) => {
-                event.target.value = formatInputNumber(event.target.value); // Format on blur
-                calculateFinancials(true); // Trigger save on blur
-            });
-            const nameInput = rowDiv.querySelector('.home-name');
-            nameInput.addEventListener('blur', () => calculateFinancials(true)); // Trigger save on blur
-
-            const deleteBtn = rowDiv.querySelector('.delete-item-btn');
-            deleteBtn.addEventListener('click', () => {
-                rowDiv.remove();
-                calculateFinancials(true); // Trigger save
-            });
-        }
-
-        // NEW: Function to add a new other static asset input row
-        function addOtherStaticAssetInput(asset = { name: '', value: 0 }) {
-            const rowDiv = document.createElement('div');
-            rowDiv.classList.add('other-static-asset-row', 'flex', 'flex-wrap', 'items-center', 'mb-4', 'space-y-2', 'md:space-y-0', 'md:space-x-2');
-            rowDiv.innerHTML = `
-                <input type="text" placeholder="Asset Name" value="${asset.name}" class="input-field static-asset-name flex-1 min-w-[120px]">
-                <input type="text" placeholder="Value ($)" value="${formatInputNumber(asset.value)}" class="input-field static-asset-value flex-1 min-w-[100px]">
-                <button type="button" class="delete-item-btn text-red-500 hover:text-red-700 font-bold px-2 py-1 rounded-md transition duration-200 ease-in-out">X</button>
-            `;
-            otherStaticAssetsContainer.appendChild(rowDiv);
-
-            const valueInput = rowDiv.querySelector('.static-asset-value');
-            valueInput.addEventListener('input', (event) => {
-                // Allow typing freely, no formatting on input
-            });
-            valueInput.addEventListener('blur', (event) => {
-                event.target.value = formatInputNumber(event.target.value); // Format on blur
-                calculateFinancials(true); // Trigger save on blur
-            });
-            const nameInput = rowDiv.querySelector('.static-asset-name');
-            nameInput.addEventListener('blur', () => calculateFinancials(true)); // Trigger save on blur
-
-            const deleteBtn = rowDiv.querySelector('.delete-item-btn');
-            deleteBtn.addEventListener('click', () => {
-                rowDiv.remove();
-                calculateFinancials(true); // Trigger save
-            });
-        }
-
-
-        // Function to add a new liability input row
-        function addLiabilityInput(liability = { name: '', value: 0 }) {
-            const rowDiv = document.createElement('div');
-            rowDiv.classList.add('liability-row', 'flex', 'flex-wrap', 'items-center', 'mb-4', 'space-y-2', 'md:space-y-0', 'md:space-x-2');
-            rowDiv.innerHTML = `
-                <input type="text" placeholder="Liability Name" value="${liability.name}" class="input-field liability-name flex-1 min-w-[120px]">
-                <input type="text" placeholder="Value ($)" value="${formatInputNumber(liability.value)}" class="input-field liability-value flex-1 min-w-[100px]">
-                <button type="button" class="delete-item-btn text-red-500 hover:text-red-700 font-bold px-2 py-1 rounded-md transition duration-200 ease-in-out">X</button>
-            `;
-            liabilitiesContainer.appendChild(rowDiv);
-
-            const valueInput = rowDiv.querySelector('.liability-value');
-            valueInput.addEventListener('input', (event) => {
-                // Allow typing freely, no formatting on input
-            });
-            valueInput.addEventListener('blur', (event) => {
-                event.target.value = formatInputNumber(event.target.value); // Format on blur
-                calculateFinancials(true); // Trigger save on blur
-            });
-            const nameInput = rowDiv.querySelector('.liability-name');
-            nameInput.addEventListener('blur', () => calculateFinancials(true)); // Trigger save on blur
-
-            const deleteBtn = rowDiv.querySelector('.delete-item-btn');
-            deleteBtn.addEventListener('click', () => {
-                rowDiv.remove();
-                calculateFinancials(true); // Trigger save
-            });
-        }
-
-        // Function to add a new other income input row
-        function addOtherIncomeInput(income = { name: '', value: 0, escalationRate: 0 }) {
-            const rowDiv = document.createElement('div');
-            rowDiv.classList.add('other-income-row', 'flex', 'flex-wrap', 'items-center', 'mb-4', 'space-y-2', 'md:space-y-0', 'md:space-x-2');
-            rowDiv.innerHTML = `
-                <input type="text" placeholder="Income Source" value="${income.name}" class="input-field income-name flex-1 min-w-[120px]">
-                <input type="text" placeholder="Monthly Value ($)" value="${formatInputNumber(income.value)}" class="input-field income-value flex-1 min-w-[100px]">
-                <div class="flex items-center">
-                    <input type="number" placeholder="Escalation Rate" value="${(income.escalationRate * 100).toFixed(1)}" step="0.1" min="0" max="10" class="input-field income-escalation-rate w-24">
-                    <span class="ml-1 text-gray-700">%</span>
-                </div>
-                <button type="button" class="delete-item-btn text-red-500 hover:text-red-700 font-bold px-2 py-1 rounded-md transition duration-200 ease-in-out">X</button>
-            `;
-            otherIncomeContainer.appendChild(rowDiv);
-
-            // Attach event listeners for value and escalation rate, and for name changes
-            rowDiv.querySelectorAll('input').forEach(input => {
-                if (input.classList.contains('income-value')) {
-                    input.addEventListener('input', (event) => {
-                        // Allow typing freely, no formatting on input
-                    });
-                    input.addEventListener('blur', (event) => {
-                        event.target.value = formatInputNumber(event.target.value); // Format on blur
-                        calculateFinancials(true); // Trigger save on blur
-                    });
-                } else if (input.classList.contains('income-name')) {
-                    input.addEventListener('blur', () => calculateFinancials(true)); // Trigger save on blur
-                } else if (input.classList.contains('income-escalation-rate')) {
-                    input.addEventListener('input', () => calculateFinancials(true)); // Still trigger on input for immediate feedback on escalation rate
-                }
-            });
-
-            const deleteBtn = rowDiv.querySelector('.delete-item-btn');
-            deleteBtn.addEventListener('click', () => {
-                rowDiv.remove();
-                calculateFinancials(true); // Trigger save
-            });
-        }
-
-        // Function to project 401K balance to a specific age
-        function project401kBalanceToAge(startAge, targetAge, initial401kBalance, baseSalary, my401kRate, company401kRate, annualSalaryRaise, stockAppreciation) {
-            let current401k = initial401kBalance;
-            let currentSalary = baseSalary;
-
-            for (let age = startAge; age < targetAge; age++) {
-                const myContribution = currentSalary * my401kRate;
-                const companyContribution = currentSalary * company401kRate;
-                current401k += myContribution + companyContribution;
-                current401k *= (1 + stockAppreciation); // Apply growth after contributions
-                currentSalary *= (1 + annualSalaryRaise); // Increase salary for next year's contributions
-            }
-            return current401k;
-        }
-
-        // Function to calculate 72(t) distributions
-        function calculate72tDistributions(accountBalance, age, interestRate) {
-            const lifeExpectancy = uniformLifetimeTable[age];
-            if (!lifeExpectancy) {
-                console.error(`Life expectancy not found for age ${age}.`);
-                lifeExpectancyUsedDisplay.textContent = `N/A (Age ${age} not in table)`;
-                return { rmdAnnual: 0, rmdMonthly: 0, amortizationAnnual: 0, amortizationMonthly: 0, annuitizationAnnual: 0, annuitizationMonthly: 0 };
-            }
-
-            lifeExpectancyUsedDisplay.textContent = `${lifeExpectancy} years`;
-
-            // 1. Required Minimum Distribution (RMD) Method
-            const rmdAnnual = accountBalance / lifeExpectancy;
-            const rmdMonthly = rmdAnnual / 12;
-
-            // 2. Fixed Amortization Method
-            // IRS defines max interest rate as 120% of the federal mid-term rate or 5%, whichever is greater.
-            // For this calculator, we'll use the user-defined interestRate, assuming it's within IRS limits.
-            const monthlyInterestRate = interestRate / 12;
-            const numberOfMonths = lifeExpectancy * 12;
-            let amortizationMonthly = 0;
-            if (monthlyInterestRate > 0) {
-                amortizationMonthly = accountBalance * (monthlyInterestRate / (1 - Math.pow(1 + monthlyInterestRate, -numberOfMonths)));
-            } else { // Handle 0 interest rate for fixed amortization
-                amortizationMonthly = accountBalance / numberOfMonths;
-            }
-            const amortizationAnnual = amortizationMonthly * 12;
-
-            // 3. Fixed Annuitization Method
-            // This is a complex actuarial calculation based on IRS tables.
-            // A common approximation uses the annual interest rate and life expectancy.
-            // Using a simple annuity formula: PMT = PV * [ i / (1 - (1 + i)^-n) ]
-            // Where i = annual interest rate, n = life expectancy.
-            // Note: This is an approximation and might not match official IRS annuity factors precisely.
-            let annuitizationAnnual = 0;
-            if (interestRate > 0) {
-                annuitizationAnnual = accountBalance * (interestRate / (1 - Math.pow(1 + interestRate, -lifeExpectancy)));
-            } else { // Handle 0 interest rate for fixed annuitization
-                annuitizationAnnual = accountBalance / lifeExpectancy;
-            }
-            const annuitizationMonthly = annuitizationAnnual / 12;
-
-            return { rmdAnnual, rmdMonthly, amortizationAnnual, amortizationMonthly, annuitizationAnnual, annuitizationMonthly };
-        }
-
-        // D3.js Chart Rendering Function for 72(t) Projection
-        function render72tChart(data) {
-            d3.select(seventyTwoTChartContainer).select("svg").remove();
-
-            const parentWidth = seventyTwoTChartContainer.offsetWidth;
-            const margin = { top: 40, right: 60, bottom: 50, left: 80 };
-            const width = parentWidth - margin.left - margin.right;
-            const height = 400 - margin.top - margin.bottom;
-
-            const svg = d3.select(seventyTwoTChartContainer).append("svg")
-                .attr("width", width + margin.left + margin.right)
-                .attr("height", height + margin.top + margin.bottom)
-                .attr("class", "chart-svg")
-                .append("g")
-                .attr("transform", `translate(${margin.left},${margin.top})`);
-
-            const xScale = d3.scaleLinear()
-                .domain(d3.extent(data, d => d.age))
-                .range([0, width]);
-
-            const yMax = d3.max(data, d => Math.max(d.accountValue, d.annualDistribution));
-            const yMin = d3.min(data, d => Math.min(d.accountValue, d.annualDistribution));
-
-
-            const yScale = d3.scaleLinear()
-                .domain([yMin * 0.95, yMax * 1.05])
-                .range([height, 0]);
-
-            const xAxis = d3.axisBottom(xScale).tickFormat(d3.format("d"));
-            const yAxisLeft = d3.axisLeft(yScale).tickFormat(d => formatProjectedChartAxisLabel(d, yMax));
-            const yAxisRight = d3.axisRight(yScale).tickFormat(d => formatProjectedChartAxisLabel(d, yMax));
-
-            svg.append("g")
-                .attr("class", "x axis")
-                .attr("transform", `translate(0,${height})`)
-                .call(xAxis);
-
-            svg.append("g")
-                .attr("class", "y axis-left")
-                .call(yAxisLeft);
-            
-            svg.append("g")
-                .attr("class", "y axis-right")
-                .attr("transform", `translate(${width}, 0)`)
-                .call(yAxisRight);
-
-            svg.append("g")
-                .attr("class", "grid")
-                .call(d3.axisLeft(yScale)
-                    .tickSize(-width)
-                    .tickFormat("")
-                );
-
-            const lineAccountValue = d3.line()
-                .x(d => xScale(d.age))
-                .y(d => yScale(d.accountValue));
-
-            const lineAnnualDistribution = d3.line()
-                .x(d => xScale(d.age))
-                .y(d => yScale(d.annualDistribution));
-            
-
-            svg.append("path")
-                .datum(data)
-                .attr("class", "line")
-                .attr("fill", "none")
-                .attr("stroke", "#2563eb") // Blue for account value
-                .attr("stroke-width", 3)
-                .attr("d", lineAccountValue);
-
-            svg.append("path")
-                .datum(data)
-                .attr("class", "line")
-                .attr("fill", "none")
-                .attr("stroke", "#f97316") // Orange for annual distribution
-                .attr("stroke-width", 3)
-                .attr("d", lineAnnualDistribution);
-
-            svg.append("text")
-                .attr("transform", `translate(${width / 2}, ${height + margin.bottom - 10})`)
-                .style("text-anchor", "middle")
-                .attr("font-size", "0.9rem")
-                .text("Age");
-
-            svg.append("text")
-                .attr("transform", "rotate(-90)")
-                .attr("y", 0 - margin.left + 20)
-                .attr("x", 0 - (height / 2))
-                .attr("dy", "1em")
-                .style("text-anchor", "middle")
-                .attr("font-size", "0.9rem")
-                .text("Value ($)");
-
-            svg.append("text")
-                .attr("transform", "rotate(90)")
-                .attr("y", width + margin.right - 20)
-                .attr("x", height / 2)
-                .attr("dy", "-1em")
-                .style("text-anchor", "middle")
-                .attr("font-size", "0.9rem")
-                .text("Value ($)");
-
-            svg.append("text")
-                .attr("x", (width / 2))
-                .attr("y", 0 - (margin.top / 2))
-                .attr("text-anchor", "middle")
-                .attr("font-size", "1.2rem")
-                .attr("font-weight", "bold")
-                .text("72(t) Account Projection");
-
-            const tooltip = d3.select("body").append("div")
-                .attr("class", "tooltip")
-                .style("opacity", 0)
-                .style("position", "absolute");
-
-            svg.append("rect")
-                .attr("class", "overlay")
-                .attr("width", width)
-                .attr("height", height)
-                .style("fill", "none")
-                .style("pointer-events", "all")
-                .on("mouseover", function() { focusAccountValue.style("display", null); focusAnnualDistribution.style("display", null); tooltip.style("opacity", 1); })
-                .on("mouseout", function() { focusAccountValue.style("display", "none"); focusAnnualDistribution.style("display", "none"); tooltip.style("opacity", 0); })
-                .on("mousemove", mousemove72t);
-
-            const focusAccountValue = svg.append("g")
-                .attr("class", "focus")
-                .style("display", "none");
-
-            focusAccountValue.append("circle")
-                .attr("r", 5)
-                .attr("fill", "#2563eb");
-
-            const focusAnnualDistribution = svg.append("g")
-                .attr("class", "focus")
-                .style("display", "none");
-
-            focusAnnualDistribution.append("circle")
-                .attr("r", 5)
-                .attr("fill", "#f97316");
-
-            function mousemove72t(event) {
-                const x0 = xScale.invert(d3.pointer(event)[0]);
-                const bisect = d3.bisector(d => d.age).left;
-                const i = bisect(data, x0, 1);
-                const d0 = data[i - 1];
-                const d1 = data[i];
-                const d = x0 - d0.age > d1.age - x0 ? d1 : d0;
-
-                focusAccountValue.attr("transform", `translate(${xScale(d.age)},${yScale(d.accountValue)})`);
-                focusAnnualDistribution.attr("transform", `translate(${xScale(d.age)},${yScale(d.annualDistribution)})`);
-
-                tooltip.html(`Age: ${d.age}<br>Account Value: ${formatTableCurrency(d.accountValue)}<br>Annual Distribution: ${formatTableCurrency(d.annualDistribution)}`)
-                    .style("left", (event.pageX + 10) + "px")
-                    .style("top", (event.pageY - 20) + "px");
-            }
-            seventyTwoTChartContainer.__chartData__ = data; // Store data for resize handling
-        }
-
 
         // Main calculation function (now accepts a shouldSave flag)
         function calculateFinancials(shouldSaveData = true) {
@@ -1082,15 +741,16 @@
                 acc.name.toLowerCase().includes("401k")
             )?.value || 0;
 
+            // Project 401K balance to 72(t) start age *without* adding new contributions (only growth)
             const projected401kBalanceAt72tStart = project401kBalanceToAge(
                 currentAge,
                 seventyTwoTStartAge,
                 initial401kBalance,
-                baseSalary,
-                my401kContributionRate,
-                company401kContributionRate,
-                annualSalaryRaise,
-                stockAppreciation
+                0, // baseSalary for 72(t) calculation should be 0 to ignore new contributions
+                0, // my401kRate for 72(t) calculation should be 0 to ignore new contributions
+                0, // company401kRate for 72(t) calculation should be 0 to ignore new contributions
+                0, // annualSalaryRaise for 72(t) calculation should be 0 to ignore new contributions
+                stockAppreciation // Use the general stock appreciation for 401k growth
             );
             staticInputs.seventyTwoTAccountBalance.value = formatInputNumber(projected401kBalanceAt72tStart);
 
@@ -1111,7 +771,7 @@
             project72tAccountGrowth(
                 seventyTwoTStartAge,
                 projected401kBalanceAt72tStart,
-                seventyTwoTInterestRate,
+                stockAppreciation, // Use stock appreciation for the account growth in the projection
                 seventyTwoTCalculations.amortizationAnnual // Use Fixed Amortization for projection as it's common
             );
 
@@ -1288,52 +948,6 @@
             }
             renderChart(chartData);
         }
-
-        function project72tAccountGrowth(startAge, initialBalance, interestRate, annualDistribution) {
-            seventyTwoTProjectionTableBody.innerHTML = '';
-            seventyTwoTChartContainer.innerHTML = ''; // Clear previous chart
-
-            let currentAccountValue = initialBalance;
-            const chartData = [];
-            const startYear = new Date().getFullYear() + (startAge - staticInputs.currentAge.value); // Calculate start year for 72t projection based on current age
-
-            // Add initial point for chart and table
-            chartData.push({
-                age: startAge,
-                accountValue: initialBalance,
-                annualDistribution: annualDistribution
-            });
-
-            // The 72(t) distributions must continue for 5 years OR until age 59 1/2, whichever is longer.
-            // For simplicity in projection, we'll project for 10 years or until age 70, whichever comes first,
-            // or until the account runs out.
-            const projectionEndAge = Math.min(startAge + 15, 70); // Project for up to 15 years or until age 70 for visualization
-
-            for (let age = startAge + 1; age <= projectionEndAge; age++) {
-                currentAccountValue *= (1 + interestRate); // Apply growth
-                currentAccountValue -= annualDistribution; // Deduct distribution
-
-                currentAccountValue = Math.max(0, currentAccountValue); // Account cannot go below zero
-
-                chartData.push({
-                    age: age,
-                    accountValue: currentAccountValue,
-                    annualDistribution: annualDistribution // Distribution remains fixed
-                });
-
-                const row = seventyTwoTProjectionTableBody.insertRow();
-                row.classList.add('hover:bg-blue-50');
-                if (age % 5 === 0) {
-                    row.classList.add('bg-blue-100');
-                }
-                row.insertCell().textContent = age;
-                row.insertCell().textContent = startYear + (age - startAge);
-                row.insertCell().textContent = formatTableCurrency(currentAccountValue);
-                row.insertCell().textContent = formatTableCurrency(annualDistribution);
-            }
-            render72tChart(chartData);
-        }
-
 
         // D3.js Chart Rendering Function for Projected Growth
         function renderChart(data) {
@@ -1867,7 +1481,7 @@
         lg:fixed lg:top-0 lg:left-0 lg:h-screen lg:w-64 lg:flex-col lg:items-center lg:justify-start lg:p-6 lg:shadow-2xl lg:overflow-y-auto
     ">
         <h2 class="text-xl font-extrabold mb-4 text-center text-white w-full lg:text-3xl lg:mb-8">Your Snapshot</h2>
-        <span id="appRevisionDisplay" class="text-xs text-blue-200 font-semibold mb-4 lg:mb-6">v1.33</span>
+        <span id="appRevisionDisplay" class="text-xs text-blue-200 font-semibold mb-4 lg:mb-6">v1.35</span>
         <!-- Each summary item will be a div -->
         <div class="text-center mb-2 summary-item w-1/2 sm:w-1/3 md:w-1/4 lg:w-auto lg:text-center px-1">
             <p class="text-sm font-bold text-blue-200 lg:text-lg">Net Worth:</p>
