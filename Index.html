@@ -44,7 +44,7 @@
     const SHARED_DOC_ID = 'shared_inputs'; // A single document for all shared inputs
 
     // Revision Level
-    const appRevision = "1.24"; // Updated annual raise to 4%, pre-62 draw to 6%, clarified contribution stop at retirement.
+    const appRevision = "1.25"; // Added Social Security slider, updated annual raise to 4%, pre-62 draw to 6%, contributions stop at retirement.
 
     // Predefined default values for dynamic sections
     const defaultInvestmentAccounts = [
@@ -112,7 +112,8 @@
             retirementDrawRatePre62: document.getElementById('retirementDrawRatePre62'),
             retirementDrawRatePost62: document.getElementById('retirementDrawRatePost62'),
             retirementYear: document.getElementById('retirementYear'),
-            monthlyPrincipalPayment: document.getElementById('monthlyPrincipalPayment')
+            monthlyPrincipalPayment: document.getElementById('monthlyPrincipalPayment'),
+            socialSecurityMonthly: document.getElementById('socialSecurityMonthly') // NEW
         };
 
         // Get references to display elements
@@ -155,7 +156,8 @@
             { slider: staticInputs.inflation, valueDisplay: document.getElementById('inflationValue'), unit: '%' },
             { slider: staticInputs.retirementDrawRatePre62, valueDisplay: document.getElementById('retirementDrawRatePre62Value'), unit: '%' },
             { slider: staticInputs.retirementDrawRatePost62, valueDisplay: document.getElementById('retirementDrawRatePost62Value'), unit: '%' },
-            { slider: staticInputs.retirementYear, valueDisplay: document.getElementById('retirementYearValue'), unit: '' }
+            { slider: staticInputs.retirementYear, valueDisplay: document.getElementById('retirementYearValue'), unit: '' },
+            { slider: staticInputs.socialSecurityMonthly, valueDisplay: document.getElementById('socialSecurityMonthlyValue'), unit: '' } // NEW
         ];
 
         // Function to format numbers as currency, rounded to nearest thousand, without K/M (for table)
@@ -595,7 +597,7 @@
                     if (['bonusRate', 'my401kContributionRate', 'company401kContributionRate', 'annualSalaryRaise', 'stockAppreciation', 'housingAppreciation', 'inflation', 'retirementDrawRatePre62', 'retirementDrawRatePost62'].includes(key)) {
                         value = value / 100;
                     }
-                    currentFinancials[key] = value;
+                    collectedData[key] = value;
                 }
             }
 
@@ -659,6 +661,7 @@
             const retirementDrawRatePost62 = currentFinancials.retirementDrawRatePost62;
             const retirementYear = currentFinancials.retirementYear;
             const monthlyPrincipalPayment = currentFinancials.monthlyPrincipalPayment;
+            const socialSecurityMonthly = currentFinancials.socialSecurityMonthly; // NEW
             const annualPrincipalPayment = monthlyPrincipalPayment * 12;
 
             // Update min for retirementYear slider dynamically based on currentAge
@@ -723,7 +726,8 @@
                           retirementDrawRatePre62, retirementDrawRatePost62,
                           todaysDrawDisplay, dynamicRetirementDrawValue, sixtyTwoYODrawDisplay,
                           retirementYear,
-                          dynamicRetirementDrawValueSticky
+                          dynamicRetirementDrawValueSticky,
+                          socialSecurityMonthly // NEW: Pass socialSecurityMonthly
                           );
 
             // Trigger saving if flag is true AND it's not from a Firestore load
@@ -743,7 +747,9 @@
                                initialAge,
                                retirementDrawRatePre62, retirementDrawRatePost62,
                                todaysDrawDisplay, dynamicRetirementDrawValue, sixtyTwoYODrawDisplay,
-                               retirementYearInput, dynamicRetirementDrawValueSticky) {
+                               retirementYearInput, dynamicRetirementDrawValueSticky,
+                               socialSecurityMonthly // NEW: Receive socialSecurityMonthly
+                               ) {
 
             projectionTableBody.innerHTML = '';
             chartContainer.innerHTML = '';
@@ -768,7 +774,8 @@
             const chartData = [];
 
             // Calculate "Today's Draw" for snapshot display:
-            // This is current investments * Pre-62 rate (from slider) + current total annual other income
+            // This is current investments * Pre-62 rate (from slider) + current total annual other income (from dynamic list)
+            // Social Security is NOT included here as it only starts at 62
             let initialTotalOtherAnnualIncomeSnapshot = 0;
             currentOtherIncomesStateForProjection.forEach(income => {
                 initialTotalOtherAnnualIncomeSnapshot += income.value * 12;
@@ -806,7 +813,7 @@
                     if (income.name.toLowerCase().includes("rental") && income.escalationRate > 0) {
                         income.value = Math.floor(income.value / 100) * 100;
                     }
-                    currentAnnualOtherIncomeForYear += income.value * 12; // Sum up for available income
+                    currentAnnualOtherIncomeForYear += income.value * 12; // Sum up for available income (e.g., rental, cell tower)
                 });
 
                 // Add explicit contributions to investments
@@ -817,6 +824,7 @@
 
                 let annualDrawFromInvestments = 0;
                 let effectiveDrawRateForYear = 0;
+                let annualSocialSecurityBenefit = 0; // NEW: Social Security income for this year
 
                 // Determine effective draw rate based on age relative to retirementYearInput and 62
                 if (age >= retirementYearInput) {
@@ -824,13 +832,14 @@
                         effectiveDrawRateForYear = retirementDrawRatePre62; // Use pre-62 slider value
                     } else {
                         effectiveDrawRateForYear = retirementDrawRatePost62; // Use post-62 slider value
+                        annualSocialSecurityBenefit = socialSecurityMonthly * 12; // NEW: Social Security starts at 62
                     }
                     annualDrawFromInvestments = currentInvestments * effectiveDrawRateForYear;
                     currentInvestments -= annualDrawFromInvestments;
                 }
 
-                // Calculate total income available for spending (investment draw + other incomes)
-                const totalAnnualIncomeAvailable = annualDrawFromInvestments + currentAnnualOtherIncomeForYear;
+                // Calculate total income available for spending (investment draw + other incomes + Social Security)
+                const totalAnnualIncomeAvailable = annualDrawFromInvestments + currentAnnualOtherIncomeForYear + annualSocialSecurityBenefit; // NEW: Added SS here
 
 
                 // Update the dynamic retirement draw value when the specific retirement year is reached
@@ -842,8 +851,8 @@
 
                 // Keep 62 YO Draw display as a separate fixed value for comparison
                 if (age === 62) {
-                    // This now includes the post-62 draw from investments + the escalated other incomes at age 62
-                    const drawAt62 = (currentInvestments * retirementDrawRatePost62) + currentAnnualOtherIncomeForYear;
+                    // This now includes the post-62 draw from investments + the escalated other incomes at age 62 + Social Security
+                    const drawAt62 = (currentInvestments * retirementDrawRatePost62) + currentAnnualOtherIncomeForYear + (socialSecurityMonthly * 12); // NEW: Added SS here for age 62
                     const drawValueInTodaysDollarsAt62 = drawAt62 / Math.pow((1 + inflationRate), i);
                     sixtyTwoYODrawDisplay.textContent = formatLargeCurrency(drawValueInTodaysDollarsAt62);
                 }
@@ -1375,7 +1384,7 @@
         lg:fixed lg:top-0 lg:left-0 lg:h-screen lg:w-64 lg:flex-col lg:items-center lg:justify-start lg:p-6 lg:shadow-2xl lg:overflow-y-auto
     ">
         <h2 class="text-xl font-extrabold mb-4 text-center text-white w-full lg:text-3xl lg:mb-8">Your Snapshot</h2>
-        <span id="appRevisionDisplay" class="text-xs text-blue-200 font-semibold mb-4 lg:mb-6">v1.24</span>
+        <span id="appRevisionDisplay" class="text-xs text-blue-200 font-semibold mb-4 lg:mb-6">v1.25</span>
         <!-- Each summary item will be a div -->
         <div class="text-center mb-2 summary-item w-1/2 sm:w-1/3 md:w-1/4 lg:w-auto lg:text-center px-1">
             <p class="text-sm font-bold text-blue-200 lg:text-lg">Net Worth:</p>
@@ -1577,6 +1586,15 @@
                                 <div class="slider-input-wrapper">
                                     <span class="slider-value-display" id="retirementDrawRatePost62Value"></span>
                                     <input type="range" id="retirementDrawRatePost62" min="0" max="5" value="5" step="0.5" class="w-full">
+                                </div>
+                            </div>
+
+                            <!-- NEW SLIDER: Social Security Monthly -->
+                            <div class="mb-2">
+                                <label for="socialSecurityMonthly" class="label-style">Social Security Monthly ($)</label>
+                                <div class="slider-input-wrapper">
+                                    <span class="slider-value-display" id="socialSecurityMonthlyValue"></span>
+                                    <input type="range" id="socialSecurityMonthly" min="0" max="5000" value="2800" step="200" class="w-full">
                                 </div>
                             </div>
 
