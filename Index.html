@@ -67,7 +67,7 @@
     const appId = typeof __app_id !== 'undefined' ? __app_id : firebaseConfig.appId;
 
     // Revision Level
-    const appRevision = "1.38";
+    const appRevision = "1.39";
 
 
     // Global Firebase vars
@@ -166,7 +166,7 @@
     const liabilitiesContainer = document.getElementById('liabilitiesContainer');
     const addLiabilityBtn = document.getElementById('addLiabilityBtn');
     const otherIncomeContainer = document.getElementById('otherIncomeContainer');
-    const addOtherIncomeBtn = document.getElementById('addOtherIncomeBtn'); // Corrected from `document = document.getElementById`
+    const addOtherIncomeBtn = document.getElementById('addOtherIncomeBtn');
 
     const chartContainer = document.getElementById('chart-container');
     const appRevisionDisplay = document.getElementById('appRevisionDisplay');
@@ -757,7 +757,7 @@
 
 
         // Project growth over years
-        projectGrowth(initial401kBalance, initialOtherInvestmentsBalance, initialNetWorth,
+        projectGrowth(initial401kBalance, initialOtherInvestmentsBalance, currentNetWorth, // Passed currentNetWorth here
                         totalHomes, totalOtherStaticAssets,
                         totalLiabilities, currentMortgageValue, baseSalary,
                         bonusRate, my401kContributionRate, company401kContributionRate,
@@ -781,12 +781,12 @@
     }
 
 
-    function projectGrowth(initial401kBalance, initialOtherInvestmentsBalance, initialNetWorth,
+    function projectGrowth(initial401kBalance, initialOtherInvestmentsBalance, initialNetWorth, // initialNetWorth is now correctly received
                            initialHomesValue, initialOtherStaticAssetsValue,
                            initialTotalLiabilities, initialMortgageValue, initialBaseSalary,
                            bonusRate, my401kContributionRate, company401kContributionRate,
-                           annualRothContribution, // These contributions now target other investments
-                           monthlyHSAContribution, // These contributions now target other investments
+                           annualRothContribution,
+                           monthlyHSAContribution,
                            annualSalaryRaise, stockAppreciation,
                            housingAppreciation, inflation, annualPrincipalPayment,
                            currentOtherIncomesStateForProjection,
@@ -871,6 +871,7 @@
             let annualDrawFromOtherInvestments = 0;
 
             // Apply draws based on age and retirement status
+            // NOTE: Age 60 is the hardcoded breakpoint for 72(t) as requested
             if (age >= retirementYearInput) {
                 // 401K draw logic (72(t) if under 60, then percentage draw after 60)
                 if (age < 60) { // Specific age 60 for 72(t) as requested
@@ -885,9 +886,12 @@
                 const effectiveRateOther = (age < socialSecurityStartAge) ? retirementDrawRatePre62 : retirementDrawRatePost62;
                 annualDrawFromOtherInvestments = currentOtherInvestmentsBalance * effectiveRateOther;
 
-            } else {
-                // Before retirement, no draw from investments (contributions already handled)
+            } else if (age >= seventyTwoTStartAge && age < 60) { // For ages between 72(t) start and 60
+                annualDrawFrom401k = fixedAnnual72tDistribution;
+                annualDrawFromOtherInvestments = currentOtherInvestmentsBalance * retirementDrawRatePre62; // Use pre-62 draw rate for other investments
             }
+            // Before retirement (and before 72t start age), no draws from investments
+
 
             // Ensure draws don't make balance negative
             current401kBalance = Math.max(0, current401kBalance - annualDrawFrom401k);
