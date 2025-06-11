@@ -44,7 +44,7 @@
     const SHARED_DOC_ID = 'shared_inputs'; // A single document for all shared inputs
 
     // Revision Level
-    const appRevision = "1.28"; // Added Social Security Start Age slider, dynamic SS label, and updated 62 YO Draw calculation.
+    const appRevision = "1.29"; // Added right Y-axis, separated Homes from Other Assets, implemented distinct growth for Investments, Homes, and static Other Assets.
 
     // Predefined default values for dynamic sections
     const defaultInvestmentAccounts = [
@@ -52,22 +52,25 @@
         { name: "Roth 1", value: 167169 },
         { name: "Roth 2", value: 148545 },
         { name: "HSA", value: 23550 },
-        { name: "Checking", value: 16296 }
+        { name: "529", value: 50513 }
     ];
 
-    const defaultOtherAssets = [
-        { name: "Personal Home", value: 1017000 },
-        { name: "Other Equity (car, tractor, camper)", value: 85000 }
+    const defaultHomes = [
+        { name: "Personal Home", value: 599000 },
+        { name: "Rental Home", value: 199000 },
+        { name: "Lake Home", value: 181000 }
+    ];
+
+    const defaultOtherStaticAssets = [
+        { name: "Suburban", value: 32000 },
+        { name: "Tractor", value: 16000 },
+        { name: "RV", value: 25000 },
+        { name: "Checking", value: 17522 }
     ];
 
     const defaultLiabilities = [
-        { name: "Mortgage", value: 203000 },
-        { name: "Credit Cards", value: 0 } // Not specified in original data, keeping default
-    ];
-
-    const defaultOtherIncomes = [
-        { name: "Cell Tower", value: 1200, escalationRate: 0.015 },
-        { name: "Rental House", value: 1300, escalationRate: 0.04 }
+        { name: "Home Mortgage", value: 202212 },
+        { name: "Credit Cards", value: 0 }
     ];
 
 
@@ -113,7 +116,7 @@
             retirementDrawRatePost62: document.getElementById('retirementDrawRatePost62'),
             retirementYear: document.getElementById('retirementYear'),
             monthlyPrincipalPayment: document.getElementById('monthlyPrincipalPayment'),
-            socialSecurityStartAge: document.getElementById('socialSecurityStartAge'), // NEW
+            socialSecurityStartAge: document.getElementById('socialSecurityStartAge'),
             socialSecurityMonthly: document.getElementById('socialSecurityMonthly')
         };
 
@@ -125,14 +128,16 @@
         const todaysDrawDisplay = document.getElementById('todaysDraw');
         const dynamicRetirementDrawLabel = document.getElementById('dynamicRetirementDrawLabel');
         const dynamicRetirementDrawValue = document.getElementById('dynamicRetirementDrawValue');
-        const sixtyTwoYODrawDisplay = document.getElementById('sixtyTwoYODraw'); // Keeping this ID but label will be dynamic
+        const ssStartAgeDrawDisplay = document.getElementById('ssStartAgeDraw'); // Changed ID from sixtyTwoYODraw
         const dynamicRetirementDrawLabelSticky = document.getElementById('dynamicRetirementDrawLabelSticky');
         const dynamicRetirementDrawValueSticky = document.getElementById('dynamicRetirementDrawValueSticky');
         const projectionTableBody = document.getElementById('projectionTableBody');
         const investmentAccountsContainer = document.getElementById('investmentAccountsContainer');
         const addInvestmentBtn = document.getElementById('addInvestmentBtn');
-        const otherAssetsContainer = document.getElementById('otherAssetsContainer');
-        const addOtherAssetBtn = document.getElementById('addOtherAssetBtn');
+        const homesContainer = document.getElementById('homesContainer'); // New container for homes
+        const addHomeBtn = document.getElementById('addHomeBtn'); // New button for homes
+        const otherStaticAssetsContainer = document.getElementById('otherStaticAssetsContainer'); // Renamed for static assets
+        const addOtherStaticAssetBtn = document.getElementById('addOtherStaticAssetBtn'); // Renamed for static assets
         const liabilitiesContainer = document.getElementById('liabilitiesContainer');
         const addLiabilityBtn = document.getElementById('addLiabilityBtn');
         const otherIncomeContainer = document.getElementById('otherIncomeContainer');
@@ -142,7 +147,8 @@
 
         // References for the summary spans
         const totalInvestmentsSummary = document.getElementById('totalInvestmentsSummary');
-        const totalOtherAssetsSummary = document.getElementById('totalOtherAssetsSummary');
+        const totalHomesSummary = document.getElementById('totalHomesSummary'); // New summary for homes
+        const totalOtherStaticAssetsSummary = document.getElementById('totalOtherStaticAssetsSummary'); // New summary for static assets
         const totalLiabilitiesSummary = document.getElementById('totalLiabilitiesSummary');
 
         // New references for labels
@@ -163,7 +169,7 @@
             { slider: staticInputs.retirementDrawRatePre62, valueDisplay: document.getElementById('retirementDrawRatePre62Value'), unit: '%' },
             { slider: staticInputs.retirementDrawRatePost62, valueDisplay: document.getElementById('retirementDrawRatePost62Value'), unit: '%' },
             { slider: staticInputs.retirementYear, valueDisplay: document.getElementById('retirementYearValue'), unit: '' },
-            { slider: staticInputs.socialSecurityStartAge, valueDisplay: document.getElementById('socialSecurityStartAgeValue'), unit: '' }, // NEW
+            { slider: staticInputs.socialSecurityStartAge, valueDisplay: document.getElementById('socialSecurityStartAgeValue'), unit: '' },
             { slider: staticInputs.socialSecurityMonthly, valueDisplay: document.getElementById('socialSecurityMonthlyValue'), unit: '' }
         ];
 
@@ -318,12 +324,20 @@
                 collectedData.investmentAccounts.push({ name, value });
             });
 
-            // Collect dynamic other asset values
-            collectedData.otherAssets = [];
-            document.querySelectorAll('.other-asset-row').forEach(row => {
-                const name = row.querySelector('.asset-name').value;
-                const value = cleanInputNumber(row.querySelector('.asset-value').value);
-                collectedData.otherAssets.push({ name, value });
+            // Collect dynamic homes values
+            collectedData.homes = [];
+            document.querySelectorAll('.home-row').forEach(row => {
+                const name = row.querySelector('.home-name').value;
+                const value = cleanInputNumber(row.querySelector('.home-value').value);
+                collectedData.homes.push({ name, value });
+            });
+
+            // Collect dynamic other static asset values
+            collectedData.otherStaticAssets = [];
+            document.querySelectorAll('.other-static-asset-row').forEach(row => {
+                const name = row.querySelector('.static-asset-name').value;
+                const value = cleanInputNumber(row.querySelector('.static-asset-value').value);
+                collectedData.otherStaticAssets.push({ name, value });
             });
 
             // Collect dynamic liability values
@@ -365,13 +379,15 @@
                     console.log("No shared data found in Firestore. Initializing with provided values and saving this state.");
                     // Explicitly clear dynamic inputs
                     investmentAccountsContainer.innerHTML = '';
-                    otherAssetsContainer.innerHTML = '';
+                    homesContainer.innerHTML = '';
+                    otherStaticAssetsContainer.innerHTML = '';
                     liabilitiesContainer.innerHTML = '';
                     otherIncomeContainer.innerHTML = '';
 
                     // Add dynamic rows with user-provided default values
                     defaultInvestmentAccounts.forEach(account => addInvestmentAccountInput(account));
-                    defaultOtherAssets.forEach(asset => addOtherAssetInput(asset));
+                    defaultHomes.forEach(home => addHomeInput(home));
+                    defaultOtherStaticAssets.forEach(asset => addOtherStaticAssetInput(asset));
                     defaultLiabilities.forEach(liability => addLiabilityInput(liability));
                     defaultOtherIncomes.forEach(income => addOtherIncomeInput(income));
                     
@@ -411,10 +427,11 @@
                 }
             }
 
-            // Update dynamic inputs (investments, other assets, liabilities, other income)
+            // Update dynamic inputs (investments, homes, other static assets, liabilities, other income)
             // Clear existing dynamic rows first to avoid duplicates
             investmentAccountsContainer.innerHTML = '';
-            otherAssetsContainer.innerHTML = '';
+            homesContainer.innerHTML = '';
+            otherStaticAssetsContainer.innerHTML = '';
             liabilitiesContainer.innerHTML = '';
             otherIncomeContainer.innerHTML = '';
 
@@ -422,23 +439,27 @@
             if (data.investmentAccounts && data.investmentAccounts.length > 0) {
                 data.investmentAccounts.forEach(account => addInvestmentAccountInput(account));
             } else {
-                // If no data or empty array from Firestore, use predefined defaults
                 defaultInvestmentAccounts.forEach(account => addInvestmentAccountInput(account));
             }
 
-            // Handle Other Assets
-            if (data.otherAssets && data.otherAssets.length > 0) {
-                data.otherAssets.forEach(asset => addOtherAssetInput(asset));
+            // Handle Homes
+            if (data.homes && data.homes.length > 0) {
+                data.homes.forEach(home => addHomeInput(home));
             } else {
-                // If no data or empty array from Firestore, use predefined defaults
-                defaultOtherAssets.forEach(asset => addOtherAssetInput(asset));
+                defaultHomes.forEach(home => addHomeInput(home));
+            }
+
+            // Handle Other Static Assets
+            if (data.otherStaticAssets && data.otherStaticAssets.length > 0) {
+                data.otherStaticAssets.forEach(asset => addOtherStaticAssetInput(asset));
+            } else {
+                defaultOtherStaticAssets.forEach(asset => addOtherStaticAssetInput(asset));
             }
 
             // Handle Liabilities
             if (data.liabilities && data.liabilities.length > 0) {
                 data.liabilities.forEach(liability => addLiabilityInput(liability));
             } else {
-                // If no data or empty array from Firestore, use predefined defaults
                 defaultLiabilities.forEach(liability => addLiabilityInput(liability));
             }
 
@@ -446,10 +467,8 @@
             if (data.otherIncome && data.otherIncome.length > 0) {
                 data.otherIncome.forEach(income => addOtherIncomeInput(income));
             } else {
-                // If no data or empty array from Firestore, use predefined defaults
                 defaultOtherIncomes.forEach(income => addOtherIncomeInput(income));
             }
-            // --- END CHANGE ---
 
             // After populating, recalculate to update summaries and chart (but don't save yet)
             calculateFinancials(false);
@@ -484,18 +503,18 @@
             });
         }
 
-        // Function to add a new other asset input row
-        function addOtherAssetInput(asset = { name: '', value: 0 }) {
+        // NEW: Function to add a new home input row
+        function addHomeInput(home = { name: '', value: 0 }) {
             const rowDiv = document.createElement('div');
-            rowDiv.classList.add('other-asset-row', 'flex', 'flex-wrap', 'items-center', 'mb-4', 'space-y-2', 'md:space-y-0', 'md:space-x-2');
+            rowDiv.classList.add('home-row', 'flex', 'flex-wrap', 'items-center', 'mb-4', 'space-y-2', 'md:space-y-0', 'md:space-x-2');
             rowDiv.innerHTML = `
-                <input type="text" placeholder="Asset Name" value="${asset.name}" class="input-field asset-name flex-1 min-w-[120px]">
-                <input type="text" placeholder="Value ($)" value="${formatInputNumber(asset.value)}" class="input-field asset-value flex-1 min-w-[100px]">
+                <input type="text" placeholder="Home Name" value="${home.name}" class="input-field home-name flex-1 min-w-[120px]">
+                <input type="text" placeholder="Value ($)" value="${formatInputNumber(home.value)}" class="input-field home-value flex-1 min-w-[100px]">
                 <button type="button" class="delete-item-btn text-red-500 hover:text-red-700 font-bold px-2 py-1 rounded-md transition duration-200 ease-in-out">X</button>
             `;
-            otherAssetsContainer.appendChild(rowDiv);
+            homesContainer.appendChild(rowDiv);
 
-            const valueInput = rowDiv.querySelector('.asset-value');
+            const valueInput = rowDiv.querySelector('.home-value');
             valueInput.addEventListener('input', (event) => {
                 // Allow typing freely, no formatting on input
             });
@@ -503,7 +522,7 @@
                 event.target.value = formatInputNumber(event.target.value); // Format on blur
                 calculateFinancials(true); // Trigger save on blur
             });
-            const nameInput = rowDiv.querySelector('.asset-name');
+            const nameInput = rowDiv.querySelector('.home-name');
             nameInput.addEventListener('blur', () => calculateFinancials(true)); // Trigger save on blur
 
             const deleteBtn = rowDiv.querySelector('.delete-item-btn');
@@ -512,6 +531,36 @@
                 calculateFinancials(true); // Trigger save
             });
         }
+
+        // NEW: Function to add a new other static asset input row
+        function addOtherStaticAssetInput(asset = { name: '', value: 0 }) {
+            const rowDiv = document.createElement('div');
+            rowDiv.classList.add('other-static-asset-row', 'flex', 'flex-wrap', 'items-center', 'mb-4', 'space-y-2', 'md:space-y-0', 'md:space-x-2');
+            rowDiv.innerHTML = `
+                <input type="text" placeholder="Asset Name" value="${asset.name}" class="input-field static-asset-name flex-1 min-w-[120px]">
+                <input type="text" placeholder="Value ($)" value="${formatInputNumber(asset.value)}" class="input-field static-asset-value flex-1 min-w-[100px]">
+                <button type="button" class="delete-item-btn text-red-500 hover:text-red-700 font-bold px-2 py-1 rounded-md transition duration-200 ease-in-out">X</button>
+            `;
+            otherStaticAssetsContainer.appendChild(rowDiv);
+
+            const valueInput = rowDiv.querySelector('.static-asset-value');
+            valueInput.addEventListener('input', (event) => {
+                // Allow typing freely, no formatting on input
+            });
+            valueInput.addEventListener('blur', (event) => {
+                event.target.value = formatInputNumber(event.target.value); // Format on blur
+                calculateFinancials(true); // Trigger save on blur
+            });
+            const nameInput = rowDiv.querySelector('.static-asset-name');
+            nameInput.addEventListener('blur', () => calculateFinancials(true)); // Trigger save on blur
+
+            const deleteBtn = rowDiv.querySelector('.delete-item-btn');
+            deleteBtn.addEventListener('click', () => {
+                rowDiv.remove();
+                calculateFinancials(true); // Trigger save
+            });
+        }
+
 
         // Function to add a new liability input row
         function addLiabilityInput(liability = { name: '', value: 0 }) {
@@ -584,9 +633,10 @@
         // Main calculation function (now accepts a shouldSave flag)
         function calculateFinancials(shouldSaveData = true) {
             let totalInvestments = 0;
-            let totalOtherAssets = 0;
+            let totalHomes = 0; // New variable for total homes value
+            let totalOtherStaticAssets = 0; // New variable for total static assets
             let totalLiabilities = 0;
-            let currentMortgageValue = 0;
+            let currentMortgageValue = 0; // Specific mortgage value for reduction logic
 
             let currentFinancials = {}; // Object to store all inputs for saving
 
@@ -617,13 +667,22 @@
                 currentFinancials.investmentAccounts.push({ name, value });
             });
 
-            // Read dynamic other asset values
-            currentFinancials.otherAssets = [];
-            document.querySelectorAll('.other-asset-row').forEach(row => {
-                const name = row.querySelector('.asset-name').value;
-                const value = cleanInputNumber(row.querySelector('.asset-value').value);
-                totalOtherAssets += value;
-                currentFinancials.otherAssets.push({ name, value });
+            // Read dynamic homes values
+            currentFinancials.homes = [];
+            document.querySelectorAll('.home-row').forEach(row => {
+                const name = row.querySelector('.home-name').value;
+                const value = cleanInputNumber(row.querySelector('.home-value').value);
+                totalHomes += value;
+                currentFinancials.homes.push({ name, value });
+            });
+
+            // Read dynamic other static asset values
+            currentFinancials.otherStaticAssets = [];
+            document.querySelectorAll('.other-static-asset-row').forEach(row => {
+                const name = row.querySelector('.static-asset-name').value;
+                const value = cleanInputNumber(row.querySelector('.static-asset-value').value);
+                totalOtherStaticAssets += value;
+                currentFinancials.otherStaticAssets.push({ name, value });
             });
 
             // Read dynamic liability values
@@ -636,7 +695,7 @@
                 totalLiabilities += value;
                 currentFinancials.liabilities.push({ name, value });
 
-                if (name.toLowerCase() === "mortgage") {
+                if (name.toLowerCase() === "home mortgage") { // Ensure exact match for mortgage
                     currentMortgageValue = value;
                 }
             });
@@ -668,7 +727,7 @@
             const retirementDrawRatePost62 = currentFinancials.retirementDrawRatePost62;
             const retirementYear = currentFinancials.retirementYear;
             const monthlyPrincipalPayment = currentFinancials.monthlyPrincipalPayment;
-            const socialSecurityStartAge = currentFinancials.socialSecurityStartAge; // NEW
+            const socialSecurityStartAge = currentFinancials.socialSecurityStartAge;
             const socialSecurityMonthly = currentFinancials.socialSecurityMonthly;
             const annualPrincipalPayment = monthlyPrincipalPayment * 12;
 
@@ -697,9 +756,9 @@
 
 
             // Calculate Net Worth and Net Investments
-            const currentTotalAssets = totalInvestments + totalOtherAssets;
+            const currentTotalAssets = totalInvestments + totalHomes + totalOtherStaticAssets;
             const currentNetWorth = currentTotalAssets - totalLiabilities;
-            const currentNetInvestments = totalInvestments;
+            const currentNetInvestments = totalInvestments; // Net Investments is still just investment accounts
 
             // Calculate Annual Income (for display only in Snapshot)
             const annualBonusIncome = baseSalary * bonusRate;
@@ -720,13 +779,14 @@
             annualSavingsDisplay.textContent = formatLargeCurrency(totalAnnualSavings); // Display only investment-related savings
 
             // Update the summary spans
-            totalInvestmentsSummary.textContent = `(${formatLargeCurrency(totalInvestments)})`;
-            totalOtherAssetsSummary.textContent = `(${formatLargeCurrency(totalOtherAssets)})`;
+            totalInvestmentsSummary.textContent = `(${formatLargeCurrency(totalInvestments)}) ${(stockAppreciation * 100).toFixed(0)}% APY`;
+            totalHomesSummary.textContent = `(${formatLargeCurrency(totalHomes)}) ${(housingAppreciation * 100).toFixed(0)}% APY`;
+            totalOtherStaticAssetsSummary.textContent = `(${formatLargeCurrency(totalOtherStaticAssets)})`; // No APY for static assets
             totalLiabilitiesSummary.textContent = `(${formatLargeCurrency(totalLiabilities)})`;
 
             // Project growth over years
             projectGrowth(currentNetInvestments, currentNetWorth,
-                          currentFinancials.otherAssets,
+                          totalHomes, totalOtherStaticAssets, // Pass new totals for homes and static assets
                           totalLiabilities, currentMortgageValue, baseSalary,
                           bonusRate, my401kContributionRate, company401kContributionRate,
                           annualRothContribution,
@@ -736,10 +796,10 @@
                           currentFinancials.otherIncome,
                           currentAge,
                           retirementDrawRatePre62, retirementDrawRatePost62,
-                          todaysDrawDisplay, dynamicRetirementDrawValue, sixtyTwoYODrawDisplay,
+                          todaysDrawDisplay, dynamicRetirementDrawValue, ssStartAgeDrawDisplay, // Use new ID
                           retirementYear,
                           dynamicRetirementDrawValueSticky,
-                          socialSecurityStartAge, // NEW: Pass the SS Start Age
+                          socialSecurityStartAge,
                           socialSecurityMonthly
                           );
 
@@ -750,7 +810,9 @@
         }
 
 
-        function projectGrowth(initialNetInvestments, initialNetWorth, initialOtherAssetsList, initialTotalLiabilities, initialMortgageValue, initialBaseSalary,
+        function projectGrowth(initialNetInvestments, initialNetWorth,
+                               initialHomesValue, initialOtherStaticAssetsValue, // New initial values for homes and static assets
+                               initialTotalLiabilities, initialMortgageValue, initialBaseSalary,
                                bonusRate, my401kContributionRate, company401kContributionRate,
                                annualRothContribution,
                                monthlyHSAContribution,
@@ -759,9 +821,9 @@
                                currentOtherIncomesStateForProjection,
                                initialAge,
                                retirementDrawRatePre62, retirementDrawRatePost62,
-                               todaysDrawDisplay, dynamicRetirementDrawValue, sixtyTwoYODrawDisplay,
+                               todaysDrawDisplay, dynamicRetirementDrawValue, ssStartAgeDrawDisplay,
                                retirementYearInput, dynamicRetirementDrawValueSticky,
-                               socialSecurityStartAge, // NEW: Receive SS Start Age
+                               socialSecurityStartAge,
                                socialSecurityMonthly
                                ) {
 
@@ -769,16 +831,12 @@
             chartContainer.innerHTML = '';
 
             let currentInvestments = initialNetInvestments;
-            let currentHomeValue = initialOtherAssetsList.find(asset => asset.name === "Personal Home")?.value || 0;
+            let currentHomesValue = initialHomesValue; // Use the initial total for homes
+            let currentOtherStaticAssetsValue = initialOtherStaticAssetsValue; // Use the initial total for static assets
             let currentMortgage = initialMortgageValue;
             let currentOtherLiabilitiesTotal = initialTotalLiabilities - initialMortgageValue;
             let currentBaseSalary = initialBaseSalary;
-            let currentOtherEquity = initialOtherAssetsList.find(asset => asset.name === "Other Equity (car, tractor, camper)")?.value || 0;
             
-            let currentRentalHouseValue = initialOtherAssetsList.find(asset => asset.name === "Rental House")?.value || 0;
-            let currentLakeHouseValue = initialOtherAssetsList.find(asset => asset.name === "Lake House")?.value || 0;
-            
-
             const startYear = new Date().getFullYear();
             let currentProjectedAge = initialAge;
 
@@ -837,16 +895,21 @@
                 // Apply investment growth
                 currentInvestments *= (1 + stockAppreciation);
 
+                // Apply housing appreciation to homes
+                currentHomesValue *= (1 + housingAppreciation);
+
+                // Other static assets remain static (no change needed here)
+
                 let annualDrawFromInvestments = 0;
                 let effectiveDrawRateForYear = 0;
                 let annualSocialSecurityBenefit = 0;
 
                 // Determine effective draw rate based on age relative to retirementYearInput and socialSecurityStartAge
                 if (age >= retirementYearInput) {
-                    if (age < socialSecurityStartAge) { // Use dynamic socialSecurityStartAge
-                        effectiveDrawRateForYear = retirementDrawRatePre62; // Use pre-62 slider value
-                    } else { // age >= socialSecurityStartAge
-                        effectiveDrawRateForYear = retirementDrawRatePost62; // Use post-62 slider value
+                    if (age < socialSecurityStartAge) {
+                        effectiveDrawRateForYear = retirementDrawRatePre62;
+                    } else {
+                        effectiveDrawRateForYear = retirementDrawRatePost62;
                         annualSocialSecurityBenefit = socialSecurityMonthly * 12; // Social Security starts at the chosen age
                     }
                     annualDrawFromInvestments = currentInvestments * effectiveDrawRateForYear;
@@ -865,24 +928,22 @@
                 }
 
                 // Update the SS Start Age Draw display (label is now dynamic)
-                if (age === socialSecurityStartAge) { // Use dynamic socialSecurityStartAge
+                if (age === socialSecurityStartAge) {
                     const drawAtSSStartAge = (currentInvestments * retirementDrawRatePost62) + currentAnnualOtherIncomeForYear + (socialSecurityMonthly * 12);
                     const drawValueInTodaysDollarsAtSSStartAge = drawAtSSStartAge / Math.pow((1 + inflationRate), i);
-                    sixtyTwoYODrawDisplay.textContent = formatLargeCurrency(drawValueInTodaysDollarsAtSSStartAge);
+                    ssStartAgeDrawDisplay.textContent = formatLargeCurrency(drawValueInTodaysDollarsAtSSStartAge); // Update new ID
                 }
-
-                // Apply housing appreciation only to Personal Home
-                currentHomeValue *= (1 + housingAppreciation);
                 
                 // Reduce mortgage if it exists
                 currentMortgage = Math.max(0, currentMortgage - annualPrincipalPayment);
 
                 // Calculate total projected assets for net worth
-                let totalProjectedOtherAssets = currentHomeValue + currentRentalHouseValue + currentLakeHouseValue + currentOtherEquity;
+                // Sum of current investments, current homes value, and current other static assets value
+                let totalProjectedAssets = currentInvestments + currentHomesValue + currentOtherStaticAssetsValue;
 
                 // Re-calculating net worth based on projected investments, projected total assets, and projected liabilities
                 const currentTotalLiabilitiesInProjection = currentMortgage + currentOtherLiabilitiesTotal;
-                let currentNetWorth = currentInvestments + totalProjectedOtherAssets - currentTotalLiabilitiesInProjection;
+                let currentNetWorth = totalProjectedAssets - currentTotalLiabilitiesInProjection;
 
                 const netWorthInTodaysDollars = currentNetWorth / Math.pow((1 + inflationRate), i);
 
@@ -944,8 +1005,8 @@
                 .range([height, 0]);
 
             const xAxis = d3.axisBottom(xScale).tickFormat(d3.format("d"));
-            const yAxis = d3.axisLeft(yScale).tickFormat(d => formatProjectedChartAxisLabel(d, yMax));
-
+            const yAxisLeft = d3.axisLeft(yScale).tickFormat(d => formatProjectedChartAxisLabel(d, yMax));
+            const yAxisRight = d3.axisRight(yScale).tickFormat(d => formatProjectedChartAxisLabel(d, yMax)); // Right axis
 
             svg.append("g")
                 .attr("class", "x axis")
@@ -953,8 +1014,13 @@
                 .call(xAxis);
 
             svg.append("g")
-                .attr("class", "y axis")
-                .call(yAxis);
+                .attr("class", "y axis-left") // Left axis
+                .call(yAxisLeft);
+
+            svg.append("g")
+                .attr("class", "y axis-right") // Right axis
+                .attr("transform", `translate(${width}, 0)`) // Move to the right
+                .call(yAxisRight);
 
             svg.append("g")
                 .attr("class", "grid")
@@ -1011,6 +1077,15 @@
                 .text("Value ($)");
 
             svg.append("text")
+                .attr("transform", "rotate(90)")
+                .attr("y", width + margin.right - 20) /* Position to the right */
+                .attr("x", height / 2) /* Center vertically */
+                .attr("dy", "-1em") /* Adjust text position */
+                .style("text-anchor", "middle")
+                .attr("font-size", "0.9rem")
+                .text("Value ($)");
+
+            svg.append("text")
                 .attr("x", (width / 2))
                 .attr("y", 0 - (margin.top / 2))
                 .attr("text-anchor", "middle")
@@ -1029,8 +1104,8 @@
                 .attr("height", height)
                 .style("fill", "none")
                 .style("pointer-events", "all")
-                .on("mouseover", function() { focusInvestment.style("display", null); focusNetWorth.style("display", null); focusNetWorthTodaysDollars.style("display", null); tooltip.style("opacity", 1); }) // NEW: Show new focus
-                .on("mouseout", function() { focusInvestment.style("display", "none"); focusNetWorth.style("display", "none"); focusNetWorthTodaysDollars.style("display", "none"); tooltip.style("opacity", 0); }) // NEW: Hide new focus
+                .on("mouseover", function() { focusInvestment.style("display", null); focusNetWorth.style("display", null); focusNetWorthTodaysDollars.style("display", null); tooltip.style("opacity", 1); })
+                .on("mouseout", function() { focusInvestment.style("display", "none"); focusNetWorth.style("display", "none"); focusNetWorthTodaysDollars.style("display", "none"); tooltip.style("opacity", 0); })
                 .on("mousemove", mousemove);
 
             const focusInvestment = svg.append("g")
@@ -1068,9 +1143,9 @@
 
                 focusInvestment.attr("transform", `translate(${xScale(d.age)},${yScale(d.investments)})`);
                 focusNetWorth.attr("transform", `translate(${xScale(d.age)},${yScale(d.netWorth)})`);
-                focusNetWorthTodaysDollars.attr("transform", `translate(${xScale(d.age)},${yScale(d.netWorthTodaysDollars)})`); // NEW: Update new focus
+                focusNetWorthTodaysDollars.attr("transform", `translate(${xScale(d.age)},${yScale(d.netWorthTodaysDollars)})`);
 
-                tooltip.html(`Age: ${d.age}<br>Investments: ${formatTableCurrency(d.investments)}<br>Net Worth: ${formatTableCurrency(d.netWorth)}<br>Net Worth (Today's $): ${formatTableCurrency(d.netWorthTodaysDollars)}`) // NEW: Update tooltip
+                tooltip.html(`Age: ${d.age}<br>Investments: ${formatTableCurrency(d.investments)}<br>Net Worth: ${formatTableCurrency(d.netWorth)}<br>Net Worth (Today's $): ${formatTableCurrency(d.netWorthTodaysDollars)}`)
                     .style("left", (event.pageX + 10) + "px")
                     .style("top", (event.pageY - 20) + "px");
             }
@@ -1100,8 +1175,10 @@
 
         // Add event listener for adding new investment accounts
         addInvestmentBtn.addEventListener('click', () => { addInvestmentAccountInput(); calculateFinancials(true); });
-        // Add event listener for adding new other asset accounts
-        addOtherAssetBtn.addEventListener('click', () => { addOtherAssetInput(); calculateFinancials(true); });
+        // NEW: Add event listener for adding new home accounts
+        addHomeBtn.addEventListener('click', () => { addHomeInput(); calculateFinancials(true); });
+        // NEW: Add event listener for adding new other static asset accounts
+        addOtherStaticAssetBtn.addEventListener('click', () => { addOtherStaticAssetInput(); calculateFinancials(true); });
         // Add event listener for adding new liability accounts
         addLiabilityBtn.addEventListener('click', () => { addLiabilityInput(); calculateFinancials(true); });
         // Add event listener for adding new other income accounts
@@ -1157,13 +1234,15 @@
                 // so the 'Add' buttons are functional for manual input.
                 console.warn("Firebase initialization failed, initializing dynamic inputs with blank rows for local use.");
                 investmentAccountsContainer.innerHTML = ''; // Clear existing
-                otherAssetsContainer.innerHTML = '';
+                homesContainer.innerHTML = ''; // Clear existing
+                otherStaticAssetsContainer.innerHTML = ''; // Clear existing
                 liabilitiesContainer.innerHTML = '';
                 otherIncomeContainer.innerHTML = '';
 
                 // If Firebase fails, use all defaults for dynamic sections
                 defaultInvestmentAccounts.forEach(account => addInvestmentAccountInput(account));
-                defaultOtherAssets.forEach(asset => addOtherAssetInput(asset));
+                defaultHomes.forEach(home => addHomeInput(home));
+                defaultOtherStaticAssets.forEach(asset => addOtherStaticAssetInput(asset));
                 defaultLiabilities.forEach(liability => addLiabilityInput(liability));
                 defaultOtherIncomes.forEach(income => addOtherIncomeInput(income));
                 
@@ -1425,7 +1504,7 @@
         lg:fixed lg:top-0 lg:left-0 lg:h-screen lg:w-64 lg:flex-col lg:items-center lg:justify-start lg:p-6 lg:shadow-2xl lg:overflow-y-auto
     ">
         <h2 class="text-xl font-extrabold mb-4 text-center text-white w-full lg:text-3xl lg:mb-8">Your Snapshot</h2>
-        <span id="appRevisionDisplay" class="text-xs text-blue-200 font-semibold mb-4 lg:mb-6">v1.28</span>
+        <span id="appRevisionDisplay" class="text-xs text-blue-200 font-semibold mb-4 lg:mb-6">v1.29</span>
         <!-- Each summary item will be a div -->
         <div class="text-center mb-2 summary-item w-1/2 sm:w-1/3 md:w-1/4 lg:w-auto lg:text-center px-1">
             <p class="text-sm font-bold text-blue-200 lg:text-lg">Net Worth:</p>
@@ -1453,7 +1532,7 @@
         </div>
         <div class="text-center mb-2 summary-item w-1/2 sm:w-1/3 md:w-1/4 lg:w-auto lg:text-center px-1">
             <p class="text-sm font-bold text-blue-200 lg:text-lg" id="ssStartAgeDrawLabel">62 YO Draw (Today's $):</p>
-            <p id="sixtyTwoYODraw" class="text-xl font-semibold text-white mt-1 lg:text-3xl">$0</p>
+            <p id="ssStartAgeDraw" class="text-xl font-semibold text-white mt-1 lg:text-3xl">$0</p>
         </div>
     </div>
 
@@ -1476,35 +1555,54 @@
                         1. Assets, Investments, and Liabilities
                     </summary>
                     <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
-                        <!-- Investment Accounts (Dynamic) -->
+                        <!-- Left Column (Investments and Homes) -->
                         <div>
-                            <h3 class="text-xl font-semibold mb-4 text-gray-800">Investment Accounts <span class="font-bold text-green-600" id="totalInvestmentsSummary"></span></h3>
-                            <div id="investmentAccountsContainer" class="mb-4 space-y-4">
-                                <!-- Dynamic investment inputs will be added here by JavaScript -->
+                            <!-- Investment Accounts (Dynamic) -->
+                            <div>
+                                <h3 class="text-xl font-semibold mb-4 text-gray-800">Investments <span class="font-bold text-green-600" id="totalInvestmentsSummary"></span></h3>
+                                <div id="investmentAccountsContainer" class="mb-4 space-y-4">
+                                    <!-- Dynamic investment inputs will be added here by JavaScript -->
+                                </div>
+                                <button id="addInvestmentBtn" type="button" class="mt-4 bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg shadow-md">
+                                    + Add Investment Account
+                                </button>
                             </div>
-                            <button id="addInvestmentBtn" type="button" class="mt-4 bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg shadow-md">
-                                + Add Investment Account
-                            </button>
+
+                            <!-- Homes (NEW Section) -->
+                            <div class="mt-8">
+                                <h3 class="text-xl font-semibold mb-4 text-gray-800">Homes <span class="font-bold text-green-600" id="totalHomesSummary"></span></h3>
+                                <div id="homesContainer" class="mb-4 space-y-4">
+                                    <!-- Dynamic home inputs will be added here by JavaScript -->
+                                </div>
+                                <button id="addHomeBtn" type="button" class="mt-4 bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg shadow-md">
+                                    + Add Home
+                                </button>
+                            </div>
                         </div>
 
-                        <!-- Other Assets -->
+                        <!-- Right Column (Other Assets and Liabilities) -->
                         <div>
-                            <h3 class="text-xl font-semibold mb-4 text-gray-800">Assets <span class="font-bold text-green-600" id="totalOtherAssetsSummary"></span></h3>
-                            <div id="otherAssetsContainer" class="mb-4 space-y-4">
-                                <!-- Dynamic other assets inputs will be added here by JavaScript -->
+                            <!-- Other Static Assets (NEW Section) -->
+                            <div>
+                                <h3 class="text-xl font-semibold mb-4 text-gray-800">Other Assets <span class="font-bold text-green-600" id="totalOtherStaticAssetsSummary"></span></h3>
+                                <div id="otherStaticAssetsContainer" class="mb-4 space-y-4">
+                                    <!-- Dynamic other static assets inputs will be added here by JavaScript -->
+                                </div>
+                                <button id="addOtherStaticAssetBtn" type="button" class="mt-4 bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg shadow-md">
+                                    + Add Other Asset
+                                </button>
                             </div>
-                            <button id="addOtherAssetBtn" type="button" class="mt-4 bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg shadow-md">
-                                + Add Asset
-                            </button>
 
-                            <!-- Liabilities - Moved here, no longer spanning two columns -->
-                            <h3 class="text-xl font-semibold mt-8 mb-4 text-gray-800">Liabilities <span class="font-bold text-red-600" id="totalLiabilitiesSummary"></span></h3>
-                            <div id="liabilitiesContainer" class="mb-4 space-y-4">
-                                <!-- Dynamic liability inputs will be added here by JavaScript -->
+                            <!-- Liabilities -->
+                            <div class="mt-8">
+                                <h3 class="text-xl font-semibold mb-4 text-gray-800">Liabilities <span class="font-bold text-red-600" id="totalLiabilitiesSummary"></span></h3>
+                                <div id="liabilitiesContainer" class="mb-4 space-y-4">
+                                    <!-- Dynamic liability inputs will be added here by JavaScript -->
+                                </div>
+                                <button id="addLiabilityBtn" type="button" class="mt-4 bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg shadow-md">
+                                    + Add Liability
+                                </button>
                             </div>
-                            <button id="addLiabilityBtn" type="button" class="mt-4 bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg shadow-md">
-                                + Add Liability
-                            </button>
                         </div>
                     </div>
                 </details>
