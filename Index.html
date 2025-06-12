@@ -11,7 +11,7 @@
     <!-- Firebase SDKs -->
 <script type="module">
     // Revision Level
-    const appRevision = "1.54";
+    const appRevision = "1.56";
 
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
     import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
@@ -377,8 +377,8 @@
             <button type="button" class="delete-item-btn text-red-500 hover:text-red-700 font-bold px-2 py-1 rounded-md transition duration-200 ease-in-out">X</button>
         `;
         investmentAccountsContainer.appendChild(rowDiv);
-        rowDiv.querySelector('.investment-value').addEventListener('blur', (e) => { e.target.value = formatInputNumber(e.target.value); calculateFinancials(true); });
-        rowDiv.querySelector('.investment-name').addEventListener('blur', () => calculateFinancials(true));
+        rowDiv.querySelector('.investment-value').addEventListener('change', (e) => { e.target.value = formatInputNumber(e.target.value); calculateFinancials(true); });
+        rowDiv.querySelector('.investment-name').addEventListener('change', () => calculateFinancials(true));
         rowDiv.querySelector('.delete-item-btn').addEventListener('click', () => { rowDiv.remove(); calculateFinancials(true); });
     }
 
@@ -391,8 +391,8 @@
             <button type="button" class="delete-item-btn text-red-500 hover:text-red-700 font-bold px-2 py-1 rounded-md transition duration-200 ease-in-out">X</button>
         `;
         homesContainer.appendChild(rowDiv);
-        rowDiv.querySelector('.home-value').addEventListener('blur', (e) => { e.target.value = formatInputNumber(e.target.value); calculateFinancials(true); });
-        rowDiv.querySelector('.home-name').addEventListener('blur', () => calculateFinancials(true));
+        rowDiv.querySelector('.home-value').addEventListener('change', (e) => { e.target.value = formatInputNumber(e.target.value); calculateFinancials(true); });
+        rowDiv.querySelector('.home-name').addEventListener('change', () => calculateFinancials(true));
         rowDiv.querySelector('.delete-item-btn').addEventListener('click', () => { rowDiv.remove(); calculateFinancials(true); });
     }
 
@@ -405,8 +405,8 @@
             <button type="button" class="delete-item-btn text-red-500 hover:text-red-700 font-bold px-2 py-1 rounded-md transition duration-200 ease-in-out">X</button>
         `;
         otherStaticAssetsContainer.appendChild(rowDiv);
-        rowDiv.querySelector('.static-asset-value').addEventListener('blur', (e) => { e.target.value = formatInputNumber(e.target.value); calculateFinancials(true); });
-        rowDiv.querySelector('.static-asset-name').addEventListener('blur', () => calculateFinancials(true));
+        rowDiv.querySelector('.static-asset-value').addEventListener('change', (e) => { e.target.value = formatInputNumber(e.target.value); calculateFinancials(true); });
+        rowDiv.querySelector('.static-asset-name').addEventListener('change', () => calculateFinancials(true));
         rowDiv.querySelector('.delete-item-btn').addEventListener('click', () => { rowDiv.remove(); calculateFinancials(true); });
     }
 
@@ -419,8 +419,8 @@
             <button type="button" class="delete-item-btn text-red-500 hover:text-red-700 font-bold px-2 py-1 rounded-md transition duration-200 ease-in-out">X</button>
         `;
         liabilitiesContainer.appendChild(rowDiv);
-        rowDiv.querySelector('.liability-value').addEventListener('blur', (e) => { e.target.value = formatInputNumber(e.target.value); calculateFinancials(true); });
-        rowDiv.querySelector('.liability-name').addEventListener('blur', () => calculateFinancials(true));
+        rowDiv.querySelector('.liability-value').addEventListener('change', (e) => { e.target.value = formatInputNumber(e.target.value); calculateFinancials(true); });
+        rowDiv.querySelector('.liability-name').addEventListener('change', () => calculateFinancials(true));
         rowDiv.querySelector('.delete-item-btn').addEventListener('click', () => { rowDiv.remove(); calculateFinancials(true); });
     }
 
@@ -438,7 +438,7 @@
         `;
         otherIncomeContainer.appendChild(rowDiv);
         rowDiv.querySelectorAll('input').forEach(input => {
-            input.addEventListener('blur', (e) => {
+            input.addEventListener('change', (e) => {
                 if(e.target.classList.contains('income-value')) e.target.value = formatInputNumber(e.target.value);
                 calculateFinancials(true);
             });
@@ -531,6 +531,7 @@
 
         const addDetailedRow = (age, year) => {
             const row = detailedBreakdownTbody.insertRow();
+            row.classList.add('hover:bg-blue-50');
             if(age % 5 === 0) row.classList.add('bg-blue-100');
             row.insertCell().textContent = age;
             row.insertCell().textContent = year;
@@ -677,6 +678,33 @@
         svg.append("text").attr("transform", "rotate(-90)").attr("y", 0 - margin.left + 20).attr("x", 0 - (height / 2)).attr("dy", "1em").style("text-anchor", "middle").text("Value ($)");
         svg.append("text").attr("x", width / 2).attr("y", 0 - (margin.top / 2)).attr("text-anchor", "middle").attr("font-size", "1.2rem").attr("font-weight", "bold").text("Projected Investments & Net Worth");
         
+        const tooltip = d3.select("body").append("div").attr("class", "tooltip").style("opacity", 0);
+        const focusInvestment = svg.append("g").attr("class", "focus").style("display", "none");
+        focusInvestment.append("circle").attr("r", 5).attr("fill", "#2563eb");
+        const focusNetWorthTodaysDollars = svg.append("g").attr("class", "focus").style("display", "none");
+        focusNetWorthTodaysDollars.append("circle").attr("r", 5).attr("fill", "#800080");
+
+        svg.append("rect").attr("width", width).attr("height", height).style("fill", "none").style("pointer-events", "all")
+            .on("mouseover", () => { focusInvestment.style("display", null); focusNetWorthTodaysDollars.style("display", null); tooltip.style("opacity", 1); })
+            .on("mouseout", () => { focusInvestment.style("display", "none"); focusNetWorthTodaysDollars.style("display", "none"); tooltip.style("opacity", 0); })
+            .on("mousemove", mousemove);
+        
+        function mousemove(event) {
+            const [mx, my] = d3.pointer(event);
+            if (mx > width || my < 0 || my > height) return;
+            const x0 = xScale.invert(mx);
+            const i = d3.bisector(d => d.age).left(data, x0, 1);
+            const d0 = data[i - 1];
+            const d1 = data[i];
+            const d = d1 && (x0 - d0.age > d1.age - x0) ? d1 : d0;
+            if (d) {
+                focusInvestment.attr("transform", `translate(${xScale(d.age)},${yScale(d.investments)})`);
+                focusNetWorthTodaysDollars.attr("transform", `translate(${xScale(d.age)},${yScale(d.netWorthInTodaysDollars)})`);
+                tooltip.style("opacity", 1).html(`Age: ${d.age}<br>Investments: ${formatTableCurrency(d.investments)}<br>Net Worth (Today's $): ${formatTableCurrency(d.netWorthInTodaysDollars)}`)
+                    .style("left", (event.pageX + 10) + "px").style("top", (event.pageY - 20) + "px");
+            }
+        }
+
         chartContainer.__chartData__ = data;
     }
 
@@ -819,7 +847,7 @@
         });
         
         document.querySelectorAll('input[type="text"]').forEach(input => {
-            input.addEventListener('blur', (event) => {
+            input.addEventListener('change', (event) => {
                 event.target.value = formatInputNumber(event.target.value);
                 calculateFinancials(true);
             });
@@ -978,27 +1006,8 @@
                 </div>
             </div>
 
-            <div class="bg-blue-50 p-6 rounded-lg shadow-md mb-8 border border-blue-200">
-                <h2 class="text-2xl font-bold mb-4 text-blue-700">3. Projected Growth Chart</h2>
-                <div id="chart-container" class="w-full overflow-x-auto"></div>
-                <div class="flex justify-center mt-4 space-x-6 text-gray-700 font-semibold">
-                    <div class="flex items-center"><span class="inline-block w-4 h-4 rounded-full mr-2" style="background-color: #2563eb;"></span>Net Investments</div>
-                    <div class="flex items-center"><span class="inline-block w-4 h-4 rounded-full mr-2" style="background-color: #800080;"></span>Net Worth (Today's $)</div>
-                </div>
-            </div>
-
-            <div class="bg-blue-50 p-6 rounded-lg shadow-md border border-blue-200">
-                <h2 class="text-2xl font-bold mb-4 text-blue-700">4. Projected Growth Table</h2>
-                <div class="overflow-x-auto rounded-lg border border-gray-200 shadow-sm">
-                    <table class="min-w-full bg-white">
-                        <thead class="bg-blue-600 text-white uppercase text-sm leading-normal"><tr><th class="py-3 px-6 text-left">Age</th><th class="py-3 px-6 text-left">Year</th><th class="py-3 px-6 text-left">Investments</th><th class="py-3 px-6 text-left">Net Worth</th><th class="py-3 px-6 text-left">Net Worth (Today's $)</th></tr></thead>
-                        <tbody id="projectionTableBody" class="text-gray-700 text-sm font-light divide-y divide-gray-200"></tbody>
-                    </table>
-                </div>
-            </div>
-
             <div class="bg-orange-50 p-6 rounded-lg shadow-md border border-orange-200 mt-8">
-                <h2 class="text-2xl font-bold mb-4 text-orange-700">5. 72(t) Fixed Distribution Projection</h2>
+                <h2 class="text-2xl font-bold mb-4 text-orange-700">3. 72(t) Fixed Distribution Projection</h2>
                 <p class="text-sm text-orange-700 mb-4">This projection calculates **fixed annual distributions** from a 401K account using the Amortization Method (based on IRS Uniform Lifetime Table and a fixed 5% interest rate). The 401K balance grows by your "Stock APY" rate. The calculation starts at your selected retirement age and is automatically recalculated at age 60.</p>
                 <div class="mb-2"><label for="seventyTwoTRetirementYear" class="label-style">Retirement Age (Linked)</label><div class="slider-input-wrapper"><span class="slider-value-display" id="seventyTwoTRetirementYearValue"></span><input type="range" id="seventyTwoTRetirementYear" min="38" max="80" step="1"></div></div>
                 <h3 class="text-xl font-semibold mb-4 text-gray-800">Projected 72(t) Distributions</h3>
@@ -1023,8 +1032,23 @@
                 </div>
             </div>
 
+            <div class="bg-blue-50 p-6 rounded-lg shadow-md mb-8 border border-blue-200 mt-8">
+                <h2 class="text-2xl font-bold mb-4 text-blue-700">4. Projected Growth</h2>
+                <div id="chart-container" class="w-full overflow-x-auto mb-4"></div>
+                <div class="flex justify-center mt-4 space-x-6 text-gray-700 font-semibold">
+                    <div class="flex items-center"><span class="inline-block w-4 h-4 rounded-full mr-2" style="background-color: #2563eb;"></span>Net Investments</div>
+                    <div class="flex items-center"><span class="inline-block w-4 h-4 rounded-full mr-2" style="background-color: #800080;"></span>Net Investments (Today's $)</div>
+                </div>
+                <div class="overflow-x-auto rounded-lg border border-gray-200 shadow-sm mt-4">
+                    <table class="min-w-full bg-white">
+                        <thead class="bg-blue-600 text-white uppercase text-sm leading-normal"><tr><th class="py-3 px-6 text-left">Age</th><th class="py-3 px-6 text-left">Year</th><th class="py-3 px-6 text-left">Investments</th><th class="py-3 px-6 text-left">Net Worth</th><th class="py-3 px-6 text-left">Net Worth (Today's $)</th></tr></thead>
+                        <tbody id="projectionTableBody" class="text-gray-700 text-sm font-light divide-y divide-gray-200"></tbody>
+                    </table>
+                </div>
+            </div>
+
             <div class="bg-gray-50 p-6 rounded-lg shadow-md border border-gray-200 mt-8">
-                <h2 class="text-2xl font-bold mb-4 text-gray-700">6. Detailed Annual Breakdown</h2>
+                <h2 class="text-2xl font-bold mb-4 text-gray-700">5. Detailed Annual Breakdown</h2>
                 <div class="overflow-x-auto rounded-lg border border-gray-200 shadow-sm">
                     <table class="min-w-full bg-white">
                         <thead id="detailedBreakdownThead" class="bg-gray-600 text-white uppercase text-sm leading-normal"></thead>
