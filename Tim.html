@@ -11,32 +11,22 @@
     <!-- Firebase SDKs -->
 <script type="module">
     // Revision Level
-    const appRevision = "2.2";
+    const appRevision = "2.3";
 
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
     import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
     import { getFirestore, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-
-    const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {
-        apiKey: "AIzaSyCC1UKUPFRUnWyQ09hGFkJxVEVBBkZ7X40",
-        authDomain: "investment-calculator-931f2.firebaseapp.com",
-        projectId: "investment-calculator-931f2",
-        storageBucket: "investment-calculator-931f2.firebasestorage.app",
-        messagingSenderId: "943895110805",
-        appId: "1:943895110805:web:ba6e1e6177ae31d7af279c",
-        measurementId: "G-F0CRPKLS7G"
-    };
-
-    const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
-    const appId = typeof __app_id !== 'undefined' ? __app_id : firebaseConfig.appId;
 
     let app;
     let db;
     let auth;
     let userId;
 
+    const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+    const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+
     const PUBLIC_COLLECTION_PATH = `artifacts/${appId}/public/data/retirement_calculator`;
-    const SHARED_DOC_ID = 'tims_personal_data';
+    const SHARED_DOC_ID = 'shared_inputs';
 
     const irsLifeExpectancyTable = {
         18: 66.8, 19: 65.8, 20: 64.9, 21: 63.9, 22: 63.0, 23: 62.0, 24: 61.1, 25: 60.2, 26: 59.2, 27: 58.3,
@@ -176,45 +166,56 @@
 
     const initFirebase = async () => {
         try {
-            app = initializeApp(firebaseConfig);
+            let config;
+            const fallbackConfig = {
+                apiKey: "AIzaSyCC1UKUPFRUnWyQ09hGFkJxVEVBBkZ7X40",
+                authDomain: "investment-calculator-931f2.firebaseapp.com",
+                projectId: "investment-calculator-931f2",
+                storageBucket: "investment-calculator-931f2.firebasestorage.app",
+                messagingSenderId: "943895110805",
+                appId: "1:943895110805:web:ba6e1e6177ae31d7af279c",
+                measurementId: "G-F0CRPKLS7G"
+            };
+
+            try {
+                config = (typeof __firebase_config !== 'undefined' && __firebase_config.trim() !== '' && __firebase_config !== 'undefined') ? JSON.parse(__firebase_config) : fallbackConfig;
+                if (!config || !config.projectId) {
+                     config = fallbackConfig;
+                }
+            } catch(e) {
+                config = fallbackConfig;
+            }
+
+            app = initializeApp(config);
             db = getFirestore(app);
             auth = getAuth(app);
 
-            await new Promise((resolve, reject) => {
-                const unsubscribe = onAuthStateChanged(auth, async (user) => {
-                    if (!user) {
-                        if (initialAuthToken) {
-                            try {
-                                await signInWithCustomToken(auth, initialAuthToken);
-                                userId = auth.currentUser.uid;
-                            } catch (tokenError) {
-                                console.error("Custom token sign-in failed, attempting anonymous:", tokenError);
-                                await signInAnonymously(auth);
-                                userId = auth.currentUser.uid;
-                            }
-                        } else {
-                            await signInAnonymously(auth);
-                            userId = auth.currentUser.uid;
-                        }
-                    } else {
-                        userId = user.uid;
-                    }
-                    unsubscribe();
-                    resolve();
-                }, (error) => {
-                    console.error("Error observing Firebase auth state:", error);
-                    unsubscribe();
-                    reject(error);
-                });
+            onAuthStateChanged(auth, (user) => {
+                if (user && !userId) { // Ensure listener setup runs only once per user session
+                    userId = user.uid;
+                    setupRealtimeListener();
+                }
             });
 
-            setupRealtimeListener();
+            // Attempt to sign in if there's no current user
+            if (!auth.currentUser) {
+                if (initialAuthToken) {
+                    await signInWithCustomToken(auth, initialAuthToken);
+                } else {
+                    await signInAnonymously(auth);
+                }
+            } else {
+                // If there's already a user, trigger the setup
+                 userId = auth.currentUser.uid;
+                 setupRealtimeListener();
+            }
+
         } catch (error) {
-            console.error("Critical error during Firebase initialization or authentication flow:", error);
-            throw error;
+            console.error("Firebase initialization or authentication failed. Running in offline mode.", error);
+            loadDefaultDataAndCalculate();
         }
     };
-
+    
     async function saveDataToFirestore(data) {
         if (!db || !userId || window.isLoadingFromFirestore) return;
         try {
@@ -278,6 +279,51 @@
         return collectedData;
     }
 
+    function loadDefaultDataAndCalculate() {
+        investmentAccountsContainer.innerHTML = '';
+        homesContainer.innerHTML = '';
+        otherStaticAssetsContainer.innerHTML = '';
+        liabilitiesContainer.innerHTML = '';
+        otherIncomeContainer.innerHTML = '';
+        
+        const defaultInvestmentAccounts = [{ name: "401K", value: 200000 }, { name: "Roth 1", value: 150000 }, { name: "Roth 2", value: 100000 }, { name: "HSA", value: 25000 }, { name: "529", value: 25000 }];
+        const defaultHomes = [{ name: "Personal Home", value: 350000 }];
+        const defaultOtherStaticAssets = [{ name: "Car Equity", value: 20000 }, { name: "Checking", value: 15000 }];
+        const defaultLiabilities = [{ name: "Home Mortgage", value: 200000, monthlyPayment: 1514 }];
+        const defaultOtherIncomes = [{ name: "None", value: 0, escalationRate: 0 }];
+
+        defaultInvestmentAccounts.forEach(account => addInvestmentAccountInput(account));
+        defaultHomes.forEach(home => addHomeInput(home));
+        defaultOtherStaticAssets.forEach(asset => addOtherStaticAssetInput(asset));
+        defaultLiabilities.forEach(liability => addLiabilityInput(liability));
+        defaultOtherIncomes.forEach(income => addOtherIncomeInput(income));
+        
+        if (staticInputs.currentAge) staticInputs.currentAge.value = 35;
+        if (staticInputs.baseSalary) staticInputs.baseSalary.value = formatInputNumber(100000);
+        if (staticInputs.bonusRate) staticInputs.bonusRate.value = 10;
+        if (staticInputs.my401kContributionRate) staticInputs.my401kContributionRate.value = 6;
+        if (staticInputs.company401kContributionRate) staticInputs.company401kContributionRate.value = 6;
+        if (staticInputs.annualRothContribution) staticInputs.annualRothContribution.value = formatInputNumber(14000);
+        if (staticInputs.monthlyHSAContribution) staticInputs.monthlyHSAContribution.value = formatInputNumber(600);
+        if (staticInputs.annualSalaryRaise) staticInputs.annualSalaryRaise.value = 4;
+        if (staticInputs.stockAppreciation) staticInputs.stockAppreciation.value = 10;
+        if (staticInputs.housingAppreciation) staticInputs.housingAppreciation.value = 4;
+        if (staticInputs.inflation) staticInputs.inflation.value = 3;
+        if (staticInputs.retirementDrawRatePre62) staticInputs.retirementDrawRatePre62.value = 7;
+        if (staticInputs.retirementDrawRatePost62) staticInputs.retirementDrawRatePost62.value = 5;
+        if (staticInputs.retirementYear) staticInputs.retirementYear.value = 55;
+        if (staticInputs.socialSecurityStartAge) staticInputs.socialSecurityStartAge.value = 62;
+        if (staticInputs.socialSecurityMonthly) staticInputs.socialSecurityMonthly.value = 2800;
+
+        sliderPairs.forEach(pair => {
+            if (pair.slider && pair.valueDisplay) {
+                updateSliderValueDisplay(pair.slider, pair.valueDisplay, pair.unit);
+            }
+        });
+        syncRetirementSliders('retirementYear');
+        calculateFinancials(false);
+    }
+
     function setupRealtimeListener() {
         if (!db || !userId) return;
         const docRef = doc(db, PUBLIC_COLLECTION_PATH, SHARED_DOC_ID);
@@ -287,53 +333,12 @@
                 const data = docSnap.data();
                 populateInputsFromFirestore(data);
             } else {
-                investmentAccountsContainer.innerHTML = '';
-                homesContainer.innerHTML = '';
-                otherStaticAssetsContainer.innerHTML = '';
-                liabilitiesContainer.innerHTML = '';
-                otherIncomeContainer.innerHTML = '';
-                
-                const defaultInvestmentAccounts = [{ name: "401K", value: 200000 }, { name: "Roth 1", value: 150000 }, { name: "Roth 2", value: 100000 }, { name: "HSA", value: 25000 }, { name: "529", value: 25000 }];
-                const defaultHomes = [{ name: "Personal Home", value: 350000 }];
-                const defaultOtherStaticAssets = [{ name: "Car Equity", value: 20000 }, { name: "Checking", value: 15000 }];
-                const defaultLiabilities = [{ name: "Home Mortgage", value: 200000, monthlyPayment: 1514 }];
-                const defaultOtherIncomes = [{ name: "None", value: 0, escalationRate: 0 }];
-
-                defaultInvestmentAccounts.forEach(account => addInvestmentAccountInput(account));
-                defaultHomes.forEach(home => addHomeInput(home));
-                defaultOtherStaticAssets.forEach(asset => addOtherStaticAssetInput(asset));
-                defaultLiabilities.forEach(liability => addLiabilityInput(liability));
-                defaultOtherIncomes.forEach(income => addOtherIncomeInput(income));
-                
-                if (staticInputs.currentAge) staticInputs.currentAge.value = 35;
-                if (staticInputs.baseSalary) staticInputs.baseSalary.value = formatInputNumber(100000);
-                if (staticInputs.bonusRate) staticInputs.bonusRate.value = 10;
-                if (staticInputs.my401kContributionRate) staticInputs.my401kContributionRate.value = 6;
-                if (staticInputs.company401kContributionRate) staticInputs.company401kContributionRate.value = 6;
-                if (staticInputs.annualRothContribution) staticInputs.annualRothContribution.value = formatInputNumber(14000);
-                if (staticInputs.monthlyHSAContribution) staticInputs.monthlyHSAContribution.value = formatInputNumber(600);
-                if (staticInputs.annualSalaryRaise) staticInputs.annualSalaryRaise.value = 4;
-                if (staticInputs.stockAppreciation) staticInputs.stockAppreciation.value = 10;
-                if (staticInputs.housingAppreciation) staticInputs.housingAppreciation.value = 4;
-                if (staticInputs.inflation) staticInputs.inflation.value = 3;
-                if (staticInputs.retirementDrawRatePre62) staticInputs.retirementDrawRatePre62.value = 7;
-                if (staticInputs.retirementDrawRatePost62) staticInputs.retirementDrawRatePost62.value = 5;
-                if (staticInputs.retirementYear) staticInputs.retirementYear.value = 55;
-                if (staticInputs.socialSecurityStartAge) staticInputs.socialSecurityStartAge.value = 62;
-                if (staticInputs.socialSecurityMonthly) staticInputs.socialSecurityMonthly.value = 2800;
-
-                sliderPairs.forEach(pair => {
-                    if (pair.slider && pair.valueDisplay) {
-                        updateSliderValueDisplay(pair.slider, pair.valueDisplay, pair.unit);
-                    }
-                });
-                syncRetirementSliders('retirementYear');
-                calculateFinancials(true);
+                loadDefaultDataAndCalculate();
             }
             window.isLoadingFromFirestore = false;
         }, (error) => {
             console.error("Error listening to Firestore document:", error);
-            calculateFinancials(false);
+            loadDefaultDataAndCalculate();
             window.isLoadingFromFirestore = false;
         });
     }
@@ -754,6 +759,31 @@
         svg.append("text").attr("transform", "rotate(90)").attr("y", -width - margin.right + 20).attr("x", height/2).style("text-anchor", "middle").style("fill", "#f97316").text("Distribution (Today's $)");
         svg.append("text").attr("x", width/2).attr("y", -margin.top/2).attr("text-anchor", "middle").attr("font-size", "1.2rem").attr("font-weight", "bold").text("72(t) Fixed Distribution Projection");
         
+        const tooltip = d3.select("body").append("div").attr("class", "tooltip").style("opacity", 0);
+        const focusBalance = svg.append("g").attr("class", "focus").style("display", "none");
+        focusBalance.append("circle").attr("r", 5).attr("fill", "#2563eb");
+        const focusDistribution = svg.append("g").attr("class", "focus").style("display", "none");
+        focusDistribution.append("circle").attr("r", 5).attr("fill", "#f97316");
+
+        svg.append("rect").attr("width", width).attr("height", height).style("fill", "none").style("pointer-events", "all")
+            .on("mouseover", () => { focusBalance.style("display", null); focusDistribution.style("display", null); tooltip.style("opacity", 1); })
+            .on("mouseout", () => { focusBalance.style("display", "none"); focusDistribution.style("display", "none"); tooltip.style("opacity", 0); })
+            .on("mousemove", mousemove);
+
+        function mousemove(event) {
+            const [mx] = d3.pointer(event);
+            const x0 = xScale.invert(mx);
+            const i = d3.bisector(d => d.age).left(data, x0, 1);
+            const d0 = data[i - 1];
+            const d1 = data[i];
+            const d = !d0 ? d1 : (!d1 ? d0 : (x0 - d0.age > d1.age - x0 ? d1 : d0));
+            if (d) {
+                focusBalance.attr("transform", `translate(${xScale(d.age)},${yScaleLeft(d.balanceTodaysDollars)})`);
+                focusDistribution.attr("transform", `translate(${xScale(d.age)},${yScaleRight(d.distributionTodaysDollars)})`);
+                tooltip.style("opacity", 1).html(`Age: ${d.age}<br>Balance (Today's $): ${formatTableCurrency(d.balanceTodaysDollars)}<br>Distribution (Today's $): ${formatTableCurrency(d.distributionTodaysDollars)}`)
+                    .style("left", (event.pageX + 10) + "px").style("top", (event.pageY - 20) + "px");
+            }
+        }
         seventyTwoTChartContainer.__chartData__ = data;
     }
 
@@ -903,7 +933,7 @@
     .line-networth-todays-dollars { stroke: #800080; }
     .line-balance { stroke: #2563eb; }
     .line-distribution { stroke: #f97316; }
-    .axis text { font-size: 0.85rem; fill: #6b7280; }
+    .axis text { font-size: 0.85rem; }
     .axis path, .axis line { stroke: #d1d5db; stroke-width: 1px; }
     .grid line { stroke: #e5e7eb; stroke-opacity: 0.7; shape-rendering: crispEdges; }
     .tooltip { position: absolute; text-align: center; padding: 8px; background: #fff; border: 1px solid #ccc; border-radius: 4px; pointer-events: none; box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2); font-size: 0.9rem; color: #333; }
