@@ -4,14 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Investment Calculator</title>
-    <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- D3.js CDN for charting -->
     <script src="https://d3js.org/d3.v7.min.js"></script>
-    <!-- Firebase SDKs -->
-<script type="module">
+    <script type="module">
     // Revision Level
-    const appRevision = "1.47";
+    const appRevision = "1.48";
 
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
     import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
@@ -114,16 +111,13 @@
         retirementYear: document.getElementById('retirementYear'),
         monthlyPrincipalPayment: document.getElementById('monthlyPrincipalPayment'),
         socialSecurityStartAge: document.getElementById('socialSecurityStartAge'),
-        socialSecurityMonthly: document.getElementById('socialSecurityMonthly'),
-        seventyTwoTStartAge: document.getElementById('seventyTwoTStartAge'),
-        seventyTwoTInterestRate: document.getElementById('seventyTwoTInterestRate')
+        socialSecurityMonthly: document.getElementById('socialSecurityMonthly')
     };
 
     const currentNetWorthDisplay = document.getElementById('currentNetWorth');
     const currentNetInvestmentsDisplay = document.getElementById('currentNetInvestments');
     const annualIncomeDisplay = document.getElementById('annualIncomeDisplay');
     const annualSavingsDisplay = document.getElementById('annualSavingsDisplay');
-    const todaysDrawDisplay = document.getElementById('todaysDraw');
     const dynamicRetirementDrawLabel = document.getElementById('dynamicRetirementDrawLabel');
     const dynamicRetirementDrawValue = document.getElementById('dynamicRetirementDrawValue');
     const ssStartAgeDrawDisplay = document.getElementById('ssStartAgeDraw');
@@ -168,9 +162,7 @@
         { slider: staticInputs.retirementDrawRatePost62, valueDisplay: document.getElementById('retirementDrawRatePost62Value'), unit: '%' },
         { slider: staticInputs.retirementYear, valueDisplay: document.getElementById('retirementYearValue'), unit: '' },
         { slider: staticInputs.socialSecurityStartAge, valueDisplay: document.getElementById('socialSecurityStartAgeValue'), unit: '' },
-        { slider: staticInputs.socialSecurityMonthly, valueDisplay: document.getElementById('socialSecurityMonthlyValue'), unit: '' },
-        { slider: staticInputs.seventyTwoTStartAge, valueDisplay: document.getElementById('seventyTwoTStartAgeValue'), unit: '' },
-        { slider: staticInputs.seventyTwoTInterestRate, valueDisplay: document.getElementById('seventyTwoTInterestRateValue'), unit: '%' }
+        { slider: staticInputs.socialSecurityMonthly, valueDisplay: document.getElementById('socialSecurityMonthlyValue'), unit: '' }
     ];
 
     const formatTableCurrency = (amount) => {
@@ -257,7 +249,7 @@
         for (const key in staticInputs) {
             if (staticInputs[key]) {
                 let value = staticInputs[key].type === 'range' ? parseFloat(staticInputs[key].value) : cleanInputNumber(staticInputs[key].value);
-                if (['bonusRate', 'my401kContributionRate', 'company401kContributionRate', 'annualSalaryRaise', 'stockAppreciation', 'housingAppreciation', 'inflation', 'retirementDrawRatePre62', 'retirementDrawRatePost62', 'seventyTwoTInterestRate'].includes(key)) {
+                if (['bonusRate', 'my401kContributionRate', 'company401kContributionRate', 'annualSalaryRaise', 'stockAppreciation', 'housingAppreciation', 'inflation', 'retirementDrawRatePre62', 'retirementDrawRatePost62'].includes(key)) {
                     value = value / 100;
                 }
                 collectedData[key] = value;
@@ -386,7 +378,7 @@
         for (const key in staticInputs) {
             if (staticInputs[key] && data[key] !== undefined) {
                 let value = data[key];
-                if (['bonusRate', 'my401kContributionRate', 'company401kContributionRate', 'annualSalaryRaise', 'stockAppreciation', 'housingAppreciation', 'inflation', 'retirementDrawRatePre62', 'retirementDrawRatePost62', 'seventyTwoTInterestRate'].includes(key)) {
+                if (['bonusRate', 'my401kContributionRate', 'company401kContributionRate', 'annualSalaryRaise', 'stockAppreciation', 'housingAppreciation', 'inflation', 'retirementDrawRatePre62', 'retirementDrawRatePost62'].includes(key)) {
                     value = parseFloat(value) * 100;
                 }
                 staticInputs[key].value = staticInputs[key].type === 'range' ? value : formatInputNumber(value);
@@ -647,7 +639,7 @@
                         currentFinancials.otherIncome,
                         currentAge,
                         retirementDrawRatePre62, retirementDrawRatePost62,
-                        todaysDrawDisplay, dynamicRetirementDrawValue, ssStartAgeDrawDisplay,
+                        dynamicRetirementDrawValue, ssStartAgeDrawDisplay,
                         retirementYear,
                         dynamicRetirementDrawValueSticky,
                         socialSecurityStartAge,
@@ -670,7 +662,7 @@
                            currentOtherIncomesStateForProjection,
                            initialAge,
                            retirementDrawRatePre62, retirementDrawRatePost62,
-                           todaysDrawDisplay, dynamicRetirementDrawValue, ssStartAgeDrawDisplay,
+                           dynamicRetirementDrawValue, ssStartAgeDrawDisplay,
                            retirementYearInput, dynamicRetirementDrawValueSticky,
                            socialSecurityStartAge,
                            socialSecurityMonthly
@@ -697,9 +689,10 @@
             initialTotalOtherAnnualIncomeSnapshot += income.value * 12;
         });
         
-        // Calculate fixed 72(t) distribution based on current inputs, and for snapshot use
-        const seventyTwoTStartAge = staticInputs.seventyTwoTStartAge ? parseFloat(staticInputs.seventyTwoTStartAge.value) : initialAge;
-        const seventyTwoTInterestRate = staticInputs.seventyTwoTInterestRate ? parseFloat(staticInputs.seventyTwoTInterestRate.value) / 100 : 0.04;
+        // Use retirementYearInput for the 72(t) start age
+        const seventyTwoTStartAge = retirementYearInput;
+        // Use a fixed 5% interest rate for the 72(t) calculation
+        const seventyTwoTInterestRate = 0.05;
         const lifeExpectancyAt72tStart = irsLifeExpectancyTable[Math.floor(seventyTwoTStartAge)];
 
         let fixedAnnual72tDistribution = 0;
@@ -714,28 +707,6 @@
             fixedAnnual72tDistribution = Math.round(fixedAnnual72tDistribution * 100) / 100;
         }
 
-        // Calculate Today's Draw for snapshot based on initialAge and defined rules
-        let currentTodays401kDraw = 0;
-        let currentTodaysOtherInvestmentsDraw = 0;
-
-        // Determine 401K draw for the snapshot
-        if (initialAge >= seventyTwoTStartAge && initialAge < 60) {
-            currentTodays401kDraw = fixedAnnual72tDistribution;
-        } else if (initialAge >= 60) {
-            // For ages >= 60, calculate the draw based on the current 401k balance and the applicable draw rate
-            const effectiveRate = (initialAge < socialSecurityStartAge) ? retirementDrawRatePre62 : retirementDrawRatePost62;
-            currentTodays401kDraw = initial401kBalance * effectiveRate;
-        }
-        // For ages < seventyTwoTStartAge, currentTodays401kDraw remains 0
-
-        // Determine other investments draw for the snapshot
-        const effectiveRateOther = (initialAge < socialSecurityStartAge) ? retirementDrawRatePre62 : retirementDrawRatePost62;
-        currentTodaysOtherInvestmentsDraw = initialOtherInvestmentsBalance * effectiveRateOther;
-        
-        const todaysDrawValue = currentTodays401kDraw + currentTodaysOtherInvestmentsDraw + initialTotalOtherAnnualIncomeSnapshot;
-        todaysDrawDisplay.textContent = formatLargeCurrency(todaysDrawValue);
-
-
         // First data point represents the current state (Age, Year, Investments, Net Worth, Net Worth in Today's Dollars)
         chartData.push({
             age: initialAge,
@@ -743,6 +714,15 @@
             netWorth: initialNetWorth,
             netWorthTodaysDollars: initialNetWorth
         });
+
+        // Add initial state to the projection table
+        const initialRow = projectionTableBody.insertRow();
+        initialRow.classList.add('hover:bg-blue-50', 'bg-blue-100', 'font-bold');
+        initialRow.insertCell().textContent = initialAge;
+        initialRow.insertCell().textContent = startYear;
+        initialRow.insertCell().textContent = formatTableCurrency(initial401kBalance + initialOtherInvestmentsBalance);
+        initialRow.insertCell().textContent = formatTableCurrency(initialNetWorth);
+        initialRow.insertCell().textContent = formatTableCurrency(initialNetWorth);
 
         // Loop for projecting future years
         for (let i = 1; initialAge + i <= 80; i++) {
@@ -1027,7 +1007,8 @@
         svg.append("g")
             .attr("class", "x axis")
             .attr("transform", `translate(0,${height})`)
-            .call(xAxis);
+            .call(xAxis)
+            .select(".domain").attr("stroke", "black"); // Color X axis black
 
         svg.append("g")
             .attr("class", "y axis-left")
@@ -1038,7 +1019,7 @@
             .attr("class", "y axis-right")
             .attr("transform", `translate(${width}, 0)`)
             .call(yAxisRight)
-            .select(".domain").attr("stroke", "#f97316"); // Color right axis to match distribution
+            .select(".domain").attr("stroke", "black"); // Color right axis black
 
         svg.append("g")
             .attr("class", "grid")
@@ -1084,9 +1065,9 @@
 
         svg.append("text")
             .attr("transform", "rotate(90)")
-            .attr("y", width + margin.right - 20)
-            .attr("x", height / 2)
-            .attr("dy", "-1em")
+            .attr("y", 0 - (width + margin.right) + 20)
+            .attr("x", (height / 2))
+            .attr("dy", "1em")
             .style("text-anchor", "middle")
             .attr("font-size", "0.9rem")
             .text("Distribution ($)");
@@ -1155,9 +1136,11 @@
 
         const currentFinancials = collectAllCurrentInputs();
         const mainCurrentAge = currentFinancials.currentAge;
-        const seventyTwoTStartAgeInput = Math.floor(currentFinancials.seventyTwoTStartAge);
+        // The 72(t) starting age is now drawn from the main retirement age slider
+        const seventyTwoTStartAgeInput = Math.floor(currentFinancials.retirementYear);
         const stockAppreciation = currentFinancials.stockAppreciation;
-        const seventyTwoTInterestRate = currentFinancials.seventyTwoTInterestRate;
+        // The interest rate for the 72(t) calculation is hardcoded to 5%
+        const seventyTwoTInterestRate = 0.05;
 
         let initial401kBalanceAtMainCurrentAge = 0;
         const found401k = currentFinancials.investmentAccounts.find(account =>
@@ -1255,7 +1238,8 @@
                 staticInputs[key].addEventListener('input', () => updateSliderValueDisplay(staticInputs[key], sliderPairs.find(p => p.slider === staticInputs[key]).valueDisplay, sliderPairs.find(p => p.slider === staticInputs[key]).unit));
                 staticInputs[key].addEventListener('change', () => {
                     calculateFinancials(true);
-                    if (['seventyTwoTStartAge', 'stockAppreciation', 'currentAge', 'seventyTwoTInterestRate'].includes(key)) {
+                    // Rerun 72t if relevant inputs change
+                    if (['retirementYear', 'stockAppreciation', 'currentAge'].includes(key)) {
                         calculate72tDistribution(true);
                     }
                 });
@@ -1290,7 +1274,8 @@
             pair.slider.addEventListener('input', () => updateSliderValueDisplay(pair.slider, pair.valueDisplay, pair.unit));
             pair.slider.addEventListener('change', () => {
                 calculateFinancials(true);
-                if (['seventyTwoTStartAge', 'stockAppreciation', 'currentAge', 'seventyTwoTInterestRate'].includes(pair.slider.id)) {
+                // Rerun 72t if relevant inputs change
+                if (['retirementYear', 'stockAppreciation', 'currentAge'].includes(pair.slider.id)) {
                     calculate72tDistribution(true);
                 }
             });
@@ -1627,7 +1612,7 @@
         lg:fixed lg:top-0 lg:left-0 lg:h-screen lg:w-64 lg:flex-col lg:items-center lg:justify-start lg:p-6 lg:shadow-2xl lg:overflow-y-auto
     ">
         <h2 class="text-xl font-extrabold mb-4 text-center text-white w-full lg:text-3xl lg:mb-8">Your Snapshot</h2>
-        <span id="appRevisionDisplay" class="text-xs text-blue-200 font-semibold mb-4 lg:mb-6">v1.46</span>
+        <span id="appRevisionDisplay" class="text-xs text-blue-200 font-semibold mb-4 lg:mb-6">v1.48</span>
         <div class="text-center mb-2 summary-item w-1/2 sm:w-1/3 md:w-1/4 lg:w-auto lg:text-center px-1">
             <p class="text-sm font-bold text-blue-200 lg:text-lg">Net Worth:</p>
             <p id="currentNetWorth" class="text-xl font-semibold text-white mt-1 lg:text-3xl">$0</p>
@@ -1643,10 +1628,6 @@
         <div class="text-center mb-2 summary-item w-1/2 sm:w-1/3 md:w-1/4 lg:w-auto lg:text-center px-1">
             <p class="text-sm font-bold text-blue-200 lg:text-lg">Annual Savings:</p>
             <p id="annualSavingsDisplay" class="text-xl font-semibold text-white mt-1 lg:text-3xl">$0</p>
-        </div>
-        <div class="text-center mb-2 summary-item w-1/2 sm:w-1/3 md:w-1/4 lg:w-auto lg:text-center px-1">
-            <p class="text-sm font-bold text-blue-200 lg:text-lg">Today's Draw:</p>
-            <p id="todaysDraw" class="text-xl font-semibold text-white mt-1 lg:text-3xl">$0</p>
         </div>
         <div class="text-center mb-2 summary-item w-1/2 sm:w-1/3 md:w-1/4 lg:w-auto lg:text-center px-1">
             <p class="text-sm font-bold text-blue-200 lg:text-lg" id="dynamicRetirementDrawLabel">Retirement Draw (Today's $):</p>
@@ -1674,7 +1655,7 @@
                         <div>
                             <h3 class="text-xl font-semibold mb-4 text-gray-800">Investments <span class="font-bold text-green-600" id="totalInvestmentsSummary"></span></h3>
                             <div id="investmentAccountsContainer" class="mb-4 space-y-4">
-                                </div>
+                            </div>
                             <button id="addInvestmentBtn" type="button" class="mt-4 bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg shadow-md">
                                 + Add Investment Account
                             </button>
@@ -1683,7 +1664,7 @@
                         <div class="mt-8">
                             <h3 class="text-xl font-semibold mb-4 text-gray-800">Homes <span class="font-bold text-green-600" id="totalHomesSummary"></span></h3>
                             <div id="homesContainer" class="mb-4 space-y-4">
-                                </div>
+                            </div>
                             <button id="addHomeBtn" type="button" class="mt-4 bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg shadow-md">
                                 + Add Home
                             </button>
@@ -1694,7 +1675,7 @@
                         <div>
                             <h3 class="text-xl font-semibold mb-4 text-gray-800">Other Assets <span class="font-bold text-green-600" id="totalOtherStaticAssetsSummary"></span></h3>
                             <div id="otherStaticAssetsContainer" class="mb-4 space-y-4">
-                                </div>
+                            </div>
                             <button id="addOtherStaticAssetBtn" type="button" class="mt-4 bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg shadow-md">
                                 + Add Other Asset
                             </button>
@@ -1703,7 +1684,7 @@
                         <div class="mt-8">
                             <h3 class="text-xl font-semibold mb-4 text-gray-800">Liabilities <span class="font-bold text-red-600" id="totalLiabilitiesSummary"></span></h3>
                             <div id="liabilitiesContainer" class="mb-4 space-y-4">
-                                </div>
+                            </div>
                             <button id="addLiabilityBtn" type="button" class="mt-4 bg-red-500 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg shadow-md">
                                 + Add Liability
                             </button>
@@ -1768,7 +1749,7 @@
                             <div class="w-24 ml-1">Annual Escalation</div>
                             <div class="w-6"></div> </div>
                         <div id="otherIncomeContainer" class="mb-4 space-y-4">
-                            </div>
+                        </div>
                         <button id="addOtherIncomeBtn" type="button" class="mt-4 bg-purple-500 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded-lg shadow-md">
                             + Add Other Income
                         </button>
@@ -1859,7 +1840,7 @@
             <div class="bg-blue-50 p-6 rounded-lg shadow-md mb-8 border border-blue-200">
                 <h2 class="text-2xl font-bold mb-4 text-blue-700">3. Projected Growth Chart</h2>
                 <div id="chart-container" class="w-full overflow-x-auto">
-                    </div>
+                </div>
                 <div class="flex justify-center mt-4 space-x-6 text-gray-700 font-semibold">
                     <div class="flex items-center">
                         <span class="inline-block w-4 h-4 rounded-full mr-2" style="background-color: #2563eb;"></span>
@@ -1886,34 +1867,20 @@
                             </tr>
                         </thead>
                         <tbody id="projectionTableBody" class="text-gray-700 text-sm font-light divide-y divide-gray-200">
-                            </tbody>
+                        </tbody>
                     </table>
                 </div>
             </div>
 
             <div class="bg-orange-50 p-6 rounded-lg shadow-md border border-orange-200 mt-8">
                 <h2 class="text-2xl font-bold mb-4 text-orange-700">5. 72(t) Fixed Distribution Projection</h2>
-                <p class="text-sm text-gray-600 mb-4">
-                    This projection calculates **fixed annual distributions** from a 401K account using the Amortization Method (based on IRS Uniform Lifetime Table and a user-defined interest rate). The 401K balance within this projection will grow by your main "Stock Appreciation" rate.
+                <p class="text-sm text-orange-700 mb-4">
+                    This projection calculates **fixed annual distributions** from a 401K account using the Amortization Method (based on IRS Uniform Lifetime Table and a fixed 5% interest rate). The 401K balance within this projection will grow by your main "Stock Appreciation" rate. The calculation starts at your selected retirement age.
                 </p>
-                <div class="mb-2">
-                    <label for="seventyTwoTStartAge" class="label-style">72(t) Starting Age</label>
-                    <div class="slider-input-wrapper">
-                        <span class="slider-value-display" id="seventyTwoTStartAgeValue"></span>
-                        <input type="range" id="seventyTwoTStartAge" min="38" max="70" value="59.5" step="1" class="w-full">
-                    </div>
-                </div>
-                <div class="mb-4">
-                    <label for="seventyTwoTInterestRate" class="label-style">72(t) Calculation Interest Rate (%)</label>
-                    <div class="slider-input-wrapper">
-                        <span class="slider-value-display" id="seventyTwoTInterestRateValue"></span>
-                        <input type="range" id="seventyTwoTInterestRate" min="0.1" max="5" value="4.0" step="0.1" class="w-full">
-                    </div>
-                </div>
 
                 <h3 class="text-xl font-semibold mb-4 text-gray-800">Projected 72(t) Distributions</h3>
                 <div id="seventyTwoTChartContainer" class="w-full overflow-x-auto">
-                    </div>
+                </div>
                  <div class="flex justify-center mt-4 space-x-6 text-gray-700 font-semibold">
                     <div class="flex items-center">
                         <span class="inline-block w-4 h-4 rounded-full mr-2" style="background-color: #2563eb;"></span>
@@ -1934,7 +1901,7 @@
                             </tr>
                         </thead>
                         <tbody id="seventyTwoTTableBody" class="text-gray-700 text-sm font-light divide-y divide-gray-200">
-                            </tbody>
+                        </tbody>
                     </table>
                 </div>
             </div>
