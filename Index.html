@@ -11,7 +11,7 @@
     <!-- Firebase SDKs -->
 <script type="module">
     // Revision Level
-    const appRevision = "1.46";
+    const appRevision = "1.47";
 
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
     import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
@@ -21,22 +21,20 @@
     Prepopulated Default Values for Reference (dynamically created if Firestore is empty):
 
     const defaultInvestmentAccounts = [
-        { name: "401K", value: 527030 },
-        { name: "Roth 1", value: 178181 },
-        { name: "Roth 2", value: 157347 },
-        { name: "HSA", value: 23550 },
-        { name: "Gold", value: 6600 }
+        { name: "401K", value: 200000 },
+        { name: "Roth 1", value: 100000 },
+        { name: "Roth 2", value: 100000 },
+        { name: "HSA", value: 20000 },
+        { name: "Gold", value: 5000 }
     ];
 
     const defaultHomes = [
-        { name: "Personal Home", value: 1017000 }
+        { name: "Personal Home", value: 300000 }
     ];
 
     const defaultOtherStaticAssets = [
-        { name: "Suburban", value: 32000 },
-        { name: "Tractor", value: 16000 },
-        { name: "RV", value: 25000 },
-        { name: "Checking", value: 16296 }
+        { name: "Car", value: 20000 },
+        { name: "Checking", value: 15000 }
     ];
 
     const defaultLiabilities = [
@@ -45,8 +43,7 @@
     ];
 
     const defaultOtherIncomes = [
-        { name: "Cell Tower Lease", value: 1200, escalationRate: 0.015 },
-        { name: "Rental Income", value: 1300, escalationRate: 0.04 }
+        { name: "None", value: 0, escalationRate: 0 },
     ];
     */
 
@@ -322,28 +319,25 @@
                 otherIncomeContainer.innerHTML = '';
 
                 const defaultInvestmentAccounts = [
-                    { name: "401K", value: 527030 },
-                    { name: "Roth 1", value: 178181 },
-                    { name: "Roth 2", value: 157347 },
-                    { name: "HSA", value: 23550 },
-                    { name: "Gold", value: 6600 }
+                    { name: "401K", value: 200000 },
+                    { name: "Roth 1", value: 100000 },
+                    { name: "Roth 2", value: 100000 },
+                    { name: "HSA", value: 20000 },
+                    { name: "Gold", value: 5000 }
                 ];
                 const defaultHomes = [
-                    { name: "Personal Home", value: 1017000 }
+                    { name: "Personal Home", value: 300000 }
                 ];
                 const defaultOtherStaticAssets = [
-                    { name: "Suburban", value: 32000 },
-                    { name: "Tractor", value: 16000 },
-                    { name: "RV", value: 25000 },
-                    { name: "Checking", value: 16296 }
+                    { name: "Car", value: 20000 },
+                    { name: "Checking", value: 15000 }
                 ];
                 const defaultLiabilities = [
                     { name: "Home Mortgage", value: 203000 },
                     { name: "Credit Cards", value: 0 }
                 ];
                 const defaultOtherIncomes = [
-                    { name: "Cell Tower Lease", value: 1200, escalationRate: 0.015 },
-                    { name: "Rental Income", value: 1300, escalationRate: 0.04 }
+                    { name: "None", value: 0, escalationRate: 0 },
                 ];
 
                 defaultInvestmentAccounts.forEach(account => addInvestmentAccountInput(account));
@@ -724,14 +718,20 @@
         let currentTodays401kDraw = 0;
         let currentTodaysOtherInvestmentsDraw = 0;
 
+        // Determine 401K draw for the snapshot
         if (initialAge >= seventyTwoTStartAge && initialAge < 60) {
             currentTodays401kDraw = fixedAnnual72tDistribution;
-            currentTodaysOtherInvestmentsDraw = initialOtherInvestmentsBalance * retirementDrawRatePre62;
         } else if (initialAge >= 60) {
+            // For ages >= 60, calculate the draw based on the current 401k balance and the applicable draw rate
             const effectiveRate = (initialAge < socialSecurityStartAge) ? retirementDrawRatePre62 : retirementDrawRatePost62;
             currentTodays401kDraw = initial401kBalance * effectiveRate;
-            currentTodaysOtherInvestmentsDraw = initialOtherInvestmentsBalance * effectiveRate;
         }
+        // For ages < seventyTwoTStartAge, currentTodays401kDraw remains 0
+
+        // Determine other investments draw for the snapshot
+        const effectiveRateOther = (initialAge < socialSecurityStartAge) ? retirementDrawRatePre62 : retirementDrawRatePost62;
+        currentTodaysOtherInvestmentsDraw = initialOtherInvestmentsBalance * effectiveRateOther;
+        
         const todaysDrawValue = currentTodays401kDraw + currentTodaysOtherInvestmentsDraw + initialTotalOtherAnnualIncomeSnapshot;
         todaysDrawDisplay.textContent = formatLargeCurrency(todaysDrawValue);
 
@@ -1173,16 +1173,16 @@
         const chartData = [];
 
         // Calculate initial fixed 72(t) distribution based on projected balance at seventyTwoTStartAge
-        let fixedAnnual72tDistribution = 0;
+        let fixedAnnual72tDistributionInitialPeriod = 0;
         let balanceAt72tStartAgeForFixedCalc = initial401kBalanceAtMainCurrentAge * Math.pow((1 + stockAppreciation), (seventyTwoTStartAgeInput - mainCurrentAge));
         
         const lifeExpectancyAt72tStart = irsLifeExpectancyTable[seventyTwoTStartAgeInput];
         if (lifeExpectancyAt72tStart && seventyTwoTInterestRate > 0) {
             const annuityFactor = (1 - Math.pow((1 + seventyTwoTInterestRate), -lifeExpectancyAt72tStart)) / seventyTwoTInterestRate;
             if (annuityFactor > 0) {
-                fixedAnnual72tDistribution = balanceAt72tStartAgeForFixedCalc / annuityFactor;
+                fixedAnnual72tDistributionInitialPeriod = balanceAt72tStartAgeForFixedCalc / annuityFactor;
             }
-            fixedAnnual72tDistribution = Math.round(fixedAnnual72tDistribution * 100) / 100;
+            fixedAnnual72tDistributionInitialPeriod = Math.round(fixedAnnual72tDistributionInitialPeriod * 100) / 100;
         }
 
         let fixedAnnual72tDistributionAt60 = 0; // Will be calculated if age reaches 60
@@ -1190,54 +1190,36 @@
         for (let age = mainCurrentAge; age <= 80; age += 1) {
             let distributionTaken = 0;
 
-            // First data point: Current Age, show current balance and 0 distribution
-            if (age === mainCurrentAge) {
-                chartData.push({
-                    age: age,
-                    balance: initial401kBalanceAtMainCurrentAge,
-                    distribution: 0
-                });
-                const row = seventyTwoTTableBody.insertRow();
-                row.classList.add('hover:bg-blue-50');
-                if (age % 5 === 0) row.classList.add('bg-orange-100');
-                row.insertCell().textContent = age;
-                row.insertCell().textContent = formatTableCurrency(0);
-                row.insertCell().textContent = formatTableCurrency(initial401kBalanceAtMainCurrentAge);
-                continue; // Skip to next iteration for actual growth/draw
-            }
+            // Only apply growth and distributions from the year after initialAge
+            if (age > mainCurrentAge) {
+                current401kBalanceForProjection *= (1 + stockAppreciation);
 
-            // Apply growth for the current year
-            current401kBalanceForProjection *= (1 + stockAppreciation);
-
-            if (age < seventyTwoTStartAgeInput) {
-                // Before 72(t) start age, no distribution
-                distributionTaken = 0;
-            } else if (age >= seventyTwoTStartAgeInput && age < 60) {
-                // Between 72(t) start and 60, take initial fixed 72(t) distribution
-                distributionTaken = fixedAnnual72tDistribution;
-            } else if (age === 60) {
-                // At age 60, recalculate 72(t) fixed distribution
-                const lifeExpectencyAt60 = irsLifeExpectancyTable[60];
-                if (lifeExpectencyAt60 && seventyTwoTInterestRate > 0) {
-                    const annuityFactorAt60 = (1 - Math.pow((1 + seventyTwoTInterestRate), -lifeExpectencyAt60)) / seventyTwoTInterestRate;
-                    if (annuityFactorAt60 > 0) {
-                        fixedAnnual72tDistributionAt60 = current401kBalanceForProjection / annuityFactorAt60;
+                if (age < seventyTwoTStartAgeInput) {
+                    distributionTaken = 0;
+                } else if (age >= seventyTwoTStartAgeInput && age < 60) {
+                    distributionTaken = fixedAnnual72tDistributionInitialPeriod;
+                } else if (age === 60) {
+                    // Recalculate 72(t) fixed distribution at age 60
+                    const lifeExpectencyAt60 = irsLifeExpectancyTable[60];
+                    if (lifeExpectencyAt60 && seventyTwoTInterestRate > 0) {
+                        const annuityFactorAt60 = (1 - Math.pow((1 + seventyTwoTInterestRate), -lifeExpectencyAt60)) / seventyTwoTInterestRate;
+                        if (annuityFactorAt60 > 0) {
+                            fixedAnnual72tDistributionAt60 = current401kBalanceForProjection / annuityFactorAt60;
+                        }
+                        fixedAnnual72tDistributionAt60 = Math.round(fixedAnnual72tDistributionAt60 * 100) / 100;
                     }
-                    fixedAnnual72tDistributionAt60 = Math.round(fixedAnnual72tDistributionAt60 * 100) / 100;
+                    distributionTaken = fixedAnnual72tDistributionAt60;
+                } else { // age > 60
+                    distributionTaken = fixedAnnual72tDistributionAt60;
                 }
-                distributionTaken = fixedAnnual72tDistributionAt60;
-            } else { // age > 60
-                // After age 60, use the recalculated fixed distribution
-                distributionTaken = fixedAnnual72tDistributionAt60;
+                
+                // Ensure distribution taken does not exceed current balance
+                if (current401kBalanceForProjection < distributionTaken) {
+                    distributionTaken = current401kBalanceForProjection;
+                }
+                current401kBalanceForProjection -= distributionTaken;
+                current401kBalanceForProjection = Math.max(0, current401kBalanceForProjection);
             }
-            
-            // Ensure distribution taken does not exceed current balance
-            if (current401kBalanceForProjection < distributionTaken) {
-                distributionTaken = current401kBalanceForProjection;
-            }
-
-            current401kBalanceForProjection -= distributionTaken;
-            current401kBalanceForProjection = Math.max(0, current401kBalanceForProjection);
 
             chartData.push({
                 age: age,
@@ -1344,28 +1326,25 @@
             console.warn("Firebase initialization failed, initializing dynamic inputs with local defaults.");
             
             const fallbackInvestmentAccounts = [
-                { name: "401K", value: 527030 },
-                { name: "Roth 1", value: 178181 },
-                { name: "Roth 2", value: 157347 },
-                { name: "HSA", value: 23550 },
-                { name: "Gold", value: 6600 }
+                { name: "401K", value: 200000 },
+                { name: "Roth 1", value: 100000 },
+                { name: "Roth 2", value: 100000 },
+                { name: "HSA", value: 20000 },
+                { name: "Gold", value: 5000 }
             ];
             const fallbackHomes = [
-                { name: "Personal Home", value: 1017000 }
+                { name: "Personal Home", value: 300000 }
             ];
             const fallbackOtherStaticAssets = [
-                { name: "Suburban", value: 32000 },
-                { name: "Tractor", value: 16000 },
-                { name: "RV", value: 25000 },
-                { name: "Checking", value: 16296 }
+                { name: "Car", value: 20000 },
+                { name: "Checking", value: 15000 }
             ];
             const fallbackLiabilities = [
                 { name: "Home Mortgage", value: 203000 },
                 { name: "Credit Cards", value: 0 }
             ];
             const fallbackOtherIncomes = [
-                { name: "Cell Tower Lease", value: 1200, escalationRate: 0.015 },
-                { name: "Rental Income", value: 1300, escalationRate: 0.04 }
+                { name: "None", value: 0, escalationRate: 0 }
             ];
 
             investmentAccountsContainer.innerHTML = '';
@@ -1648,7 +1627,7 @@
         lg:fixed lg:top-0 lg:left-0 lg:h-screen lg:w-64 lg:flex-col lg:items-center lg:justify-start lg:p-6 lg:shadow-2xl lg:overflow-y-auto
     ">
         <h2 class="text-xl font-extrabold mb-4 text-center text-white w-full lg:text-3xl lg:mb-8">Your Snapshot</h2>
-        <span id="appRevisionDisplay" class="text-xs text-blue-200 font-semibold mb-4 lg:mb-6">v1.45</span>
+        <span id="appRevisionDisplay" class="text-xs text-blue-200 font-semibold mb-4 lg:mb-6">v1.46</span>
         <div class="text-center mb-2 summary-item w-1/2 sm:w-1/3 md:w-1/4 lg:w-auto lg:text-center px-1">
             <p class="text-sm font-bold text-blue-200 lg:text-lg">Net Worth:</p>
             <p id="currentNetWorth" class="text-xl font-semibold text-white mt-1 lg:text-3xl">$0</p>
