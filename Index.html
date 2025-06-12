@@ -11,7 +11,7 @@
     <!-- Firebase SDKs -->
 <script type="module">
     // Revision Level
-    const appRevision = "2.1";
+    const appRevision = "2.2";
 
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
     import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
@@ -263,7 +263,8 @@
         document.querySelectorAll('.liability-row').forEach(row => {
             const name = row.querySelector('.liability-name').value;
             const value = cleanInputNumber(row.querySelector('.liability-value').value);
-            collectedData.liabilities.push({ name, value });
+            const monthlyPayment = cleanInputNumber(row.querySelector('.liability-payment').value);
+            collectedData.liabilities.push({ name, value, monthlyPayment });
         });
 
         collectedData.otherIncome = [];
@@ -295,7 +296,7 @@
                 const defaultInvestmentAccounts = [{ name: "401K", value: 200000 }, { name: "Roth 1", value: 150000 }, { name: "Roth 2", value: 100000 }, { name: "HSA", value: 25000 }, { name: "529", value: 25000 }];
                 const defaultHomes = [{ name: "Personal Home", value: 350000 }];
                 const defaultOtherStaticAssets = [{ name: "Car Equity", value: 20000 }, { name: "Checking", value: 15000 }];
-                const defaultLiabilities = [{ name: "Home Mortgage", value: 200000 }];
+                const defaultLiabilities = [{ name: "Home Mortgage", value: 200000, monthlyPayment: 1514 }];
                 const defaultOtherIncomes = [{ name: "None", value: 0, escalationRate: 0 }];
 
                 defaultInvestmentAccounts.forEach(account => addInvestmentAccountInput(account));
@@ -412,17 +413,22 @@
         rowDiv.querySelector('.delete-item-btn').addEventListener('click', () => { rowDiv.remove(); calculateFinancials(true); });
     }
 
-    function addLiabilityInput(liability = { name: '', value: 0 }) {
+    function addLiabilityInput(liability = { name: '', value: 0, monthlyPayment: 0 }) {
         const rowDiv = document.createElement('div');
         rowDiv.classList.add('liability-row', 'flex', 'flex-wrap', 'items-center', 'mb-4', 'space-y-2', 'md:space-y-0', 'md:space-x-2');
         rowDiv.innerHTML = `
             <input type="text" placeholder="Liability Name" value="${liability.name}" class="input-field liability-name flex-1 min-w-[120px]">
             <input type="text" placeholder="Value ($)" value="${formatInputNumber(liability.value)}" class="input-field liability-value flex-1 min-w-[100px]">
+            <input type="text" placeholder="Monthly Pmt" value="${formatInputNumber(liability.monthlyPayment)}" class="input-field liability-payment w-32">
             <button type="button" class="delete-item-btn text-red-500 hover:text-red-700 font-bold px-2 py-1 rounded-md transition duration-200 ease-in-out">X</button>
         `;
         liabilitiesContainer.appendChild(rowDiv);
-        rowDiv.querySelector('.liability-value').addEventListener('change', (e) => { e.target.value = formatInputNumber(e.target.value); calculateFinancials(true); });
-        rowDiv.querySelector('.liability-name').addEventListener('change', () => calculateFinancials(true));
+        rowDiv.querySelectorAll('.input-field').forEach(input => {
+            input.addEventListener('change', (e) => {
+                e.target.value = formatInputNumber(e.target.value);
+                calculateFinancials(true);
+            });
+        });
         rowDiv.querySelector('.delete-item-btn').addEventListener('click', () => { rowDiv.remove(); calculateFinancials(true); });
     }
 
@@ -559,6 +565,7 @@
             
             projectedAccounts.forEach(a => a.value *= (1 + stockAppreciation));
             projectedHomes.forEach(h => h.value *= (1 + housingAppreciation));
+            projectedLiabilities.forEach(l => l.value = Math.max(0, l.value - (l.monthlyPayment * 12)));
             
             if (age >= retirementYear) {
                 const drawRate = age < socialSecurityStartAge ? retirementDrawRatePre62 : retirementDrawRatePost62;
@@ -666,8 +673,8 @@
         const yMin = d3.min(data, d => d.investments);
         const yScale = d3.scaleLinear().domain([Math.min(0, yMin), yMax * 1.05]).range([height, 0]);
 
-        svg.append("g").attr("class", "x axis").attr("transform", `translate(0,${height})`).call(d3.axisBottom(xScale).tickFormat(d3.format("d")));
-        svg.append("g").attr("class", "y axis-left").call(d3.axisLeft(yScale).tickFormat(d => formatProjectedChartAxisLabel(d, yMax)));
+        svg.append("g").attr("class", "x axis").attr("transform", `translate(0,${height})`).call(d3.axisBottom(xScale).tickFormat(d3.format("d"))).select(".domain").attr("stroke", "black");
+        svg.append("g").attr("class", "y axis-left").call(d3.axisLeft(yScale).tickFormat(d => formatProjectedChartAxisLabel(d, yMax))).select(".domain").attr("stroke", "black");
         svg.append("g").attr("class", "grid").call(d3.axisLeft(yScale).tickSize(-width).tickFormat("")).selectAll("line").attr("stroke-opacity", 0.2);
 
         const lineInvestments = d3.line().x(d => xScale(d.age)).y(d => yScale(d.investments));
@@ -728,9 +735,14 @@
         const yScaleRight = d3.scaleLinear().domain([0, yMaxDistribution * 1.05]).range([height, 0]);
 
         svg.append("g").attr("class", "x axis").attr("transform", `translate(0,${height})`).call(d3.axisBottom(xScale).tickFormat(d3.format("d"))).select(".domain").attr("stroke", "black");
-        svg.append("g").attr("class", "y axis-left").call(d3.axisLeft(yScaleLeft).tickFormat(d => formatProjectedChartAxisLabel(d, yMaxBalance))).select(".domain").attr("stroke", "#2563eb");
-        svg.append("g").attr("class", "y axis-right").attr("transform", `translate(${width}, 0)`).call(d3.axisRight(yScaleRight).tickFormat(d => formatProjectedChartAxisLabel(d, yMaxDistribution))).select(".domain").attr("stroke", "black");
+        const yAxisLeftGroup = svg.append("g").attr("class", "y axis-left").call(d3.axisLeft(yScaleLeft).tickFormat(d => formatProjectedChartAxisLabel(d, yMaxBalance)));
+        yAxisLeftGroup.select(".domain").attr("stroke", "black");
+        yAxisLeftGroup.selectAll("text").style("fill", "#2563eb");
         
+        const yAxisRightGroup = svg.append("g").attr("class", "y axis-right").attr("transform", `translate(${width}, 0)`).call(d3.axisRight(yScaleRight).tickFormat(d => formatProjectedChartAxisLabel(d, yMaxDistribution)));
+        yAxisRightGroup.select(".domain").attr("stroke", "black");
+        yAxisRightGroup.selectAll("text").style("fill", "#f97316");
+
         const lineBalance = d3.line().x(d => xScale(d.age)).y(d => yScaleLeft(d.balanceTodaysDollars));
         const lineDistribution = d3.line().x(d => xScale(d.age)).y(d => yScaleRight(d.distributionTodaysDollars));
 
@@ -738,8 +750,8 @@
         svg.append("path").datum(data).attr("class", "line line-distribution").attr("d", lineDistribution);
         
         svg.append("text").attr("x", width/2).attr("y", height + 40).style("text-anchor", "middle").text("Age");
-        svg.append("text").attr("transform", "rotate(-90)").attr("y", -margin.left + 20).attr("x", -height/2).style("text-anchor", "middle").text("Balance (Today's $)");
-        svg.append("text").attr("transform", "rotate(90)").attr("y", -width - margin.right + 20).attr("x", height/2).style("text-anchor", "middle").text("Distribution (Today's $)");
+        svg.append("text").attr("transform", "rotate(-90)").attr("y", -margin.left + 20).attr("x", -height/2).style("text-anchor", "middle").style("fill", "#2563eb").text("Balance (Today's $)");
+        svg.append("text").attr("transform", "rotate(90)").attr("y", -width - margin.right + 20).attr("x", height/2).style("text-anchor", "middle").style("fill", "#f97316").text("Distribution (Today's $)");
         svg.append("text").attr("x", width/2).attr("y", -margin.top/2).attr("text-anchor", "middle").attr("font-size", "1.2rem").attr("font-weight", "bold").text("72(t) Fixed Distribution Projection");
         
         seventyTwoTChartContainer.__chartData__ = data;
@@ -891,7 +903,7 @@
     .line-networth-todays-dollars { stroke: #800080; }
     .line-balance { stroke: #2563eb; }
     .line-distribution { stroke: #f97316; }
-    .axis text { font-size: 0.8rem; fill: #6b7280; }
+    .axis text { font-size: 0.85rem; fill: #6b7280; }
     .axis path, .axis line { stroke: #d1d5db; stroke-width: 1px; }
     .grid line { stroke: #e5e7eb; stroke-opacity: 0.7; shape-rendering: crispEdges; }
     .tooltip { position: absolute; text-align: center; padding: 8px; background: #fff; border: 1px solid #ccc; border-radius: 4px; pointer-events: none; box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2); font-size: 0.9rem; color: #333; }
