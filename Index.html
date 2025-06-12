@@ -11,7 +11,7 @@
     <!-- Firebase SDKs -->
 <script type="module">
     // Revision Level
-    const appRevision = "1.47";
+    const appRevision = "1.48";
 
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
     import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
@@ -109,13 +109,13 @@
         stockAppreciation: document.getElementById('stockAppreciation'),
         housingAppreciation: document.getElementById('housingAppreciation'),
         inflation: document.getElementById('inflation'),
-        retirementDrawRatePre62: document.getElementById('retirementDrawRatePre62'),
-        retirementDrawRatePost62: document.getElementById('retirementDrawRatePost62'),
+        // Replaced two draw rate sliders with one
+        retirementDrawRate: document.getElementById('retirementDrawRate'),
         retirementYear: document.getElementById('retirementYear'),
-        monthlyPrincipalPayment: document.getElementById('monthlyPrincipalPayment'),
+        // Removed monthlyPrincipalPayment
         socialSecurityStartAge: document.getElementById('socialSecurityStartAge'),
         socialSecurityMonthly: document.getElementById('socialSecurityMonthly'),
-        seventyTwoTStartAge: document.getElementById('seventyTwoTStartAge'),
+        // 72t section is now linked to retirementYear, so no need for a separate slider here
         seventyTwoTInterestRate: document.getElementById('seventyTwoTInterestRate')
     };
 
@@ -123,12 +123,10 @@
     const currentNetInvestmentsDisplay = document.getElementById('currentNetInvestments');
     const annualIncomeDisplay = document.getElementById('annualIncomeDisplay');
     const annualSavingsDisplay = document.getElementById('annualSavingsDisplay');
-    const todaysDrawDisplay = document.getElementById('todaysDraw');
-    const dynamicRetirementDrawLabel = document.getElementById('dynamicRetirementDrawLabel');
-    const dynamicRetirementDrawValue = document.getElementById('dynamicRetirementDrawValue');
-    const ssStartAgeDrawDisplay = document.getElementById('ssStartAgeDraw');
-    const dynamicRetirementDrawLabelSticky = document.getElementById('dynamicRetirementDrawLabelSticky');
-    const dynamicRetirementDrawValueSticky = document.getElementById('dynamicRetirementDrawValueSticky');
+    // Removed specific draw displays
+    const retirementDrawDisplay = document.getElementById('retirementDrawDisplay');
+    const retirementDraw62Display = document.getElementById('retirementDraw62Display');
+
     const projectionTableBody = document.getElementById('projectionTableBody');
     const investmentAccountsContainer = document.getElementById('investmentAccountsContainer');
     const addInvestmentBtn = document.getElementById('addInvestmentBtn');
@@ -150,7 +148,7 @@
     const totalLiabilitiesSummary = document.getElementById('totalLiabilitiesSummary');
 
     const socialSecurityMonthlyLabel = document.getElementById('socialSecurityMonthlyLabel');
-    const ssStartAgeDrawLabel = document.getElementById('ssStartAgeDrawLabel');
+    // Removed ssStartAgeDrawLabel as it's now dynamically set for the 62 YO Draw display
 
     const seventyTwoTTableBody = document.getElementById('seventyTwoTTableBody');
     const seventyTwoTChartContainer = document.getElementById('seventyTwoTChartContainer');
@@ -164,12 +162,10 @@
         { slider: staticInputs.stockAppreciation, valueDisplay: document.getElementById('stockAppreciationValue'), unit: '%' },
         { slider: staticInputs.housingAppreciation, valueDisplay: document.getElementById('housingAppreciationValue'), unit: '%' },
         { slider: staticInputs.inflation, valueDisplay: document.getElementById('inflationValue'), unit: '%' },
-        { slider: staticInputs.retirementDrawRatePre62, valueDisplay: document.getElementById('retirementDrawRatePre62Value'), unit: '%' },
-        { slider: staticInputs.retirementDrawRatePost62, valueDisplay: document.getElementById('retirementDrawRatePost62Value'), unit: '%' },
+        { slider: staticInputs.retirementDrawRate, valueDisplay: document.getElementById('retirementDrawRateValue'), unit: '%' }, // New slider
         { slider: staticInputs.retirementYear, valueDisplay: document.getElementById('retirementYearValue'), unit: '' },
         { slider: staticInputs.socialSecurityStartAge, valueDisplay: document.getElementById('socialSecurityStartAgeValue'), unit: '' },
         { slider: staticInputs.socialSecurityMonthly, valueDisplay: document.getElementById('socialSecurityMonthlyValue'), unit: '' },
-        { slider: staticInputs.seventyTwoTStartAge, valueDisplay: document.getElementById('seventyTwoTStartAgeValue'), unit: '' },
         { slider: staticInputs.seventyTwoTInterestRate, valueDisplay: document.getElementById('seventyTwoTInterestRateValue'), unit: '%' }
     ];
 
@@ -257,7 +253,7 @@
         for (const key in staticInputs) {
             if (staticInputs[key]) {
                 let value = staticInputs[key].type === 'range' ? parseFloat(staticInputs[key].value) : cleanInputNumber(staticInputs[key].value);
-                if (['bonusRate', 'my401kContributionRate', 'company401kContributionRate', 'annualSalaryRaise', 'stockAppreciation', 'housingAppreciation', 'inflation', 'retirementDrawRatePre62', 'retirementDrawRatePost62', 'seventyTwoTInterestRate'].includes(key)) {
+                if (['bonusRate', 'my401kContributionRate', 'company401kContributionRate', 'annualSalaryRaise', 'stockAppreciation', 'housingAppreciation', 'inflation', 'retirementDrawRate', 'seventyTwoTInterestRate'].includes(key)) {
                     value = value / 100;
                 }
                 collectedData[key] = value;
@@ -357,12 +353,11 @@
                 if (staticInputs.stockAppreciation) staticInputs.stockAppreciation.value = 9;
                 if (staticInputs.housingAppreciation) staticInputs.housingAppreciation.value = 4;
                 if (staticInputs.inflation) staticInputs.inflation.value = 3;
-                if (staticInputs.retirementDrawRatePre62) staticInputs.retirementDrawRatePre62.value = 7;
-                if (staticInputs.retirementDrawRatePost62) staticInputs.retirementDrawRatePost62.value = 5;
+                if (staticInputs.retirementDrawRate) staticInputs.retirementDrawRate.value = 5; // New default
                 if (staticInputs.retirementYear) staticInputs.retirementYear.value = 55;
-                if (staticInputs.monthlyPrincipalPayment) staticInputs.monthlyPrincipalPayment.value = formatInputNumber(1514);
                 if (staticInputs.socialSecurityStartAge) staticInputs.socialSecurityStartAge.value = 62;
                 if (staticInputs.socialSecurityMonthly) staticInputs.socialSecurityMonthly.value = 2800;
+                if (staticInputs.seventyTwoTInterestRate) staticInputs.seventyTwoTInterestRate.value = 4; // Default for 72(t) rate
 
                 sliderPairs.forEach(pair => {
                     if (pair.slider && pair.valueDisplay) {
@@ -386,7 +381,7 @@
         for (const key in staticInputs) {
             if (staticInputs[key] && data[key] !== undefined) {
                 let value = data[key];
-                if (['bonusRate', 'my401kContributionRate', 'company401kContributionRate', 'annualSalaryRaise', 'stockAppreciation', 'housingAppreciation', 'inflation', 'retirementDrawRatePre62', 'retirementDrawRatePost62', 'seventyTwoTInterestRate'].includes(key)) {
+                if (['bonusRate', 'my401kContributionRate', 'company401kContributionRate', 'annualSalaryRaise', 'stockAppreciation', 'housingAppreciation', 'inflation', 'retirementDrawRate', 'seventyTwoTInterestRate'].includes(key)) {
                     value = parseFloat(value) * 100;
                 }
                 staticInputs[key].value = staticInputs[key].type === 'range' ? value : formatInputNumber(value);
@@ -549,7 +544,7 @@
         let totalHomes = 0;
         let totalOtherStaticAssets = 0;
         let totalLiabilities = 0;
-        let currentMortgageValue = 0;
+        // let currentMortgageValue = 0; // Removed, as monthlyPrincipalPayment is removed
 
         let currentFinancials = collectAllCurrentInputs();
 
@@ -558,9 +553,9 @@
         currentFinancials.otherStaticAssets.forEach(asset => totalOtherStaticAssets += asset.value);
         currentFinancials.liabilities.forEach(liability => {
             totalLiabilities += liability.value;
-            if (liability.name.toLowerCase() === "home mortgage") {
-                currentMortgageValue = liability.value;
-            }
+            // if (liability.name.toLowerCase() === "home mortgage") { // Removed mortgage value tracking
+            //     currentMortgageValue = liability.value;
+            // }
         });
 
         const currentAge = currentFinancials.currentAge;
@@ -574,13 +569,11 @@
         const stockAppreciation = currentFinancials.stockAppreciation;
         const housingAppreciation = currentFinancials.housingAppreciation;
         const inflation = currentFinancials.inflation;
-        const retirementDrawRatePre62 = currentFinancials.retirementDrawRatePre62;
-        const retirementDrawRatePost62 = currentFinancials.retirementDrawRatePost62;
+        const retirementDrawRate = currentFinancials.retirementDrawRate; // New single draw rate
         const retirementYear = currentFinancials.retirementYear;
-        const monthlyPrincipalPayment = currentFinancials.monthlyPrincipalPayment;
         const socialSecurityStartAge = currentFinancials.socialSecurityStartAge;
         const socialSecurityMonthly = currentFinancials.socialSecurityMonthly;
-        const annualPrincipalPayment = monthlyPrincipalPayment * 12;
+        // const annualPrincipalPayment = monthlyPrincipalPayment * 12; // Removed
 
         staticInputs.retirementYear.min = currentAge;
         if (retirementYear < currentAge) {
@@ -593,11 +586,12 @@
             }
         });
 
-        dynamicRetirementDrawLabel.textContent = `${retirementYear} YO Draw (Today's $):`;
-        dynamicRetirementDrawLabelSticky.textContent = `${retirementYear} YO Draw (Today's $):`;
+        // Removed dynamic retirement draw labels as they are now calculated below
+        // dynamicRetirementDrawLabel.textContent = `${retirementYear} YO Draw (Today's $):`;
+        // dynamicRetirementDrawLabelSticky.textContent = `${retirementYear} YO Draw (Today's $):`;
+        // socialSecurityMonthlyLabel.textContent = `Social Security at ${socialSecurityStartAge} ($)`;
+        // ssStartAgeDrawLabel.textContent = `${socialSecurityStartAge} YO Draw (Today's $):`;
 
-        socialSecurityMonthlyLabel.textContent = `Social Security at ${socialSecurityStartAge} ($)`;
-        ssStartAgeDrawLabel.textContent = `${socialSecurityStartAge} YO Draw (Today's $):`;
 
         const currentTotalAssets = totalInvestments + totalHomes + totalOtherStaticAssets;
         const currentNetWorth = currentTotalAssets - totalLiabilities;
@@ -636,115 +630,99 @@
             }
         });
 
-        projectGrowth(initial401kBalance, initialOtherInvestmentsBalance, currentNetWorth,
-                        totalHomes, totalOtherStaticAssets,
-                        totalLiabilities, currentMortgageValue, baseSalary,
-                        bonusRate, my401kContributionRate, company401kContributionRate,
-                        annualRothContribution,
-                        monthlyHSAContribution,
-                        annualSalaryRaise, stockAppreciation,
-                        housingAppreciation, inflation, annualPrincipalPayment,
-                        currentFinancials.otherIncome,
-                        currentAge,
-                        retirementDrawRatePre62, retirementDrawRatePost62,
-                        todaysDrawDisplay, dynamicRetirementDrawValue, ssStartAgeDrawDisplay,
-                        retirementYear,
-                        dynamicRetirementDrawValueSticky,
-                        socialSecurityStartAge,
-                        socialSecurityMonthly
-                        );
-
-        if (shouldSaveData && !window.isLoadingFromFirestore) {
-            saveDataToFirestore(currentFinancials);
-        }
-    }
-
-    function projectGrowth(initial401kBalance, initialOtherInvestmentsBalance, initialNetWorth,
-                           initialHomesValue, initialOtherStaticAssetsValue,
-                           initialTotalLiabilities, initialMortgageValue, initialBaseSalary,
-                           bonusRate, my401kContributionRate, company401kContributionRate,
-                           annualRothContribution,
-                           monthlyHSAContribution,
-                           annualSalaryRaise, stockAppreciation,
-                           housingAppreciation, inflation, annualPrincipalPayment,
-                           currentOtherIncomesStateForProjection,
-                           initialAge,
-                           retirementDrawRatePre62, retirementDrawRatePost62,
-                           todaysDrawDisplay, dynamicRetirementDrawValue, ssStartAgeDrawDisplay,
-                           retirementYearInput, dynamicRetirementDrawValueSticky,
-                           socialSecurityStartAge,
-                           socialSecurityMonthly
-                           ) {
-
-        projectionTableBody.innerHTML = '';
-        chartContainer.innerHTML = '';
-
-        let current401kBalance = initial401kBalance;
-        let currentOtherInvestmentsBalance = initialOtherInvestmentsBalance;
-        let currentHomesValue = initialHomesValue;
-        let currentOtherStaticAssetsValue = initialOtherStaticAssetsValue;
-        let currentMortgage = initialMortgageValue;
-        let currentOtherLiabilitiesTotal = initialTotalLiabilities - initialMortgageValue;
-        let currentBaseSalary = initialBaseSalary;
+        // --- Calculate Retirement Draws for Snapshot ---
+        // Calculate the 72(t) fixed distribution for the retirement age (if applicable)
+        const retirementAgeFor72t = retirementYear; // 72t starts at retirement age
+        const seventyTwoTInterestRate = currentFinancials.seventyTwoTInterestRate;
+        const lifeExpectancyAtRetirementFor72t = irsLifeExpectancyTable[Math.floor(retirementAgeFor72t)];
+        let fixedAnnual72tDistributionAtRetirement = 0;
+        let projected401kBalanceAtRetirementFor72tCalc = initial401kBalance * Math.pow((1 + stockAppreciation), (retirementAgeFor72t - currentAge));
         
-        const startYear = new Date().getFullYear();
-        const inflationRate = inflation;
-
-        const chartData = [];
-
-        let initialTotalOtherAnnualIncomeSnapshot = 0;
-        currentOtherIncomesStateForProjection.forEach(income => {
-            initialTotalOtherAnnualIncomeSnapshot += income.value * 12;
-        });
-        
-        // Calculate fixed 72(t) distribution based on current inputs, and for snapshot use
-        const seventyTwoTStartAge = staticInputs.seventyTwoTStartAge ? parseFloat(staticInputs.seventyTwoTStartAge.value) : initialAge;
-        const seventyTwoTInterestRate = staticInputs.seventyTwoTInterestRate ? parseFloat(staticInputs.seventyTwoTInterestRate.value) / 100 : 0.04;
-        const lifeExpectancyAt72tStart = irsLifeExpectancyTable[Math.floor(seventyTwoTStartAge)];
-
-        let fixedAnnual72tDistribution = 0;
-        // Project 401K balance to seventyTwoTStartAge for calculation of initial fixed distribution
-        let projected401kBalanceAt72tStartForCalc = initial401kBalance * Math.pow((1 + stockAppreciation), (seventyTwoTStartAge - initialAge));
-
-        if (lifeExpectancyAt72tStart && seventyTwoTInterestRate > 0) {
-            const annuityFactor = (1 - Math.pow((1 + seventyTwoTInterestRate), -lifeExpectancyAt72tStart)) / seventyTwoTInterestRate;
+        if (lifeExpectancyAtRetirementFor72t && seventyTwoTInterestRate > 0) {
+            const annuityFactor = (1 - Math.pow((1 + seventyTwoTInterestRate), -lifeExpectancyAtRetirementFor72t)) / seventyTwoTInterestRate;
             if (annuityFactor > 0) {
-                fixedAnnual72tDistribution = projected401kBalanceAt72tStartForCalc / annuityFactor;
+                fixedAnnual72tDistributionAtRetirement = projected401kBalanceAtRetirementFor72tCalc / annuityFactor;
             }
-            fixedAnnual72tDistribution = Math.round(fixedAnnual72tDistribution * 100) / 100;
+        }
+        fixedAnnual72tDistributionAtRetirement = Math.round(fixedAnnual72tDistributionAtRetirement * 100) / 100;
+
+
+        // Calculate the Retirement Draw (XX YO Retirement Draw)
+        let retirementDrawValueXXYO = 0;
+        let projectedTotalOtherAnnualIncomeAtRetirement = 0;
+        currentFinancials.otherIncome.forEach(income => {
+            projectedTotalOtherAnnualIncomeAtRetirement += income.value * 12 * Math.pow((1 + income.escalationRate), (retirementYear - currentAge));
+        });
+
+        // Project total investments to retirement year
+        let projectedTotalInvestmentsAtRetirement = (initial401kBalance + initialOtherInvestmentsBalance) * Math.pow((1 + stockAppreciation), (retirementYear - currentAge));
+        let projected401kAtRetirement = initial401kBalance * Math.pow((1 + stockAppreciation), (retirementYear - currentAge));
+        let projectedOtherInvestmentsAtRetirement = initialOtherInvestmentsBalance * Math.pow((1 + stockAppreciation), (retirementYear - currentAge));
+
+
+        if (retirementYear < 60) { // If retirement is before age 60, use 72(t) fixed for 401K
+            retirementDrawValueXXYO = fixedAnnual72tDistributionAtRetirement + (projectedOtherInvestmentsAtRetirement * retirementDrawRate);
+        } else { // If retirement is at or after 60, use percentage for 401K as well
+            retirementDrawValueXXYO = (projected401kAtRetirement * retirementDrawRate) + (projectedOtherInvestmentsAtRetirement * retirementDrawRate);
         }
 
-        // Calculate Today's Draw for snapshot based on initialAge and defined rules
-        let currentTodays401kDraw = 0;
-        let currentTodaysOtherInvestmentsDraw = 0;
+        retirementDrawValueXXYO += projectedTotalOtherAnnualIncomeAtRetirement;
 
-        // Determine 401K draw for the snapshot
-        if (initialAge >= seventyTwoTStartAge && initialAge < 60) {
-            currentTodays401kDraw = fixedAnnual72tDistribution;
-        } else if (initialAge >= 60) {
-            // For ages >= 60, calculate the draw based on the current 401k balance and the applicable draw rate
-            const effectiveRate = (initialAge < socialSecurityStartAge) ? retirementDrawRatePre62 : retirementDrawRatePost62;
-            currentTodays401kDraw = initial401kBalance * effectiveRate;
+        // Add Social Security if retirement age is 62 or higher AND SS starts at or before retirement age
+        if (retirementYear >= 62 && socialSecurityStartAge <= retirementYear) {
+            retirementDrawValueXXYO += socialSecurityMonthly * 12 * Math.pow((1 + inflation), (retirementYear - currentAge)); // SS escalates with inflation
         }
-        // For ages < seventyTwoTStartAge, currentTodays401kDraw remains 0
+        retirementDrawValueXXYO = retirementDrawValueXXYO / Math.pow((1 + inflation), (retirementYear - currentAge)); // Convert to today's dollars
 
-        // Determine other investments draw for the snapshot
-        const effectiveRateOther = (initialAge < socialSecurityStartAge) ? retirementDrawRatePre62 : retirementDrawRatePost62;
-        currentTodaysOtherInvestmentsDraw = initialOtherInvestmentsBalance * effectiveRateOther;
+        document.getElementById('retirementDrawLabel').textContent = `${retirementYear} YO Retirement Draw:`;
+        retirementDrawDisplay.textContent = formatLargeCurrency(retirementDrawValueXXYO);
+
+
+        // Calculate the 62 YO Fixed Retirement Draw
+        let retirementDrawValue62YO = 0;
+        const age62 = 62;
+        let projectedTotalOtherAnnualIncomeAt62 = 0;
+        currentFinancials.otherIncome.forEach(income => {
+            projectedTotalOtherAnnualIncomeAt62 += income.value * 12 * Math.pow((1 + income.escalationRate), (age62 - currentAge));
+        });
+
+        let projected401kAt62 = initial401kBalance * Math.pow((1 + stockAppreciation), (age62 - currentAge));
+        let projectedOtherInvestmentsAt62 = initialOtherInvestmentsBalance * Math.pow((1 + stockAppreciation), (age62 - currentAge));
+
+        // Recalculate 72(t) fixed distribution for age 62
+        let fixedAnnual72tDistributionAt62 = 0;
+        const lifeExpectancyAt62 = irsLifeExpectancyTable[62];
+        if (lifeExpectancyAt62 && seventyTwoTInterestRate > 0) {
+            const annuityFactorAt62 = (1 - Math.pow((1 + seventyTwoTInterestRate), -lifeExpectancyAt62)) / seventyTwoTInterestRate;
+            if (annuityFactorAt62 > 0) {
+                fixedAnnual72tDistributionAt62 = projected401kAt62 / annuityFactorAt62;
+            }
+        }
+        fixedAnnual72tDistributionAt62 = Math.round(fixedAnnual72tDistributionAt62 * 100) / 100;
         
-        const todaysDrawValue = currentTodays401kDraw + currentTodaysOtherInvestmentsDraw + initialTotalOtherAnnualIncomeSnapshot;
-        todaysDrawDisplay.textContent = formatLargeCurrency(todaysDrawValue);
+        // At age 62, the 401K draw will be fixedAnnual72tDistributionAt62 if age is less than 60, otherwise it will be a percentage based on the regular draw rate
+        // However, this draw is always at age 62, so we use the percentage draw for 401k
+        retirementDrawValue62YO = (projected401kAt62 * retirementDrawRate) + (projectedOtherInvestmentsAt62 * retirementDrawRate);
+        
+        retirementDrawValue62YO += projectedTotalOtherAnnualIncomeAt62;
+
+        // Add Social Security ONLY if SS Start Age is 62 (the min on the slider)
+        if (socialSecurityStartAge === 62) {
+            retirementDrawValue62YO += socialSecurityMonthly * 12 * Math.pow((1 + inflation), (age62 - currentAge));
+        }
+        retirementDrawValue62YO = retirementDrawValue62YO / Math.pow((1 + inflation), (age62 - currentAge)); // Convert to today's dollars
+        retirementDraw62Display.textContent = formatLargeCurrency(retirementDrawValue62YO);
 
 
-        // First data point represents the current state (Age, Year, Investments, Net Worth, Net Worth in Today's Dollars)
+        // First data point for the charts/tables is always current age with initial values
         chartData.push({
             age: initialAge,
             investments: initial401kBalance + initialOtherInvestmentsBalance,
             netWorth: initialNetWorth,
-            netWorthTodaysDollars: initialNetWorth
+            netWorthTodaysDollars: initialNetWorth / Math.pow((1 + inflation), 0) // Net Worth Today's $ (no inflation for current year)
         });
 
-        // Loop for projecting future years
+        // Loop for projecting future years (start from next year, i=1 means 1 year of growth applied)
         for (let i = 1; initialAge + i <= 80; i++) {
             const year = startYear + i;
             const age = initialAge + i;
@@ -752,6 +730,7 @@
             let annualContributionsTo401k = 0;
             let annualContributionsToOtherInvestments = 0;
 
+            // Stop contributions once retirement age is hit
             if (age < retirementYearInput) {
                 annualContributionsTo401k =
                     (currentBaseSalary * my401kContributionRate) +
@@ -774,28 +753,16 @@
 
             // Determine draws for the current projected year (age)
             if (age >= retirementYearInput) {
-                // Main retirement draw logic
-                if (age >= seventyTwoTStartAge && age < 60) { // Specific age 60 for 72(t) fixed draw, if within retirement period
-                    annualDrawFrom401k = fixedAnnual72tDistribution;
-                } else { // After 60 or outside 72(t) special window
-                    const effectiveRate = (age < socialSecurityStartAge) ? retirementDrawRatePre62 : retirementDrawRatePost62;
-                    annualDrawFrom401k = current401kBalance * effectiveRate;
+                // If retirement is before 60, use 72(t) fixed for 401K; else use percentage draw
+                if (retirementYearInput < 60 && age >= retirementYearInput && age < 60) {
+                     annualDrawFrom401k = fixedAnnual72tDistributionAtRetirement;
+                } else { // After 60, or if retirementYearInput >= 60, use standard percentage draw
+                    annualDrawFrom401k = current401kBalance * retirementDrawRate;
                 }
+                annualDrawFromOtherInvestments = currentOtherInvestmentsBalance * retirementDrawRate;
 
-                // Other investments draw (always percentage)
-                const effectiveRateOther = (age < socialSecurityStartAge) ? retirementDrawRatePre62 : retirementDrawRatePost62;
-                annualDrawFromOtherInvestments = currentOtherInvestmentsBalance * effectiveRateOther;
-
-            } else if (age >= seventyTwoTStartAge && age < retirementYearInput) { // 72(t) active, but not yet general retirement age
-                 if (age < 60) { // Specific age 60 for 72(t) fixed draw
-                    annualDrawFrom401k = fixedAnnual72tDistribution;
-                } else { // After 60 or outside 72(t) special window
-                    const effectiveRate = (age < socialSecurityStartAge) ? retirementDrawRatePre62 : retirementDrawRatePost62;
-                    annualDrawFrom401k = current401kBalance * effectiveRate;
-                }
-                annualDrawFromOtherInvestments = currentOtherInvestmentsBalance * retirementDrawRatePre62; // Other investments still use pre-62 draw
             }
-            // Before 72t start age, no draws from investments (contributions already handled)
+            // If age is before retirementYearInput, draws remain 0 (contributions already handled)
 
 
             // Ensure draws don't make balance negative
@@ -815,12 +782,12 @@
 
             currentHomesValue *= (1 + housingAppreciation);
             
-            currentMortgage = Math.max(0, currentMortgage - annualPrincipalPayment);
+            // Mortgage is removed, so no more reduction for currentMortgage
 
             let totalProjectedInvestments = current401kBalance + currentOtherInvestmentsBalance;
             let totalProjectedAssets = totalProjectedInvestments + currentHomesValue + currentOtherStaticAssetsValue;
-            const currentTotalLiabilitiesInProjection = currentMortgage + currentOtherLiabilitiesTotal;
-            let currentNetWorth = totalProjectedAssets - currentTotalLiabilitiesInProjection;
+            // Recalculate currentNetWorth without mortgage reduction if no longer tracked
+            let currentNetWorth = totalProjectedAssets - (initialTotalLiabilities - initialMortgageValue); // Only other liabilities remain
 
             const netWorthInTodaysDollars = currentNetWorth / Math.pow((1 + inflationRate), i);
 
@@ -851,7 +818,6 @@
         renderChart(chartData);
     }
 
-    // D3.js Chart Rendering Functions (renderChart and render72tChart)
     function renderChart(data) {
         d3.select(chartContainer).select("svg").remove();
 
@@ -1155,7 +1121,8 @@
 
         const currentFinancials = collectAllCurrentInputs();
         const mainCurrentAge = currentFinancials.currentAge;
-        const seventyTwoTStartAgeInput = Math.floor(currentFinancials.seventyTwoTStartAge);
+        // 72t now starts at main retirement year
+        const seventyTwoTStartAgeForCalc = currentFinancials.retirementYear; 
         const stockAppreciation = currentFinancials.stockAppreciation;
         const seventyTwoTInterestRate = currentFinancials.seventyTwoTInterestRate;
 
@@ -1172,11 +1139,11 @@
         let current401kBalanceForProjection = initial401kBalanceAtMainCurrentAge;
         const chartData = [];
 
-        // Calculate initial fixed 72(t) distribution based on projected balance at seventyTwoTStartAge
-        let fixedAnnual72tDistributionInitialPeriod = 0;
-        let balanceAt72tStartAgeForFixedCalc = initial401kBalanceAtMainCurrentAge * Math.pow((1 + stockAppreciation), (seventyTwoTStartAgeInput - mainCurrentAge));
+        // Project 401K balance to seventyTwoTStartAge (which is now retirementYear) for calculation of initial fixed distribution
+        let balanceAt72tStartAgeForFixedCalc = initial401kBalanceAtMainCurrentAge * Math.pow((1 + stockAppreciation), (seventyTwoTStartAgeForCalc - mainCurrentAge));
         
-        const lifeExpectancyAt72tStart = irsLifeExpectancyTable[seventyTwoTStartAgeInput];
+        let fixedAnnual72tDistributionInitialPeriod = 0;
+        const lifeExpectancyAt72tStart = irsLifeExpectancyTable[Math.floor(seventyTwoTStartAgeForCalc)];
         if (lifeExpectancyAt72tStart && seventyTwoTInterestRate > 0) {
             const annuityFactor = (1 - Math.pow((1 + seventyTwoTInterestRate), -lifeExpectancyAt72tStart)) / seventyTwoTInterestRate;
             if (annuityFactor > 0) {
@@ -1190,36 +1157,49 @@
         for (let age = mainCurrentAge; age <= 80; age += 1) {
             let distributionTaken = 0;
 
-            // Only apply growth and distributions from the year after initialAge
-            if (age > mainCurrentAge) {
-                current401kBalanceForProjection *= (1 + stockAppreciation);
-
-                if (age < seventyTwoTStartAgeInput) {
-                    distributionTaken = 0;
-                } else if (age >= seventyTwoTStartAgeInput && age < 60) {
-                    distributionTaken = fixedAnnual72tDistributionInitialPeriod;
-                } else if (age === 60) {
-                    // Recalculate 72(t) fixed distribution at age 60
-                    const lifeExpectencyAt60 = irsLifeExpectancyTable[60];
-                    if (lifeExpectencyAt60 && seventyTwoTInterestRate > 0) {
-                        const annuityFactorAt60 = (1 - Math.pow((1 + seventyTwoTInterestRate), -lifeExpectencyAt60)) / seventyTwoTInterestRate;
-                        if (annuityFactorAt60 > 0) {
-                            fixedAnnual72tDistributionAt60 = current401kBalanceForProjection / annuityFactorAt60;
-                        }
-                        fixedAnnual72tDistributionAt60 = Math.round(fixedAnnual72tDistributionAt60 * 100) / 100;
-                    }
-                    distributionTaken = fixedAnnual72tDistributionAt60;
-                } else { // age > 60
-                    distributionTaken = fixedAnnual72tDistributionAt60;
-                }
-                
-                // Ensure distribution taken does not exceed current balance
-                if (current401kBalanceForProjection < distributionTaken) {
-                    distributionTaken = current401kBalanceForProjection;
-                }
-                current401kBalanceForProjection -= distributionTaken;
-                current401kBalanceForProjection = Math.max(0, current401kBalanceForProjection);
+            // Handle the first year (currentAge) separately to show initial values
+            if (age === mainCurrentAge) {
+                chartData.push({
+                    age: age,
+                    balance: initial401kBalanceAtMainCurrentAge,
+                    distribution: 0
+                });
+                const row = seventyTwoTTableBody.insertRow();
+                row.classList.add('hover:bg-blue-50');
+                if (age % 5 === 0) row.classList.add('bg-orange-100');
+                row.insertCell().textContent = age;
+                row.insertCell().textContent = age; // Year column
+                row.insertCell().textContent = formatTableCurrency(0);
+                row.insertCell().textContent = formatTableCurrency(initial401kBalanceAtMainCurrentAge);
+                continue; // Skip remaining loop for this iteration
             }
+
+            // Apply growth for the current year
+            current401kBalanceForProjection *= (1 + stockAppreciation);
+
+            if (age < seventyTwoTStartAgeForCalc) {
+                distributionTaken = 0;
+            } else if (age >= seventyTwoTStartAgeForCalc && age < 60) {
+                distributionTaken = fixedAnnual72tDistributionInitialPeriod;
+            } else if (age === 60) {
+                const lifeExpectencyAt60 = irsLifeExpectancyTable[60];
+                if (lifeExpectencyAt60 && seventyTwoTInterestRate > 0) {
+                    const annuityFactorAt60 = (1 - Math.pow((1 + seventyTwoTInterestRate), -lifeExpectencyAt60)) / seventyTwoTInterestRate;
+                    if (annuityFactorAt60 > 0) {
+                        fixedAnnual72tDistributionAt60 = current401kBalanceForProjection / annuityFactorAt60;
+                    }
+                    fixedAnnual72tDistributionAt60 = Math.round(fixedAnnual72tDistributionAt60 * 100) / 100;
+                }
+                distributionTaken = fixedAnnual72tDistributionAt60;
+            } else { // age > 60
+                distributionTaken = fixedAnnual72tDistributionAt60;
+            }
+            
+            if (current401kBalanceForProjection < distributionTaken) {
+                distributionTaken = current401kBalanceForProjection;
+            }
+            current401kBalanceForProjection -= distributionTaken;
+            current401kBalanceForProjection = Math.max(0, current401kBalanceForProjection);
 
             chartData.push({
                 age: age,
@@ -1235,10 +1215,11 @@
             }
 
             row.insertCell().textContent = age;
+            row.insertCell().textContent = age; // Year column
             row.insertCell().textContent = formatTableCurrency(distributionTaken);
             row.insertCell().textContent = formatTableCurrency(current401kBalanceForProjection);
 
-            if (current401kBalanceForProjection < 0.01 && age > seventyTwoTStartAgeInput) {
+            if (current401kBalanceForProjection < 0.01 && age > seventyTwoTStartAgeForCalc) {
                 break;
             }
         }
@@ -1255,7 +1236,8 @@
                 staticInputs[key].addEventListener('input', () => updateSliderValueDisplay(staticInputs[key], sliderPairs.find(p => p.slider === staticInputs[key]).valueDisplay, sliderPairs.find(p => p.slider === staticInputs[key]).unit));
                 staticInputs[key].addEventListener('change', () => {
                     calculateFinancials(true);
-                    if (['seventyTwoTStartAge', 'stockAppreciation', 'currentAge', 'seventyTwoTInterestRate'].includes(key)) {
+                    // Trigger 72t calculation only if relevant sliders change
+                    if (['retirementYear', 'stockAppreciation', 'currentAge', 'seventyTwoTInterestRate'].includes(key)) {
                         calculate72tDistribution(true);
                     }
                 });
@@ -1290,7 +1272,7 @@
             pair.slider.addEventListener('input', () => updateSliderValueDisplay(pair.slider, pair.valueDisplay, pair.unit));
             pair.slider.addEventListener('change', () => {
                 calculateFinancials(true);
-                if (['seventyTwoTStartAge', 'stockAppreciation', 'currentAge', 'seventyTwoTInterestRate'].includes(pair.slider.id)) {
+                if (['retirementYear', 'stockAppreciation', 'currentAge', 'seventyTwoTInterestRate'].includes(pair.slider.id)) {
                     calculate72tDistribution(true);
                 }
             });
@@ -1370,12 +1352,11 @@
             if (staticInputs.stockAppreciation) staticInputs.stockAppreciation.value = 9;
             if (staticInputs.housingAppreciation) staticInputs.housingAppreciation.value = 4;
             if (staticInputs.inflation) staticInputs.inflation.value = 3;
-            if (staticInputs.retirementDrawRatePre62) staticInputs.retirementDrawRatePre62.value = 7;
-            if (staticInputs.retirementDrawRatePost62) staticInputs.retirementDrawRatePost62.value = 5;
+            if (staticInputs.retirementDrawRate) staticInputs.retirementDrawRate.value = 5;
             if (staticInputs.retirementYear) staticInputs.retirementYear.value = 55;
-            if (staticInputs.monthlyPrincipalPayment) staticInputs.monthlyPrincipalPayment.value = formatInputNumber(1514);
             if (staticInputs.socialSecurityStartAge) staticInputs.socialSecurityStartAge.value = 62;
             if (staticInputs.socialSecurityMonthly) staticInputs.socialSecurityMonthly.value = 2800;
+            if (staticInputs.seventyTwoTInterestRate) staticInputs.seventyTwoTInterestRate.value = 4;
 
             sliderPairs.forEach(pair => {
                 if (pair.slider && pair.valueDisplay) {
@@ -1645,16 +1626,12 @@
             <p id="annualSavingsDisplay" class="text-xl font-semibold text-white mt-1 lg:text-3xl">$0</p>
         </div>
         <div class="text-center mb-2 summary-item w-1/2 sm:w-1/3 md:w-1/4 lg:w-auto lg:text-center px-1">
-            <p class="text-sm font-bold text-blue-200 lg:text-lg">Today's Draw:</p>
-            <p id="todaysDraw" class="text-xl font-semibold text-white mt-1 lg:text-3xl">$0</p>
+            <p class="text-sm font-bold text-blue-200 lg:text-lg" id="retirementDrawLabel">Retirement Draw:</p>
+            <p id="retirementDrawDisplay" class="text-xl font-semibold text-white mt-1 lg:text-3xl">$0</p>
         </div>
         <div class="text-center mb-2 summary-item w-1/2 sm:w-1/3 md:w-1/4 lg:w-auto lg:text-center px-1">
-            <p class="text-sm font-bold text-blue-200 lg:text-lg" id="dynamicRetirementDrawLabel">Retirement Draw (Today's $):</p>
-            <p id="dynamicRetirementDrawValue" class="text-xl font-semibold text-white mt-1 lg:text-3xl">$0</p>
-        </div>
-        <div class="text-center mb-2 summary-item w-1/2 sm:w-1/3 md:w-1/4 lg:w-auto lg:text-center px-1">
-            <p class="text-sm font-bold text-blue-200 lg:text-lg" id="ssStartAgeDrawLabel">62 YO Draw (Today's $):</p>
-            <p id="ssStartAgeDraw" class="text-xl font-semibold text-white mt-1 lg:text-3xl">$0</p>
+            <p class="text-sm font-bold text-blue-200 lg:text-lg" id="retirementDraw62Label">62 YO Retirement Draw:</p>
+            <p id="retirementDraw62Display" class="text-xl font-semibold text-white mt-1 lg:text-3xl">$0</p>
         </div>
     </div>
 
@@ -1809,18 +1786,10 @@
                         </div>
 
                         <div class="mb-2">
-                            <label for="retirementDrawRatePre62" class="label-style">Pre-62 YO Draw (%)</label>
+                            <label for="retirementDrawRate" class="label-style">Retirement Draw Rate (%)</label>
                             <div class="slider-input-wrapper">
-                                <span class="slider-value-display" id="retirementDrawRatePre62Value"></span>
-                                <input type="range" id="retirementDrawRatePre62" min="0" max="10" value="6" step="0.5" class="w-full">
-                            </div>
-                        </div>
-
-                        <div class="mb-2">
-                            <label for="retirementDrawRatePost62" class="label-style">Post-62 YO Draw (%)</label>
-                            <div class="slider-input-wrapper">
-                                <span class="slider-value-display" id="retirementDrawRatePost62Value"></span>
-                                <input type="range" id="retirementDrawRatePost62" min="0" max="5" value="5" step="0.5" class="w-full">
+                                <span class="slider-value-display" id="retirementDrawRateValue"></span>
+                                <input type="range" id="retirementDrawRate" min="0" max="10" value="5" step="0.5" class="w-full">
                             </div>
                         </div>
 
@@ -1833,7 +1802,7 @@
                         </div>
 
                         <div class="mb-2">
-                            <label for="socialSecurityMonthly" class="label-style" id="socialSecurityMonthlyLabel">Social Security at 62 ($)</label>
+                            <label for="socialSecurityMonthly" class="label-style">Social Security Monthly ($)</label>
                             <div class="slider-input-wrapper">
                                 <span class="slider-value-display" id="socialSecurityMonthlyValue"></span>
                                 <input type="range" id="socialSecurityMonthly" min="0" max="5000" value="2800" step="100" class="w-full">
@@ -1847,62 +1816,16 @@
                                 <input type="range" id="retirementYear" min="38" max="80" value="55" step="1" class="w-full">
                             </div>
                         </div>
-
-                        <div class="mb-4">
-                            <label for="monthlyPrincipalPayment" class="label-style">Monthly Principal Payment ($)</label>
-                            <input type="text" id="monthlyPrincipalPayment" value="1428" class="input-field">
-                        </div>
                     </div>
                 </div>
             </div>
 
-            <div class="bg-blue-50 p-6 rounded-lg shadow-md mb-8 border border-blue-200">
-                <h2 class="text-2xl font-bold mb-4 text-blue-700">3. Projected Growth Chart</h2>
-                <div id="chart-container" class="w-full overflow-x-auto">
-                    </div>
-                <div class="flex justify-center mt-4 space-x-6 text-gray-700 font-semibold">
-                    <div class="flex items-center">
-                        <span class="inline-block w-4 h-4 rounded-full mr-2" style="background-color: #2563eb;"></span>
-                        Net Investments
-                    </div>
-                    <div class="flex items-center">
-                        <span class="inline-block w-4 h-4 rounded-full mr-2" style="background-color: #800080;"></span>
-                        Net Investments (Today's $)
-                    </div>
-                </div>
-            </div>
-
-            <div class="bg-blue-50 p-6 rounded-lg shadow-md border border-blue-200">
-                <h2 class="text-2xl font-bold mb-4 text-blue-700">4. Projected Growth Table</h2>
-                <div class="overflow-x-auto rounded-lg border border-gray-200 shadow-sm">
-                    <table class="min-w-full bg-white">
-                        <thead class="bg-blue-600 text-white uppercase text-sm leading-normal">
-                            <tr>
-                                <th class="py-3 px-6 text-left">Age</th>
-                                <th class="py-3 px-6 text-left">Year</th>
-                                <th class="py-3 px-6 text-left">Investments</th>
-                                <th class="py-3 px-6 text-left">Net Worth</th>
-                                <th class="py-3 px-6 text-left">Net Worth (Today's $)</th>
-                            </tr>
-                        </thead>
-                        <tbody id="projectionTableBody" class="text-gray-700 text-sm font-light divide-y divide-gray-200">
-                            </tbody>
-                    </table>
-                </div>
-            </div>
-
+            <!-- Section 3: 72(t) Fixed Distribution Projection -->
             <div class="bg-orange-50 p-6 rounded-lg shadow-md border border-orange-200 mt-8">
-                <h2 class="text-2xl font-bold mb-4 text-orange-700">5. 72(t) Fixed Distribution Projection</h2>
+                <h2 class="text-2xl font-bold mb-4 text-orange-700">3. 72(t) Fixed Distribution Projection</h2>
                 <p class="text-sm text-gray-600 mb-4">
                     This projection calculates **fixed annual distributions** from a 401K account using the Amortization Method (based on IRS Uniform Lifetime Table and a user-defined interest rate). The 401K balance within this projection will grow by your main "Stock Appreciation" rate.
                 </p>
-                <div class="mb-2">
-                    <label for="seventyTwoTStartAge" class="label-style">72(t) Starting Age</label>
-                    <div class="slider-input-wrapper">
-                        <span class="slider-value-display" id="seventyTwoTStartAgeValue"></span>
-                        <input type="range" id="seventyTwoTStartAge" min="38" max="70" value="59.5" step="1" class="w-full">
-                    </div>
-                </div>
                 <div class="mb-4">
                     <label for="seventyTwoTInterestRate" class="label-style">72(t) Calculation Interest Rate (%)</label>
                     <div class="slider-input-wrapper">
@@ -1929,11 +1852,44 @@
                         <thead class="bg-orange-600 text-white uppercase text-sm leading-normal">
                             <tr>
                                 <th class="py-3 px-6 text-left">Age</th>
+                                <th class="py-3 px-6 text-left">Year</th>
                                 <th class="py-3 px-6 text-left">Annual Distribution</th>
                                 <th class="py-3 px-6 text-left">Remaining Balance</th>
                             </tr>
                         </thead>
                         <tbody id="seventyTwoTTableBody" class="text-gray-700 text-sm font-light divide-y divide-gray-200">
+                            </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Section 4: Projected Investment Growth (Chart & Table) -->
+            <div class="bg-blue-50 p-6 rounded-lg shadow-md mt-8 border border-blue-200">
+                <h2 class="text-2xl font-bold mb-4 text-blue-700">4. Projected Investment Growth (Chart & Table)</h2>
+                <div id="chart-container" class="w-full overflow-x-auto mb-8">
+                    </div>
+                <div class="flex justify-center mt-4 space-x-6 text-gray-700 font-semibold">
+                    <div class="flex items-center">
+                        <span class="inline-block w-4 h-4 rounded-full mr-2" style="background-color: #2563eb;"></span>
+                        Net Investments
+                    </div>
+                    <div class="flex items-center">
+                        <span class="inline-block w-4 h-4 rounded-full mr-2" style="background-color: #800080;"></span>
+                        Net Investments (Today's $)
+                    </div>
+                </div>
+                <div class="overflow-x-auto rounded-lg border border-gray-200 shadow-sm mt-4">
+                    <table class="min-w-full bg-white">
+                        <thead class="bg-blue-600 text-white uppercase text-sm leading-normal">
+                            <tr>
+                                <th class="py-3 px-6 text-left">Age</th>
+                                <th class="py-3 px-6 text-left">Year</th>
+                                <th class="py-3 px-6 text-left">Investments</th>
+                                <th class="py-3 px-6 text-left">Net Worth</th>
+                                <th class="py-3 px-6 text-left">Net Worth (Today's $)</th>
+                            </tr>
+                        </thead>
+                        <tbody id="projectionTableBody" class="text-gray-700 text-sm font-light divide-y divide-gray-200">
                             </tbody>
                     </table>
                 </div>
