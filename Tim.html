@@ -11,7 +11,7 @@
     <!-- Firebase SDKs -->
 <script type="module">
     // Revision Level
-    const appRevision = "2.3";
+    const appRevision = "2.4";
 
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
     import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
@@ -26,6 +26,9 @@
     const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
 
     const PUBLIC_COLLECTION_PATH = `artifacts/${appId}/public/data/retirement_calculator`;
+    // NOTE: To create a separate version of the calculator with its own data,
+    // change the string below to a unique ID for that version.
+    // For example: const SHARED_DOC_ID = 'tims_personal_data';
     const SHARED_DOC_ID = 'tims_personal_data';
 
     const irsLifeExpectancyTable = {
@@ -191,13 +194,12 @@
             auth = getAuth(app);
 
             onAuthStateChanged(auth, (user) => {
-                if (user && !userId) { // Ensure listener setup runs only once per user session
+                if (user && !userId) { 
                     userId = user.uid;
                     setupRealtimeListener();
                 }
             });
 
-            // Attempt to sign in if there's no current user
             if (!auth.currentUser) {
                 if (initialAuthToken) {
                     await signInWithCustomToken(auth, initialAuthToken);
@@ -205,7 +207,6 @@
                     await signInAnonymously(auth);
                 }
             } else {
-                // If there's already a user, trigger the setup
                  userId = auth.currentUser.uid;
                  setupRealtimeListener();
             }
@@ -430,7 +431,9 @@
         liabilitiesContainer.appendChild(rowDiv);
         rowDiv.querySelectorAll('.input-field').forEach(input => {
             input.addEventListener('change', (e) => {
-                e.target.value = formatInputNumber(e.target.value);
+                if (!e.target.classList.contains('liability-name')) {
+                    e.target.value = formatInputNumber(e.target.value);
+                }
                 calculateFinancials(true);
             });
         });
@@ -766,7 +769,7 @@
         focusDistribution.append("circle").attr("r", 5).attr("fill", "#f97316");
 
         svg.append("rect").attr("width", width).attr("height", height).style("fill", "none").style("pointer-events", "all")
-            .on("mouseover", () => { focusBalance.style("display", null); focusDistribution.style("display", null); tooltip.style("opacity", 1); })
+            .on("mouseover", () => { focusBalance.style("display", null); focusDistribution.style("display", "none"); tooltip.style("opacity", 1); })
             .on("mouseout", () => { focusBalance.style("display", "none"); focusDistribution.style("display", "none"); tooltip.style("opacity", 0); })
             .on("mousemove", mousemove);
 
@@ -891,13 +894,16 @@
             }
         });
         
-        document.querySelectorAll('input[type="text"]').forEach(input => {
-            input.addEventListener('change', (event) => {
+        // This setup is for dynamically added elements, using event delegation on static parent containers
+        document.body.addEventListener('change', (event) => {
+            if (event.target.matches('.investment-value, .home-value, .static-asset-value, .liability-value, .liability-payment, .income-value, #baseSalary, #monthlyHSAContribution, #annualRothContribution')) {
                 event.target.value = formatInputNumber(event.target.value);
                 calculateFinancials(true);
-            });
+            } else if (event.target.matches('.investment-name, .home-name, .static-asset-name, .liability-name, .income-name, .income-escalation-rate')) {
+                calculateFinancials(true);
+            }
         });
-        
+
         addInvestmentBtn.addEventListener('click', () => { addInvestmentAccountInput(); calculateFinancials(true); });
         addHomeBtn.addEventListener('click', () => { addHomeInput(); calculateFinancials(true); });
         addOtherStaticAssetBtn.addEventListener('click', () => { addOtherStaticAssetInput(); calculateFinancials(true); });
