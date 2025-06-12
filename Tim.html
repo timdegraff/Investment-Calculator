@@ -53,10 +53,10 @@
     let staticInputs, currentNetWorthDisplay, currentNetInvestmentsDisplay, annualIncomeDisplay, 
         annualSavingsDisplay, dynamicRetirementDrawLabel, dynamicRetirementDrawValue, 
         ssStartAgeDrawDisplay, dynamicRetirementDrawLabelSticky, dynamicRetirementDrawValueSticky, 
-        projectionTableBody, investmentAccountsContainer, addInvestmentBtn, homesContainer, 
+        investmentAccountsContainer, addInvestmentBtn, homesContainer, 
         addHomeBtn, otherStaticAssetsContainer, addOtherStaticAssetBtn, liabilitiesContainer, 
         addLiabilityBtn, otherIncomeContainer, addOtherIncomeBtn, chartContainer, 
-        incomeChartContainer, appRevisionDisplay, totalInvestmentsSummary, totalHomesSummary, 
+        incomeChartContainer, incomeLegend, appRevisionDisplay, totalInvestmentsSummary, totalHomesSummary, 
         totalOtherStaticAssetsSummary, totalLiabilitiesSummary, socialSecurityMonthlyLabel, 
         ssStartAgeDrawLabel, seventyTwoTTableBody, seventyTwoTChartContainer, 
         detailedBreakdownThead, detailedBreakdownTbody, sliderPairs;
@@ -102,6 +102,7 @@
         addOtherIncomeBtn = document.getElementById('addOtherIncomeBtn');
         chartContainer = document.getElementById('chart-container');
         incomeChartContainer = document.getElementById('income-chart-container');
+        incomeLegend = document.getElementById('income-legend');
         appRevisionDisplay = document.getElementById('appRevisionDisplay');
         totalInvestmentsSummary = document.getElementById('totalInvestmentsSummary');
         totalHomesSummary = document.getElementById('totalHomesSummary');
@@ -529,10 +530,11 @@
         ssStartAgeDrawDisplay.textContent = formatLargeCurrency(ssDrawToday);
         ssStartAgeDrawLabel.textContent = `${socialSecurityStartAge} YO Draw (Today's $):`;
 
-        chartContainer.innerHTML = '';
-        incomeChartContainer.innerHTML = '';
-        detailedBreakdownTbody.innerHTML = '';
-        detailedBreakdownThead.innerHTML = '';
+        if(projectionTableBody) projectionTableBody.innerHTML = '';
+        if(chartContainer) chartContainer.innerHTML = '';
+        if(incomeChartContainer) incomeChartContainer.innerHTML = '';
+        if(detailedBreakdownTbody) detailedBreakdownTbody.innerHTML = '';
+        if(detailedBreakdownThead) detailedBreakdownThead.innerHTML = '';
         
         let projectedAccounts = JSON.parse(JSON.stringify(investmentAccounts));
         let projectedHomes = JSON.parse(JSON.stringify(homes));
@@ -572,8 +574,11 @@
         let currentTotalInvestments = projectedAccounts.reduce((s, a) => s + a.value, 0);
         chartData.push({ age: currentAge, investments: currentTotalInvestments, netWorth: initialNetWorth });
         
-        let initialIncome = currentSalary * (1 + bonusRate) + otherIncome.reduce((s, inc) => s + inc.value * 12, 0);
-        incomeData.push({ age: currentAge, nominalIncome: initialIncome, todaysIncome: initialIncome });
+        let initialIncomeSources = { 'Salary & Bonus': baseSalary * (1 + bonusRate) };
+        otherIncome.forEach(inc => {
+            initialIncomeSources[inc.name] = inc.value * 12;
+        });
+        incomeData.push({ age: currentAge, sources: initialIncomeSources });
         
         addDetailedRow(currentAge, new Date().getFullYear(), { investments: currentTotalInvestments, investmentsInTodaysDollars: currentTotalInvestments, netWorth: initialNetWorth, netWorthInTodaysDollars: initialNetWorth });
 
@@ -595,22 +600,27 @@
             projectedHomes.forEach(h => h.value *= (1 + housingAppreciation));
             projectedLiabilities.forEach(l => l.value = Math.max(0, l.value - (l.monthlyPayment * 12)));
             
-            let totalAnnualDraw = 0;
-            if (age >= retirementYear) {
+            let incomeSources = {};
+            if (age < retirementYear) {
+                incomeSources['Salary & Bonus'] = currentSalary * (1 + bonusRate);
+            } else {
                 const drawRate = age < socialSecurityStartAge ? retirementDrawRatePre62 : retirementDrawRatePost62;
-                totalAnnualDraw = projectedAccounts.reduce((s, a) => s + a.value, 0) * drawRate;
+                incomeSources['Investment Draw'] = projectedAccounts.reduce((s, a) => s + a.value, 0) * drawRate;
+                
                 const totalBeforeDraw = projectedAccounts.reduce((s, a) => s + a.value, 0);
                 if (totalBeforeDraw > 0) {
-                    projectedAccounts.forEach(a => a.value -= totalAnnualDraw * (a.value / totalBeforeDraw));
+                     projectedAccounts.forEach(a => a.value -= incomeSources['Investment Draw'] * (a.value / totalBeforeDraw));
                 }
             }
-            
-            let currentYearOtherIncome = otherIncome.reduce((s, inc) => s + (inc.value * 12 * Math.pow(1 + inc.escalationRate, age - currentAge)), 0);
-            let socialSecurityIncome = (age >= socialSecurityStartAge) ? socialSecurityMonthly * 12 : 0;
-            let nominalIncome = (age < retirementYear) ? currentSalary * (1 + bonusRate) + currentYearOtherIncome : totalAnnualDraw + currentYearOtherIncome + socialSecurityIncome;
-            let todaysIncome = nominalIncome / Math.pow(1 + inflation, age - currentAge);
-            incomeData.push({age, nominalIncome, todaysIncome});
 
+            otherIncome.forEach(inc => {
+                incomeSources[inc.name] = inc.value * 12 * Math.pow(1 + inc.escalationRate, age - currentAge);
+            });
+            if (age >= socialSecurityStartAge) {
+                 incomeSources['Social Security'] = socialSecurityMonthly * 12;
+            }
+            
+            incomeData.push({age, sources: incomeSources});
 
             const totalInvestments = Math.max(0, projectedAccounts.reduce((s, a) => s + a.value, 0));
             const totalAssets = totalInvestments + projectedHomes.reduce((s, h) => s + h.value, 0) + projectedOtherAssets.reduce((s, a) => s + a.value, 0);
@@ -625,9 +635,9 @@
                  netWorthInTodaysDollars: netWorthInTodaysDollars
             });
         }
-
+        
         renderChart(chartData, inputs);
-        renderIncomeChart(incomeData);
+        renderIncomeChart(incomeData, inputs);
     }
 
     function calculateDrawInTodaysDollars(targetAge, inputs) {
@@ -749,31 +759,43 @@
         chartContainer.__inputs__ = inputs;
     }
 
-    function renderIncomeChart(data) {
+    function renderIncomeChart(data, inputs) {
         d3.select(incomeChartContainer).select("svg").remove();
         if (!data || data.length < 2) return;
+
+        const colorScale = d3.scaleOrdinal(d3.schemeCategory10);
+        const incomeSources = [...new Set(data.flatMap(d => Object.keys(d.sources)))];
+        
         const parentWidth = incomeChartContainer.offsetWidth;
-        const margin = { top: 40, right: 60, bottom: 50, left: 80 }, width = parentWidth - margin.left - margin.right, height = 400 - margin.top - margin.bottom;
+        const margin = { top: 40, right: 60, bottom: 50, left: 80 };
+        const width = parentWidth - margin.left - margin.right;
+        const height = 400 - margin.top - margin.bottom;
+        
         const svg = d3.select(incomeChartContainer).append("svg").attr("width", width + margin.left + margin.right).attr("height", height + margin.top + margin.bottom).append("g").attr("transform", `translate(${margin.left},${margin.top})`);
         
         const xScale = d3.scaleLinear().domain(d3.extent(data, d => d.age)).range([0, width]);
-        const yMax = d3.max(data, d => d.nominalIncome);
+        const yMax = d3.max(data, d => d3.sum(Object.values(d.sources)));
         const yScale = d3.scaleLinear().domain([0, yMax * 1.05]).range([height, 0]);
 
         svg.append("g").attr("class", "x axis").attr("transform", `translate(0,${height})`).call(d3.axisBottom(xScale).tickFormat(d3.format("d"))).select(".domain").attr("stroke", "black");
         svg.append("g").attr("class", "y axis-left").call(d3.axisLeft(yScale).tickFormat(d => formatProjectedChartAxisLabel(d, yMax))).select(".domain").attr("stroke", "black");
 
-        const lineNominal = d3.line().x(d => xScale(d.age)).y(d => yScale(d.nominalIncome));
-        const lineTodays = d3.line().x(d => xScale(d.age)).y(d => yScale(d.todaysIncome));
-        
-        svg.append("path").datum(data).attr("class", "line").style("stroke", "green").style("stroke-dasharray", ("3, 3")).attr("d", lineNominal);
-        svg.append("path").datum(data).attr("class", "line").style("stroke", "darkred").attr("d", lineTodays);
+        incomeSources.forEach(source => {
+            const color = colorScale(source);
+            
+            const lineNominal = d3.line().x(d => xScale(d.age)).y(d => yScale(d.sources[source] || 0));
+            svg.append("path").datum(data).attr("class", "line").style("stroke", color).style("stroke-dasharray", ("3, 3")).attr("d", lineNominal);
+
+            const lineTodays = d3.line().x(d => xScale(d.age)).y(d => yScale((d.sources[source] || 0) / Math.pow(1 + inputs.inflation, d.age - inputs.currentAge)));
+            svg.append("path").datum(data).attr("class", "line").style("stroke", color).attr("d", lineTodays);
+        });
 
         svg.append("text").attr("x", width / 2).attr("y", height + 40).style("text-anchor", "middle").text("Age");
         svg.append("text").attr("transform", "rotate(-90)").attr("y", -margin.left + 20).attr("x", -height / 2).attr("dy", "1em").style("text-anchor", "middle").text("Annual Income ($)");
-        svg.append("text").attr("x", width / 2).attr("y", -margin.top / 2).attr("text-anchor", "middle").attr("font-size", "1.2rem").attr("font-weight", "bold").text("Projected Annual Income");
+        svg.append("text").attr("x", width / 2).attr("y", -margin.top / 2).attr("text-anchor", "middle").attr("font-size", "1.2rem").attr("font-weight", "bold").text("Projected Annual Income by Source");
         
         incomeChartContainer.__chartData__ = data;
+        incomeChartContainer.__inputs__ = inputs;
     }
 
     function render72tChart(data) {
@@ -963,7 +985,7 @@
 
         window.addEventListener('resize', () => {
             if (chartContainer.__chartData__) renderChart(chartContainer.__chartData__, chartContainer.__inputs__);
-            if (incomeChartContainer.__chartData__) renderIncomeChart(incomeChartContainer.__chartData__);
+            if (incomeChartContainer.__chartData__) renderIncomeChart(incomeChartContainer.__chartData__, incomeChartContainer.__inputs__);
             if (seventyTwoTChartContainer.__chartData__) render72tChart(seventyTwoTChartContainer.__chartData__);
             handleMobileStickyHeader();
         });
@@ -1145,10 +1167,7 @@
                 </div>
                 <h3 class="text-xl font-semibold mt-8 mb-4 text-gray-800">Projected Annual Income</h3>
                 <div id="income-chart-container" class="w-full overflow-x-auto mb-4"></div>
-                <div class="flex justify-center mt-4 space-x-6 text-gray-700 font-semibold">
-                    <div class="flex items-center"><span class="inline-block w-4 h-4 rounded-full mr-2" style="background-color: green;"></span>Nominal Income</div>
-                    <div class="flex items-center"><span class="inline-block w-4 h-4 rounded-full mr-2" style="background-color: darkred;"></span>Income (Today's $)</div>
-                </div>
+                <div id="income-legend" class="flex justify-center flex-wrap mt-4 space-x-4 text-gray-700 font-semibold"></div>
             </div>
 
             <div class="bg-gray-50 p-6 rounded-lg shadow-md border border-gray-200 mt-8">
