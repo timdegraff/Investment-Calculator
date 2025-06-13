@@ -11,7 +11,7 @@
     <!-- Firebase SDKs -->
 <script type="module">
     // Revision Level
-    const appRevision = "2.4";
+    const appRevision = "2.5";
 
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
     import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
@@ -490,7 +490,7 @@
 
         sliderPairs.forEach(pair => updateSliderValueDisplay(pair.slider, pair.valueDisplay, pair.unit));
 
-        const totalAnnualIncome = baseSalary + (baseSalary * bonusRate) + currentFinancials.otherIncome.reduce((sum, inc) => sum + (inc.value * 12), 0);
+        const totalAnnualIncome = baseSalary * (1 + bonusRate) + (baseSalary * company401kContributionRate) + currentFinancials.otherIncome.reduce((sum, inc) => sum + (inc.value * 12), 0);
         const totalAnnualSavings = (baseSalary * my401kContributionRate) + (baseSalary * company401kContributionRate) + (monthlyHSAContribution * 12) + annualRothContribution;
 
         currentNetWorthDisplay.textContent = formatLargeCurrency(totalInvestments + totalHomes + totalOtherStaticAssets - totalLiabilities);
@@ -761,35 +761,63 @@
     function renderIncomeChart(data, inputs) {
         d3.select(incomeChartContainer).select("svg").remove();
         if (!data || data.length < 2) return;
+        
         const parentWidth = incomeChartContainer.offsetWidth;
-        const margin = { top: 40, right: 60, bottom: 50, left: 80 }, width = parentWidth - margin.left - margin.right, height = 400 - margin.top - margin.bottom;
+        const margin = { top: 40, right: 60, bottom: 50, left: 80 };
+        const width = parentWidth - margin.left - margin.right;
+        const height = 400 - margin.top - margin.bottom;
+        
         const svg = d3.select(incomeChartContainer).append("svg").attr("width", width + margin.left + margin.right).attr("height", height + margin.top + margin.bottom).append("g").attr("transform", `translate(${margin.left},${margin.top})`);
         
-        const incomeSources = [...new Set(data.flatMap(d => Object.keys(d.sources)))];
-        const colorScale = d3.scaleOrdinal(d3.schemeCategory10);
-
-        data.forEach(d => {
-            d.totalNominal = d3.sum(Object.values(d.sources));
-            d.totalTodays = d.totalNominal / Math.pow(1 + inputs.inflation, d.age - inputs.currentAge);
-        });
-
-        const yMax = d3.max(data, d => d.totalNominal);
         const xScale = d3.scaleLinear().domain(d3.extent(data, d => d.age)).range([0, width]);
+        const yMax = d3.max(data, d => d3.sum(Object.values(d.sources)));
         const yScale = d3.scaleLinear().domain([0, yMax * 1.05]).range([height, 0]);
 
         svg.append("g").attr("class", "x axis").attr("transform", `translate(0,${height})`).call(d3.axisBottom(xScale).tickFormat(d3.format("d"))).select(".domain").attr("stroke", "black");
         svg.append("g").attr("class", "y axis-left").call(d3.axisLeft(yScale).tickFormat(d => formatProjectedChartAxisLabel(d, yMax))).select(".domain").attr("stroke", "black");
-        
-        const lineNominal = d3.line().x(d => xScale(d.age)).y(d => yScale(d.totalNominal));
-        const lineTodays = d3.line().x(d => xScale(d.age)).y(d => yScale(d.totalTodays));
-        
-        svg.append("path").datum(data).attr("class", "line").style("stroke", "black").style("stroke-dasharray", ("3, 3")).attr("d", lineNominal);
-        svg.append("path").datum(data).attr("class", "line").style("stroke", "black").attr("d", lineTodays);
+
+        const totalNominalLine = d3.line().x(d => xScale(d.age)).y(d => yScale(d3.sum(Object.values(d.sources))));
+        const totalTodaysLine = d3.line().x(d => xScale(d.age)).y(d => yScale(d3.sum(Object.values(d.sources)) / Math.pow(1 + inputs.inflation, d.age - inputs.currentAge)));
+
+        svg.append("path").datum(data).attr("class", "line").style("stroke", "blue").attr("d", totalNominalLine);
+        svg.append("path").datum(data).attr("class", "line").style("stroke", "purple").attr("d", totalTodaysLine);
 
         svg.append("text").attr("x", width / 2).attr("y", height + 40).style("text-anchor", "middle").text("Age");
         svg.append("text").attr("transform", "rotate(-90)").attr("y", -margin.left + 20).attr("x", -height / 2).attr("dy", "1em").style("text-anchor", "middle").text("Annual Income ($)");
         svg.append("text").attr("x", width / 2).attr("y", -margin.top / 2).attr("text-anchor", "middle").attr("font-size", "1.2rem").attr("font-weight", "bold").text("Projected Annual Income");
         
+        const tooltip = d3.select("body").append("div").attr("class", "tooltip").style("opacity", 0);
+
+        svg.append("rect").attr("width", width).attr("height", height).style("fill", "none").style("pointer-events", "all")
+            .on("mouseover", () => tooltip.style("opacity", 1))
+            .on("mouseout", () => tooltip.style("opacity", 0))
+            .on("mousemove", mousemove);
+        
+        function mousemove(event) {
+            const [mx] = d3.pointer(event);
+            const x0 = xScale.invert(mx);
+            const i = d3.bisector(d => d.age).left(data, x0, 1);
+            const d0 = data[i - 1];
+            const d1 = data[i];
+            const d = !d0 ? d1 : (!d1 ? d0 : (x0 - d0.age > d1.age - x0 ? d1 : d0));
+
+            if(d) {
+                const inflationDivisor = Math.pow(1 + inputs.inflation, d.age - inputs.currentAge);
+                let tooltipHtml = `<strong>Age: ${d.age}</strong><br/>`;
+                let totalNominal = 0;
+                for (const source in d.sources) {
+                    tooltipHtml += `${source}: ${formatTableCurrency(d.sources[source])}<br/>`;
+                    totalNominal += d.sources[source];
+                }
+                 tooltipHtml += `<strong>Total: ${formatTableCurrency(totalNominal)}</strong><br/>`;
+                 tooltipHtml += `<strong>Total (Today's $): ${formatTableCurrency(totalNominal/inflationDivisor)}</strong>`;
+                
+                tooltip.html(tooltipHtml)
+                    .style("left", (event.pageX + 15) + "px")
+                    .style("top", (event.pageY - 28) + "px");
+            }
+        }
+
         incomeChartContainer.__chartData__ = data;
         incomeChartContainer.__inputs__ = inputs;
     }
@@ -980,9 +1008,9 @@
         addOtherIncomeBtn.addEventListener('click', () => { addOtherIncomeInput(); calculateFinancials(true); });
 
         window.addEventListener('resize', () => {
-            if (chartContainer && chartContainer.__chartData__) renderChart(chartContainer.__chartData__, chartContainer.__inputs__);
-            if (incomeChartContainer && incomeChartContainer.__chartData__) renderIncomeChart(incomeChartContainer.__chartData__, incomeChartContainer.__inputs__);
-            if (seventyTwoTChartContainer && seventyTwoTChartContainer.__chartData__) render72tChart(seventyTwoTChartContainer.__chartData__);
+            if (chartContainer.__chartData__) renderChart(chartContainer.__chartData__, chartContainer.__inputs__);
+            if (incomeChartContainer.__chartData__) renderIncomeChart(incomeChartContainer.__chartData__, incomeChartContainer.__inputs__);
+            if (seventyTwoTChartContainer.__chartData__) render72tChart(seventyTwoTChartContainer.__chartData__);
             handleMobileStickyHeader();
         });
         window.addEventListener('scroll', handleMobileStickyHeader);
