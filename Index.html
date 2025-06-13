@@ -4,14 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Investment Calculator</title>
-    <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- D3.js CDN for charting -->
     <script src="https://d3js.org/d3.v7.min.js"></script>
-    <!-- Firebase SDKs -->
-<script type="module">
+    <script type="module">
     // Revision Level
-    const appRevision = "2.3";
+    const appRevision = "2.5";
 
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
     import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
@@ -26,6 +23,9 @@
     const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
 
     const PUBLIC_COLLECTION_PATH = `artifacts/${appId}/public/data/retirement_calculator`;
+    // NOTE: To create a separate version of the calculator with its own data,
+    // change the string below to a unique ID for that version.
+    // For example: const SHARED_DOC_ID = 'tims_personal_data';
     const SHARED_DOC_ID = 'shared_inputs';
 
     const irsLifeExpectancyTable = {
@@ -46,6 +46,91 @@
 
     window.isLoadingFromFirestore = false;
 
+    // Declare variables for DOM elements
+    let staticInputs, currentNetWorthDisplay, currentNetInvestmentsDisplay, annualIncomeDisplay, 
+        annualSavingsDisplay, dynamicRetirementDrawLabel, dynamicRetirementDrawValue, 
+        ssStartAgeDrawDisplay, eightyYoDrawDisplay, dynamicRetirementDrawLabelSticky, dynamicRetirementDrawValueSticky, 
+        investmentAccountsContainer, addInvestmentBtn, homesContainer, 
+        addHomeBtn, otherStaticAssetsContainer, addOtherStaticAssetBtn, liabilitiesContainer, 
+        addLiabilityBtn, otherIncomeContainer, addOtherIncomeBtn, chartContainer, 
+        incomeChartContainer, incomeLegend, appRevisionDisplay, totalInvestmentsSummary, totalHomesSummary, 
+        totalOtherStaticAssetsSummary, totalLiabilitiesSummary, socialSecurityMonthlyLabel, 
+        ssStartAgeDrawLabel, seventyTwoTTableBody, seventyTwoTChartContainer, 
+        detailedBreakdownThead, detailedBreakdownTbody, sliderPairs;
+
+    function initializeDOMReferences() {
+        staticInputs = {
+            currentAge: document.getElementById('currentAge'),
+            baseSalary: document.getElementById('baseSalary'),
+            bonusRate: document.getElementById('bonusRate'),
+            my401kContributionRate: document.getElementById('my401kContributionRate'),
+            company401kContributionRate: document.getElementById('company401kContributionRate'),
+            annualRothContribution: document.getElementById('annualRothContribution'),
+            monthlyHSAContribution: document.getElementById('monthlyHSAContribution'),
+            annualSalaryRaise: document.getElementById('annualSalaryRaise'),
+            stockAppreciation: document.getElementById('stockAppreciation'),
+            housingAppreciation: document.getElementById('housingAppreciation'),
+            inflation: document.getElementById('inflation'),
+            retirementDrawRatePre62: document.getElementById('retirementDrawRatePre62'),
+            retirementDrawRatePost62: document.getElementById('retirementDrawRatePost62'),
+            retirementYear: document.getElementById('retirementYear'),
+            seventyTwoTRetirementYear: document.getElementById('seventyTwoTRetirementYear'),
+            socialSecurityStartAge: document.getElementById('socialSecurityStartAge'),
+            socialSecurityMonthly: document.getElementById('socialSecurityMonthly')
+        };
+        currentNetWorthDisplay = document.getElementById('currentNetWorth');
+        currentNetInvestmentsDisplay = document.getElementById('currentNetInvestments');
+        annualIncomeDisplay = document.getElementById('annualIncomeDisplay');
+        annualSavingsDisplay = document.getElementById('annualSavingsDisplay');
+        dynamicRetirementDrawLabel = document.getElementById('dynamicRetirementDrawLabel');
+        dynamicRetirementDrawValue = document.getElementById('dynamicRetirementDrawValue');
+        ssStartAgeDrawDisplay = document.getElementById('ssStartAgeDraw');
+        eightyYoDrawDisplay = document.getElementById('eightyYoDraw');
+        dynamicRetirementDrawLabelSticky = document.getElementById('dynamicRetirementDrawLabelSticky');
+        dynamicRetirementDrawValueSticky = document.getElementById('dynamicRetirementDrawValueSticky');
+        investmentAccountsContainer = document.getElementById('investmentAccountsContainer');
+        addInvestmentBtn = document.getElementById('addInvestmentBtn');
+        homesContainer = document.getElementById('homesContainer');
+        addHomeBtn = document.getElementById('addHomeBtn');
+        otherStaticAssetsContainer = document.getElementById('otherStaticAssetsContainer');
+        addOtherStaticAssetBtn = document.getElementById('addOtherStaticAssetBtn');
+        liabilitiesContainer = document.getElementById('liabilitiesContainer');
+        addLiabilityBtn = document.getElementById('addLiabilityBtn');
+        otherIncomeContainer = document.getElementById('otherIncomeContainer');
+        addOtherIncomeBtn = document.getElementById('addOtherIncomeBtn');
+        chartContainer = document.getElementById('chart-container');
+        incomeChartContainer = document.getElementById('income-chart-container');
+        incomeLegend = document.getElementById('income-legend');
+        appRevisionDisplay = document.getElementById('appRevisionDisplay');
+        totalInvestmentsSummary = document.getElementById('totalInvestmentsSummary');
+        totalHomesSummary = document.getElementById('totalHomesSummary');
+        totalOtherStaticAssetsSummary = document.getElementById('totalOtherStaticAssetsSummary');
+        totalLiabilitiesSummary = document.getElementById('totalLiabilitiesSummary');
+        socialSecurityMonthlyLabel = document.getElementById('socialSecurityMonthlyLabel');
+        ssStartAgeDrawLabel = document.getElementById('ssStartAgeDrawLabel');
+        seventyTwoTTableBody = document.getElementById('seventyTwoTTableBody');
+        seventyTwoTChartContainer = document.getElementById('seventyTwoTChartContainer');
+        detailedBreakdownThead = document.getElementById('detailedBreakdownThead');
+        detailedBreakdownTbody = document.getElementById('detailedBreakdownTbody');
+
+        sliderPairs = [
+            { slider: staticInputs.currentAge, valueDisplay: document.getElementById('currentAgeValue'), unit: '' },
+            { slider: staticInputs.bonusRate, valueDisplay: document.getElementById('bonusRateValue'), unit: '%' },
+            { slider: staticInputs.my401kContributionRate, valueDisplay: document.getElementById('my401kContributionRateValue'), unit: '%' },
+            { slider: staticInputs.company401kContributionRate, valueDisplay: document.getElementById('company401kContributionRateValue'), unit: '%' },
+            { slider: staticInputs.annualSalaryRaise, valueDisplay: document.getElementById('annualSalaryRaiseValue'), unit: '%' },
+            { slider: staticInputs.stockAppreciation, valueDisplay: document.getElementById('stockAppreciationValue'), unit: '%' },
+            { slider: staticInputs.housingAppreciation, valueDisplay: document.getElementById('housingAppreciationValue'), unit: '%' },
+            { slider: staticInputs.inflation, valueDisplay: document.getElementById('inflationValue'), unit: '%' },
+            { slider: staticInputs.retirementDrawRatePre62, valueDisplay: document.getElementById('retirementDrawRatePre62Value'), unit: '%' },
+            { slider: staticInputs.retirementDrawRatePost62, valueDisplay: document.getElementById('retirementDrawRatePost62Value'), unit: '%' },
+            { slider: staticInputs.retirementYear, valueDisplay: document.getElementById('retirementYearValue'), unit: '' },
+            { slider: staticInputs.seventyTwoTRetirementYear, valueDisplay: document.getElementById('seventyTwoTRetirementYearValue'), unit: '' },
+            { slider: staticInputs.socialSecurityStartAge, valueDisplay: document.getElementById('socialSecurityStartAgeValue'), unit: '' },
+            { slider: staticInputs.socialSecurityMonthly, valueDisplay: document.getElementById('socialSecurityMonthlyValue'), unit: '' }
+        ];
+    }
+
     function formatInputNumber(value) {
         if (value === null || value === undefined || value === '') return '';
         let num = Number(String(value).replace(/,/g, ''));
@@ -58,93 +143,17 @@
         const cleaned = String(stringValue).replace(/[^\d.-]/g, '');
         return parseFloat(cleaned) || 0;
     }
-
-    const staticInputs = {
-        currentAge: document.getElementById('currentAge'),
-        baseSalary: document.getElementById('baseSalary'),
-        bonusRate: document.getElementById('bonusRate'),
-        my401kContributionRate: document.getElementById('my401kContributionRate'),
-        company401kContributionRate: document.getElementById('company401kContributionRate'),
-        annualRothContribution: document.getElementById('annualRothContribution'),
-        monthlyHSAContribution: document.getElementById('monthlyHSAContribution'),
-        annualSalaryRaise: document.getElementById('annualSalaryRaise'),
-        stockAppreciation: document.getElementById('stockAppreciation'),
-        housingAppreciation: document.getElementById('housingAppreciation'),
-        inflation: document.getElementById('inflation'),
-        retirementDrawRatePre62: document.getElementById('retirementDrawRatePre62'),
-        retirementDrawRatePost62: document.getElementById('retirementDrawRatePost62'),
-        retirementYear: document.getElementById('retirementYear'),
-        seventyTwoTRetirementYear: document.getElementById('seventyTwoTRetirementYear'),
-        socialSecurityStartAge: document.getElementById('socialSecurityStartAge'),
-        socialSecurityMonthly: document.getElementById('socialSecurityMonthly')
-    };
-
-    const currentNetWorthDisplay = document.getElementById('currentNetWorth');
-    const currentNetInvestmentsDisplay = document.getElementById('currentNetInvestments');
-    const annualIncomeDisplay = document.getElementById('annualIncomeDisplay');
-    const annualSavingsDisplay = document.getElementById('annualSavingsDisplay');
-    const dynamicRetirementDrawLabel = document.getElementById('dynamicRetirementDrawLabel');
-    const dynamicRetirementDrawValue = document.getElementById('dynamicRetirementDrawValue');
-    const ssStartAgeDrawDisplay = document.getElementById('ssStartAgeDraw');
-    const dynamicRetirementDrawLabelSticky = document.getElementById('dynamicRetirementDrawLabelSticky');
-    const dynamicRetirementDrawValueSticky = document.getElementById('dynamicRetirementDrawValueSticky');
-    const projectionTableBody = document.getElementById('projectionTableBody');
-    const investmentAccountsContainer = document.getElementById('investmentAccountsContainer');
-    const addInvestmentBtn = document.getElementById('addInvestmentBtn');
-    const homesContainer = document.getElementById('homesContainer');
-    const addHomeBtn = document.getElementById('addHomeBtn');
-    const otherStaticAssetsContainer = document.getElementById('otherStaticAssetsContainer');
-    const addOtherStaticAssetBtn = document.getElementById('addOtherStaticAssetBtn');
-    const liabilitiesContainer = document.getElementById('liabilitiesContainer');
-    const addLiabilityBtn = document.getElementById('addLiabilityBtn');
-    const otherIncomeContainer = document.getElementById('otherIncomeContainer');
-    const addOtherIncomeBtn = document.getElementById('addOtherIncomeBtn');
-
-    const chartContainer = document.getElementById('chart-container');
-    const appRevisionDisplay = document.getElementById('appRevisionDisplay');
-
-    const totalInvestmentsSummary = document.getElementById('totalInvestmentsSummary');
-    const totalHomesSummary = document.getElementById('totalHomesSummary');
-    const totalOtherStaticAssetsSummary = document.getElementById('totalOtherStaticAssetsSummary');
-    const totalLiabilitiesSummary = document.getElementById('totalLiabilitiesSummary');
-
-    const socialSecurityMonthlyLabel = document.getElementById('socialSecurityMonthlyLabel');
-    const ssStartAgeDrawLabel = document.getElementById('ssStartAgeDrawLabel');
-
-    const seventyTwoTTableBody = document.getElementById('seventyTwoTTableBody');
-    const seventyTwoTChartContainer = document.getElementById('seventyTwoTChartContainer');
     
-    const detailedBreakdownThead = document.getElementById('detailedBreakdownThead');
-    const detailedBreakdownTbody = document.getElementById('detailedBreakdownTbody');
-
-
-    const sliderPairs = [
-        { slider: staticInputs.currentAge, valueDisplay: document.getElementById('currentAgeValue'), unit: '' },
-        { slider: staticInputs.bonusRate, valueDisplay: document.getElementById('bonusRateValue'), unit: '%' },
-        { slider: staticInputs.my401kContributionRate, valueDisplay: document.getElementById('my401kContributionRateValue'), unit: '%' },
-        { slider: staticInputs.company401kContributionRate, valueDisplay: document.getElementById('company401kContributionRateValue'), unit: '%' },
-        { slider: staticInputs.annualSalaryRaise, valueDisplay: document.getElementById('annualSalaryRaiseValue'), unit: '%' },
-        { slider: staticInputs.stockAppreciation, valueDisplay: document.getElementById('stockAppreciationValue'), unit: '%' },
-        { slider: staticInputs.housingAppreciation, valueDisplay: document.getElementById('housingAppreciationValue'), unit: '%' },
-        { slider: staticInputs.inflation, valueDisplay: document.getElementById('inflationValue'), unit: '%' },
-        { slider: staticInputs.retirementDrawRatePre62, valueDisplay: document.getElementById('retirementDrawRatePre62Value'), unit: '%' },
-        { slider: staticInputs.retirementDrawRatePost62, valueDisplay: document.getElementById('retirementDrawRatePost62Value'), unit: '%' },
-        { slider: staticInputs.retirementYear, valueDisplay: document.getElementById('retirementYearValue'), unit: '' },
-        { slider: staticInputs.seventyTwoTRetirementYear, valueDisplay: document.getElementById('seventyTwoTRetirementYearValue'), unit: '' },
-        { slider: staticInputs.socialSecurityStartAge, valueDisplay: document.getElementById('socialSecurityStartAgeValue'), unit: '' },
-        { slider: staticInputs.socialSecurityMonthly, valueDisplay: document.getElementById('socialSecurityMonthlyValue'), unit: '' }
-    ];
-
-    const formatTableCurrency = (amount) => {
+    function formatTableCurrency(amount) {
         const roundedAmount = Math.round(amount);
         return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(roundedAmount);
-    };
+    }
 
-    const formatLargeCurrency = (amount) => {
+    function formatLargeCurrency(amount) {
         if (Math.abs(amount) >= 1000000) return `$${(amount / 1000000).toFixed(2)}M`;
         if (Math.abs(amount) >= 1000) return `$${(amount / 1000).toFixed(0)}K`;
         return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(amount);
-    };
+    }
 
     function formatProjectedChartAxisLabel(value, maxChartValue) {
         if (maxChartValue < 5000000) return `$${(value / 1000).toFixed(0)}K`;
@@ -191,13 +200,12 @@
             auth = getAuth(app);
 
             onAuthStateChanged(auth, (user) => {
-                if (user && !userId) { // Ensure listener setup runs only once per user session
+                if (user && !userId) { 
                     userId = user.uid;
                     setupRealtimeListener();
                 }
             });
 
-            // Attempt to sign in if there's no current user
             if (!auth.currentUser) {
                 if (initialAuthToken) {
                     await signInWithCustomToken(auth, initialAuthToken);
@@ -205,7 +213,6 @@
                     await signInAnonymously(auth);
                 }
             } else {
-                // If there's already a user, trigger the setup
                  userId = auth.currentUser.uid;
                  setupRealtimeListener();
             }
@@ -430,7 +437,9 @@
         liabilitiesContainer.appendChild(rowDiv);
         rowDiv.querySelectorAll('.input-field').forEach(input => {
             input.addEventListener('change', (e) => {
-                e.target.value = formatInputNumber(e.target.value);
+                if (!e.target.classList.contains('liability-name')) {
+                    e.target.value = formatInputNumber(e.target.value);
+                }
                 calculateFinancials(true);
             });
         });
@@ -479,7 +488,7 @@
 
         sliderPairs.forEach(pair => updateSliderValueDisplay(pair.slider, pair.valueDisplay, pair.unit));
 
-        const totalAnnualIncome = baseSalary + (baseSalary * bonusRate) + currentFinancials.otherIncome.reduce((sum, inc) => sum + (inc.value * 12), 0);
+        const totalAnnualIncome = baseSalary * (1 + bonusRate) + (baseSalary * company401kContributionRate) + currentFinancials.otherIncome.reduce((sum, inc) => sum + (inc.value * 12), 0);
         const totalAnnualSavings = (baseSalary * my401kContributionRate) + (baseSalary * company401kContributionRate) + (monthlyHSAContribution * 12) + annualRothContribution;
 
         currentNetWorthDisplay.textContent = formatLargeCurrency(totalInvestments + totalHomes + totalOtherStaticAssets - totalLiabilities);
@@ -504,7 +513,7 @@
             currentAge, baseSalary, retirementYear, my401kContributionRate, company401kContributionRate,
             monthlyHSAContribution, annualRothContribution, annualSalaryRaise, stockAppreciation,
             housingAppreciation, inflation, retirementDrawRatePre62, retirementDrawRatePost62,
-            socialSecurityStartAge, socialSecurityMonthly, investmentAccounts, homes, otherStaticAssets, liabilities
+            socialSecurityStartAge, socialSecurityMonthly, investmentAccounts, homes, otherStaticAssets, liabilities, otherIncome, bonusRate
         } = inputs;
 
         let initialNetWorth = investmentAccounts.reduce((s,a)=>s+a.value,0) + homes.reduce((s,h)=>s+h.value,0) + otherStaticAssets.reduce((s,a)=>s+a.value,0) - liabilities.reduce((s,l)=>s+l.value,0);
@@ -519,10 +528,13 @@
         ssStartAgeDrawDisplay.textContent = formatLargeCurrency(ssDrawToday);
         ssStartAgeDrawLabel.textContent = `${socialSecurityStartAge} YO Draw (Today's $):`;
 
-        projectionTableBody.innerHTML = '';
-        chartContainer.innerHTML = '';
-        detailedBreakdownTbody.innerHTML = '';
-        detailedBreakdownThead.innerHTML = '';
+        const eightyYoDrawToday = calculateDrawInTodaysDollars(80, inputs);
+        eightyYoDrawDisplay.textContent = formatLargeCurrency(eightyYoDrawToday);
+
+        if(chartContainer) chartContainer.innerHTML = '';
+        if(incomeChartContainer) incomeChartContainer.innerHTML = '';
+        if(detailedBreakdownTbody) detailedBreakdownTbody.innerHTML = '';
+        if(detailedBreakdownThead) detailedBreakdownThead.innerHTML = '';
         
         let projectedAccounts = JSON.parse(JSON.stringify(investmentAccounts));
         let projectedHomes = JSON.parse(JSON.stringify(homes));
@@ -532,28 +544,44 @@
         let currentSalary = baseSalary;
         
         const headerRow = detailedBreakdownThead.insertRow();
-        ['Age', 'Year'].forEach(h => headerRow.insertCell().outerHTML = `<th class="py-3 px-6 text-left">${h}</th>`);
+        ['Age', 'Year', 'Net Inv', 'Net Inv ($T)', 'Net Worth', 'NW ($T)'].forEach(h => headerRow.insertCell().outerHTML = `<th class="py-3 px-6 text-left">${h}</th>`);
         projectedAccounts.forEach(a => headerRow.insertCell().outerHTML = `<th class="py-3 px-6 text-left">${a.name}</th>`);
         projectedHomes.forEach(h => headerRow.insertCell().outerHTML = `<th class="py-3 px-6 text-left">${h.name}</th>`);
         projectedOtherAssets.forEach(a => headerRow.insertCell().outerHTML = `<th class="py-3 px-6 text-left">${a.name}</th>`);
         projectedLiabilities.forEach(l => headerRow.insertCell().outerHTML = `<th class="py-3 px-6 text-left">${l.name}</th>`);
         
         const chartData = [];
-        const initialInvestments = projectedAccounts.reduce((s, a) => s + a.value, 0);
-        chartData.push({ age: currentAge, investments: initialInvestments, netWorth: initialNetWorth, netWorthInTodaysDollars: initialNetWorth });
+        const incomeData = [];
 
-        const addDetailedRow = (age, year) => {
+        const addDetailedRow = (age, year, totals) => {
             const row = detailedBreakdownTbody.insertRow();
             row.classList.add('hover:bg-blue-50');
             if(age % 5 === 0) row.classList.add('bg-blue-100');
             row.insertCell().textContent = age;
             row.insertCell().textContent = year;
+            
+            row.insertCell().textContent = formatTableCurrency(totals.investments);
+            row.insertCell().textContent = formatTableCurrency(totals.investmentsInTodaysDollars);
+            row.insertCell().textContent = formatTableCurrency(totals.netWorth);
+            row.insertCell().textContent = formatTableCurrency(totals.netWorthInTodaysDollars);
+
             projectedAccounts.forEach(a => row.insertCell().textContent = formatTableCurrency(a.value));
             projectedHomes.forEach(h => row.insertCell().textContent = formatTableCurrency(h.value));
             projectedOtherAssets.forEach(a => row.insertCell().textContent = formatTableCurrency(a.value));
             projectedLiabilities.forEach(l => row.insertCell().textContent = formatTableCurrency(l.value));
         };
-        addDetailedRow(currentAge, new Date().getFullYear());
+        
+        let currentTotalInvestments = projectedAccounts.reduce((s, a) => s + a.value, 0);
+        chartData.push({ age: currentAge, investments: currentTotalInvestments, netWorth: initialNetWorth });
+        
+        let initialIncomeSources = { 'Salary & Bonus': baseSalary * (1 + bonusRate) };
+        otherIncome.forEach(inc => {
+            initialIncomeSources[inc.name] = inc.value * 12;
+        });
+        incomeData.push({ age: currentAge, sources: initialIncomeSources });
+        
+        addDetailedRow(currentAge, new Date().getFullYear(), { investments: currentTotalInvestments, investmentsInTodaysDollars: currentTotalInvestments, netWorth: initialNetWorth, netWorthInTodaysDollars: initialNetWorth });
+
 
         for (let age = currentAge + 1; age <= 80; age++) {
             if (age < retirementYear) {
@@ -572,14 +600,27 @@
             projectedHomes.forEach(h => h.value *= (1 + housingAppreciation));
             projectedLiabilities.forEach(l => l.value = Math.max(0, l.value - (l.monthlyPayment * 12)));
             
-            if (age >= retirementYear) {
+            let incomeSources = {};
+            if (age < retirementYear) {
+                incomeSources['Salary & Bonus'] = currentSalary * (1 + bonusRate);
+            } else {
                 const drawRate = age < socialSecurityStartAge ? retirementDrawRatePre62 : retirementDrawRatePost62;
-                const totalToDraw = projectedAccounts.reduce((s, a) => s + a.value, 0) * drawRate;
+                incomeSources['Investment Draw'] = projectedAccounts.reduce((s, a) => s + a.value, 0) * drawRate;
+                
                 const totalBeforeDraw = projectedAccounts.reduce((s, a) => s + a.value, 0);
                 if (totalBeforeDraw > 0) {
-                    projectedAccounts.forEach(a => a.value -= totalToDraw * (a.value / totalBeforeDraw));
+                     projectedAccounts.forEach(a => a.value -= incomeSources['Investment Draw'] * (a.value / totalBeforeDraw));
                 }
             }
+
+            otherIncome.forEach(inc => {
+                incomeSources[inc.name] = inc.value * 12 * Math.pow(1 + inc.escalationRate, age - currentAge);
+            });
+            if (age >= socialSecurityStartAge) {
+                 incomeSources['Social Security'] = socialSecurityMonthly * 12;
+            }
+            
+            incomeData.push({age, sources: incomeSources});
 
             const totalInvestments = Math.max(0, projectedAccounts.reduce((s, a) => s + a.value, 0));
             const totalAssets = totalInvestments + projectedHomes.reduce((s, h) => s + h.value, 0) + projectedOtherAssets.reduce((s, a) => s + a.value, 0);
@@ -587,21 +628,16 @@
             const netWorthInTodaysDollars = currentNetWorth / Math.pow(1 + inflation, age - currentAge);
 
             chartData.push({ age, investments: totalInvestments, netWorth: currentNetWorth, netWorthInTodaysDollars });
-            addDetailedRow(age, new Date().getFullYear() + (age - currentAge));
+            addDetailedRow(age, new Date().getFullYear() + (age - currentAge), {
+                 investments: totalInvestments, 
+                 investmentsInTodaysDollars: totalInvestments / Math.pow(1 + inflation, age - currentAge),
+                 netWorth: currentNetWorth, 
+                 netWorthInTodaysDollars: netWorthInTodaysDollars
+            });
         }
-
-        const mainProjectionTableData = chartData.map(d => `
-            <tr class="hover:bg-blue-50 ${d.age % 5 === 0 ? 'bg-blue-100' : ''}">
-                <td class="py-3 px-6 text-left">${d.age}</td>
-                <td class="py-3 px-6 text-left">${new Date().getFullYear() + (d.age - currentAge)}</td>
-                <td class="py-3 px-6 text-left">${formatTableCurrency(d.investments)}</td>
-                <td class="py-3 px-6 text-left">${formatTableCurrency(d.netWorth)}</td>
-                <td class="py-3 px-6 text-left">${formatTableCurrency(d.netWorthInTodaysDollars)}</td>
-            </tr>
-        `).join('');
-        projectionTableBody.innerHTML = mainProjectionTableData;
         
         renderChart(chartData, inputs);
+        renderIncomeChart(incomeData, inputs);
     }
 
     function calculateDrawInTodaysDollars(targetAge, inputs) {
@@ -723,6 +759,83 @@
         chartContainer.__inputs__ = inputs;
     }
 
+    function renderIncomeChart(data, inputs) {
+        d3.select(incomeChartContainer).select("svg").remove();
+        if(incomeLegend) incomeLegend.innerHTML = '';
+        if (!data || data.length < 2) return;
+        const parentWidth = incomeChartContainer.offsetWidth;
+        const margin = { top: 40, right: 60, bottom: 50, left: 80 }, width = parentWidth - margin.left - margin.right, height = 400 - margin.top - margin.bottom;
+        const svg = d3.select(incomeChartContainer).append("svg").attr("class", "chart-svg").attr("width", width + margin.left + margin.right).attr("height", height + margin.top + margin.bottom).append("g").attr("transform", `translate(${margin.left},${margin.top})`);
+        
+        const yMax = d3.max(data, d => d3.sum(Object.values(d.sources)));
+        const xScale = d3.scaleLinear().domain(d3.extent(data, d => d.age)).range([0, width]);
+        const yScale = d3.scaleLinear().domain([0, yMax * 1.05]).range([height, 0]);
+
+        svg.append("g").attr("class", "x axis").attr("transform", `translate(0,${height})`).call(d3.axisBottom(xScale).tickFormat(d3.format("d"))).select(".domain").attr("stroke", "black");
+        svg.append("g").attr("class", "y axis-left").call(d3.axisLeft(yScale).tickFormat(d => formatProjectedChartAxisLabel(d, yMax))).select(".domain").attr("stroke", "black");
+        svg.append("g").attr("class", "grid").call(d3.axisLeft(yScale).tickSize(-width).tickFormat("")).selectAll("line").attr("stroke-opacity", 0.2);
+        
+        const totalNominalLine = d3.line().x(d => xScale(d.age)).y(d => yScale(d3.sum(Object.values(d.sources))));
+        const totalTodaysLine = d3.line().x(d => xScale(d.age)).y(d => yScale(d3.sum(Object.values(d.sources)) / Math.pow(1 + inputs.inflation, d.age - inputs.currentAge)));
+
+        svg.append("path").datum(data).attr("class", "line").style("stroke", "blue").attr("d", totalNominalLine);
+        svg.append("path").datum(data).attr("class", "line").style("stroke", "purple").attr("d", totalTodaysLine);
+
+        svg.append("text").attr("x", width / 2).attr("y", height + 40).style("text-anchor", "middle").text("Age");
+        svg.append("text").attr("transform", "rotate(-90)").attr("y", -margin.left + 20).attr("x", -height / 2).attr("dy", "1em").style("text-anchor", "middle").text("Annual Income ($)");
+        svg.append("text").attr("x", width / 2).attr("y", -margin.top / 2).attr("text-anchor", "middle").attr("font-size", "1.2rem").attr("font-weight", "bold").text("Projected Annual Income");
+        
+        const legendContainer = d3.select(incomeLegend);
+        legendContainer.append('div').attr('class', 'flex items-center').html(`<span class="inline-block w-4 h-4 rounded-full mr-2" style="background-color: blue;"></span>Total Income`);
+        legendContainer.append('div').attr('class', 'flex items-center').html(`<span class="inline-block w-4 h-4 rounded-full mr-2" style="background-color: purple;"></span>Total Income (Today's $)`);
+        
+        const tooltip = d3.select("body").append("div").attr("class", "tooltip").style("opacity", 0);
+        const focusNominal = svg.append("g").attr("class", "focus").style("display", "none");
+        focusNominal.append("circle").attr("r", 5).attr("fill", "blue");
+        const focusTodays = svg.append("g").attr("class", "focus").style("display", "none");
+        focusTodays.append("circle").attr("r", 5).attr("fill", "purple");
+
+        svg.append("rect").attr("width", width).attr("height", height).style("fill", "none").style("pointer-events", "all")
+            .on("mouseover", () => { focusNominal.style("display", null); focusTodays.style("display", null); tooltip.style("opacity", 1); })
+            .on("mouseout", () => { focusNominal.style("display", "none"); focusTodays.style("display", "none"); tooltip.style("opacity", 0); })
+            .on("mousemove", mousemove);
+        
+        function mousemove(event) {
+            const [mx] = d3.pointer(event);
+            const x0 = xScale.invert(mx);
+            const i = d3.bisector(d => d.age).left(data, x0, 1);
+            const d0 = data[i - 1];
+            const d1 = data[i];
+            const d = !d0 ? d1 : (!d1 ? d0 : (x0 - d0.age > d1.age - x0 ? d1 : d0));
+
+            if(d) {
+                const inflationDivisor = Math.pow(1 + inputs.inflation, d.age - inputs.currentAge);
+                const totalNominal = d3.sum(Object.values(d.sources));
+                const totalTodays = totalNominal / inflationDivisor;
+
+                focusNominal.attr("transform", `translate(${xScale(d.age)},${yScale(totalNominal)})`);
+                focusTodays.attr("transform", `translate(${xScale(d.age)},${yScale(totalTodays)})`);
+
+                let tooltipHtml = `<strong>Age: ${d.age}</strong><br/>`;
+                tooltipHtml += `<strong>Total: ${formatTableCurrency(totalNominal)}</strong><br/>`;
+                tooltipHtml += `<strong>Total (Today's $): ${formatTableCurrency(totalTodays)}</strong><hr class="my-1">`;
+                for (const source in d.sources) {
+                    if (d.sources[source] > 0) {
+                         tooltipHtml += `${source}: ${formatTableCurrency(d.sources[source])}<br/>`;
+                    }
+                }
+                
+                tooltip.html(tooltipHtml)
+                    .style("opacity", 1)
+                    .style("left", (event.pageX + 15) + "px")
+                    .style("top", (event.pageY - 28) + "px");
+            }
+        }
+        
+        incomeChartContainer.__chartData__ = data;
+        incomeChartContainer.__inputs__ = inputs;
+    }
+
     function render72tChart(data) {
         d3.select(seventyTwoTChartContainer).select("svg").remove();
         if (!data || data.length < 2) return;
@@ -766,7 +879,7 @@
         focusDistribution.append("circle").attr("r", 5).attr("fill", "#f97316");
 
         svg.append("rect").attr("width", width).attr("height", height).style("fill", "none").style("pointer-events", "all")
-            .on("mouseover", () => { focusBalance.style("display", null); focusDistribution.style("display", null); tooltip.style("opacity", 1); })
+            .on("mouseover", () => { focusBalance.style("display", null); focusDistribution.style("display", "null"); tooltip.style("opacity", 1); })
             .on("mouseout", () => { focusBalance.style("display", "none"); focusDistribution.style("display", "none"); tooltip.style("opacity", 0); })
             .on("mousemove", mousemove);
 
@@ -873,6 +986,7 @@
     }
 
     document.addEventListener('DOMContentLoaded', () => {
+        initializeDOMReferences();
         if (appRevisionDisplay) appRevisionDisplay.textContent = `v${appRevision}`;
         
         initFirebase().catch((err) => {
@@ -891,13 +1005,16 @@
             }
         });
         
-        document.querySelectorAll('input[type="text"]').forEach(input => {
-            input.addEventListener('change', (event) => {
-                event.target.value = formatInputNumber(event.target.value);
+        document.body.addEventListener('change', (event) => {
+            const target = event.target;
+            if (target.matches('.investment-value, .home-value, .static-asset-value, .liability-value, .liability-payment, .income-value, #baseSalary, #monthlyHSAContribution, #annualRothContribution')) {
+                target.value = formatInputNumber(target.value);
                 calculateFinancials(true);
-            });
+            } else if (target.matches('.investment-name, .home-name, .static-asset-name, .liability-name, .income-name, .income-escalation-rate')) {
+                calculateFinancials(true);
+            }
         });
-        
+
         addInvestmentBtn.addEventListener('click', () => { addInvestmentAccountInput(); calculateFinancials(true); });
         addHomeBtn.addEventListener('click', () => { addHomeInput(); calculateFinancials(true); });
         addOtherStaticAssetBtn.addEventListener('click', () => { addOtherStaticAssetInput(); calculateFinancials(true); });
@@ -906,6 +1023,7 @@
 
         window.addEventListener('resize', () => {
             if (chartContainer.__chartData__) renderChart(chartContainer.__chartData__, chartContainer.__inputs__);
+            if (incomeChartContainer.__chartData__) renderIncomeChart(incomeChartContainer.__chartData__, incomeChartContainer.__inputs__);
             if (seventyTwoTChartContainer.__chartData__) render72tChart(seventyTwoTChartContainer.__chartData__);
             handleMobileStickyHeader();
         });
@@ -982,6 +1100,10 @@
         <div class="text-center mb-2 summary-item w-1/2 sm:w-1/3 md:w-1/4 lg:w-auto lg:text-center px-1">
             <p class="text-sm font-bold text-blue-200 lg:text-lg" id="ssStartAgeDrawLabel">SS Start Draw:</p>
             <p id="ssStartAgeDraw" class="text-xl font-semibold text-white mt-1 lg:text-3xl">$0</p>
+        </div>
+        <div class="text-center mb-2 summary-item w-1/2 sm:w-1/3 md:w-1/4 lg:w-auto lg:text-center px-1">
+            <p class="text-sm font-bold text-blue-200 lg:text-lg">80 YO Draw:</p>
+            <p id="eightyYoDraw" class="text-xl font-semibold text-white mt-1 lg:text-3xl">$0</p>
         </div>
     </div>
 
@@ -1078,18 +1200,16 @@
             </div>
 
             <div class="bg-blue-50 p-6 rounded-lg shadow-md mb-8 border border-blue-200 mt-8">
-                <h2 class="text-2xl font-bold mb-4 text-blue-700">4. Projected Growth</h2>
+                <h2 class="text-2xl font-bold mb-4 text-blue-700">4. Projected Growth & Income</h2>
+                <h3 class="text-xl font-semibold mb-4 text-gray-800">Projected Investments</h3>
                 <div id="chart-container" class="w-full overflow-x-auto mb-4"></div>
                 <div class="flex justify-center mt-4 space-x-6 text-gray-700 font-semibold">
                     <div class="flex items-center"><span class="inline-block w-4 h-4 rounded-full mr-2" style="background-color: #2563eb;"></span>Net Investments</div>
                     <div class="flex items-center"><span class="inline-block w-4 h-4 rounded-full mr-2" style="background-color: #800080;"></span>Net Investments (Today's $)</div>
                 </div>
-                <div class="overflow-x-auto rounded-lg border border-gray-200 shadow-sm mt-4">
-                    <table class="min-w-full bg-white">
-                        <thead class="bg-blue-600 text-white uppercase text-sm leading-normal"><tr><th class="py-3 px-6 text-left">Age</th><th class="py-3 px-6 text-left">Year</th><th class="py-3 px-6 text-left">Investments</th><th class="py-3 px-6 text-left">Net Worth</th><th class="py-3 px-6 text-left">Net Worth (Today's $)</th></tr></thead>
-                        <tbody id="projectionTableBody" class="text-gray-700 text-sm font-light divide-y divide-gray-200"></tbody>
-                    </table>
-                </div>
+                <h3 class="text-xl font-semibold mt-8 mb-4 text-gray-800">Projected Annual Income</h3>
+                <div id="income-chart-container" class="w-full overflow-x-auto mb-4"></div>
+                <div id="income-legend" class="flex justify-center flex-wrap mt-4 space-x-4 text-gray-700 font-semibold"></div>
             </div>
 
             <div class="bg-gray-50 p-6 rounded-lg shadow-md border border-gray-200 mt-8">
