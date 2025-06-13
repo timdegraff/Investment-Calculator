@@ -8,7 +8,7 @@
     <script src="https://d3js.org/d3.v7.min.js"></script>
     <script type="module">
     // Revision Level
-    const appRevision = "2.5";
+    const appRevision = "2.6";
 
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
     import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
@@ -49,7 +49,7 @@
     // Declare variables for DOM elements
     let staticInputs, currentNetWorthDisplay, currentNetInvestmentsDisplay, annualIncomeDisplay, 
         annualSavingsDisplay, dynamicRetirementDrawLabel, dynamicRetirementDrawValue, 
-        ssStartAgeDrawDisplay, eightyYoDrawDisplay, dynamicRetirementDrawLabelSticky, dynamicRetirementDrawValueSticky, 
+        ssStartAgeDrawDisplay, eightyYoDrawDisplay, eightyYoDrawLabel, dynamicRetirementDrawLabelSticky, dynamicRetirementDrawValueSticky, 
         investmentAccountsContainer, addInvestmentBtn, homesContainer, 
         addHomeBtn, otherStaticAssetsContainer, addOtherStaticAssetBtn, liabilitiesContainer, 
         addLiabilityBtn, otherIncomeContainer, addOtherIncomeBtn, chartContainer, 
@@ -86,6 +86,7 @@
         dynamicRetirementDrawValue = document.getElementById('dynamicRetirementDrawValue');
         ssStartAgeDrawDisplay = document.getElementById('ssStartAgeDraw');
         eightyYoDrawDisplay = document.getElementById('eightyYoDraw');
+        eightyYoDrawLabel = document.getElementById('eightyYoDrawLabel');
         dynamicRetirementDrawLabelSticky = document.getElementById('dynamicRetirementDrawLabelSticky');
         dynamicRetirementDrawValueSticky = document.getElementById('dynamicRetirementDrawValueSticky');
         investmentAccountsContainer = document.getElementById('investmentAccountsContainer');
@@ -530,6 +531,7 @@
 
         const eightyYoDrawToday = calculateDrawInTodaysDollars(80, inputs);
         eightyYoDrawDisplay.textContent = formatLargeCurrency(eightyYoDrawToday);
+        eightyYoDrawLabel.textContent = "80 YO Draw (Today's $):";
 
         if(chartContainer) chartContainer.innerHTML = '';
         if(incomeChartContainer) incomeChartContainer.innerHTML = '';
@@ -1102,7 +1104,7 @@
             <p id="ssStartAgeDraw" class="text-xl font-semibold text-white mt-1 lg:text-3xl">$0</p>
         </div>
         <div class="text-center mb-2 summary-item w-1/2 sm:w-1/3 md:w-1/4 lg:w-auto lg:text-center px-1">
-            <p class="text-sm font-bold text-blue-200 lg:text-lg">80 YO Draw:</p>
+            <p id="eightyYoDrawLabel" class="text-sm font-bold text-blue-200 lg:text-lg">80 YO Draw:</p>
             <p id="eightyYoDraw" class="text-xl font-semibold text-white mt-1 lg:text-3xl">$0</p>
         </div>
     </div>
