@@ -768,23 +768,27 @@
         const incomeSources = [...new Set(data.flatMap(d => Object.keys(d.sources)))];
         const colorScale = d3.scaleOrdinal(d3.schemeCategory10);
 
-        const yMax = d3.max(data, d => d3.sum(Object.values(d.sources)));
+        data.forEach(d => {
+            d.totalNominal = d3.sum(Object.values(d.sources));
+            d.totalTodays = d.totalNominal / Math.pow(1 + inputs.inflation, d.age - inputs.currentAge);
+        });
+
+        const yMax = d3.max(data, d => d.totalNominal);
         const xScale = d3.scaleLinear().domain(d3.extent(data, d => d.age)).range([0, width]);
         const yScale = d3.scaleLinear().domain([0, yMax * 1.05]).range([height, 0]);
 
         svg.append("g").attr("class", "x axis").attr("transform", `translate(0,${height})`).call(d3.axisBottom(xScale).tickFormat(d3.format("d"))).select(".domain").attr("stroke", "black");
         svg.append("g").attr("class", "y axis-left").call(d3.axisLeft(yScale).tickFormat(d => formatProjectedChartAxisLabel(d, yMax))).select(".domain").attr("stroke", "black");
         
-        incomeSources.forEach(source => {
-            const color = colorScale(source);
-            
-            const lineTodays = d3.line().x(d => xScale(d.age)).y(d => yScale((d.sources[source] || 0) / Math.pow(1 + inputs.inflation, d.age - inputs.currentAge)));
-            svg.append("path").datum(data).attr("class", "line").style("stroke", color).attr("d", lineTodays);
-        });
+        const lineNominal = d3.line().x(d => xScale(d.age)).y(d => yScale(d.totalNominal));
+        const lineTodays = d3.line().x(d => xScale(d.age)).y(d => yScale(d.totalTodays));
+        
+        svg.append("path").datum(data).attr("class", "line").style("stroke", "black").style("stroke-dasharray", ("3, 3")).attr("d", lineNominal);
+        svg.append("path").datum(data).attr("class", "line").style("stroke", "black").attr("d", lineTodays);
 
         svg.append("text").attr("x", width / 2).attr("y", height + 40).style("text-anchor", "middle").text("Age");
         svg.append("text").attr("transform", "rotate(-90)").attr("y", -margin.left + 20).attr("x", -height / 2).attr("dy", "1em").style("text-anchor", "middle").text("Annual Income ($)");
-        svg.append("text").attr("x", width / 2).attr("y", -margin.top / 2).attr("text-anchor", "middle").attr("font-size", "1.2rem").attr("font-weight", "bold").text("Projected Annual Income (Today's $)");
+        svg.append("text").attr("x", width / 2).attr("y", -margin.top / 2).attr("text-anchor", "middle").attr("font-size", "1.2rem").attr("font-weight", "bold").text("Projected Annual Income");
         
         incomeChartContainer.__chartData__ = data;
         incomeChartContainer.__inputs__ = inputs;
@@ -976,9 +980,9 @@
         addOtherIncomeBtn.addEventListener('click', () => { addOtherIncomeInput(); calculateFinancials(true); });
 
         window.addEventListener('resize', () => {
-            if (chartContainer.__chartData__) renderChart(chartContainer.__chartData__, chartContainer.__inputs__);
-            if (incomeChartContainer.__chartData__) renderIncomeChart(incomeChartContainer.__chartData__, incomeChartContainer.__inputs__);
-            if (seventyTwoTChartContainer.__chartData__) render72tChart(seventyTwoTChartContainer.__chartData__);
+            if (chartContainer && chartContainer.__chartData__) renderChart(chartContainer.__chartData__, chartContainer.__inputs__);
+            if (incomeChartContainer && incomeChartContainer.__chartData__) renderIncomeChart(incomeChartContainer.__chartData__, incomeChartContainer.__inputs__);
+            if (seventyTwoTChartContainer && seventyTwoTChartContainer.__chartData__) render72tChart(seventyTwoTChartContainer.__chartData__);
             handleMobileStickyHeader();
         });
         window.addEventListener('scroll', handleMobileStickyHeader);
@@ -1157,7 +1161,7 @@
                     <div class="flex items-center"><span class="inline-block w-4 h-4 rounded-full mr-2" style="background-color: #2563eb;"></span>Net Investments</div>
                     <div class="flex items-center"><span class="inline-block w-4 h-4 rounded-full mr-2" style="background-color: #800080;"></span>Net Investments (Today's $)</div>
                 </div>
-                <h3 class="text-xl font-semibold mt-8 mb-4 text-gray-800">Projected Annual Income (Today's $)</h3>
+                <h3 class="text-xl font-semibold mt-8 mb-4 text-gray-800">Projected Annual Income</h3>
                 <div id="income-chart-container" class="w-full overflow-x-auto mb-4"></div>
                 <div id="income-legend" class="flex justify-center flex-wrap mt-4 space-x-4 text-gray-700 font-semibold"></div>
             </div>
