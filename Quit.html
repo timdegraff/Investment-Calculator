@@ -1508,8 +1508,9 @@ function calculate72t(balance, age) {
 
 function runEarlyQuitSim() {
     // 1. Gather Inputs
-    const currentAge = parseInt(document.querySelector('input[id*="Age"]')?.value) || 38; // Try to find main age input
-    const quitAge = parseInt(document.getElementById('quitAgeSlider').value);
+const currentAge =
+  parseInt(document.getElementById('currentAge')?.value) || 38;
+        const quitAge = parseInt(document.getElementById('quitAgeSlider').value);
     const snapMonthly = parseInt(document.getElementById('snapSlider').value);
     const addIncomeAnnual = parseInt(document.getElementById('addIncomeSlider').value);
     
@@ -1758,9 +1759,11 @@ function renderBurnDownChart(data) {
     // Prompt says "Must match styling of your existing D3 charts".
     // I will try to use global 'd3'.
     if (typeof d3 === 'undefined') {
-        document.getElementById('burnDownChart').innerHTML = "<p style='padding:20px'>D3 Library not found. Chart cannot render.</p>";
-        return;
-    }
+  document.getElementById('burnDownChart').innerHTML =
+    "D3 Library not found. Chart cannot render.";
+  return;
+}
+
     
     // Clear previous
     const container = d3.select("#burnDownChart");
