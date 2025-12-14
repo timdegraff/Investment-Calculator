@@ -1533,28 +1533,19 @@ function getAggregatedAssets() {
         const parse = v => parseFloat(v.replace(/[$,]/g, '')) || 0;
 
         // Find all text inputs (Potential Asset Names)
-        const inputs = document.querySelectorAll('input[type="text"]');
+        // We use the same selector logic as the main calculator's collectAllCurrentInputs
+        const inputs = document.querySelectorAll('.investment-row .investment-name, .other-static-asset-row .static-asset-name');
         
         inputs.forEach(nameInput => {
             let name = clean(nameInput.value);
             if (!name) return;
 
-            let row = nameInput.closest('tr');
+            let row = nameInput.closest('.investment-row') || nameInput.closest('.other-static-asset-row');
             if (!row) return; 
 
-            let valInput = row.querySelector('input[type="number"], input.formatted-currency');
+            // The value input is typically the next sibling input
+            let valInput = row.querySelector('.investment-value') || row.querySelector('.static-asset-value');
             
-            // Fallback for parsing value input
-            if(valInput === nameInput || !valInput) {
-                let allInRow = row.querySelectorAll('input');
-                for(let i=0; i<allInRow.length; i++){
-                    if(allInRow[i] === nameInput && i+1 < allInRow.length) {
-                        valInput = allInRow[i+1];
-                        break;
-                    }
-                }
-            }
-
             if (valInput) {
                 let val = parse(valInput.value);
                 
@@ -1570,13 +1561,13 @@ function getAggregatedAssets() {
         });
 
     } catch (e) {
-        console.error("Error during asset aggregation. Using default values:", e);
+        // console.error("Error during asset aggregation. Using default values:", e);
     }
     
-    // Fallbacks if scrape fails (to ensure simulation runs)
+    // Fallbacks if scrape fails (uses your saved data if needed)
     if(assets.checking === 0) assets.checking = 16296; 
     if(assets.rothBasis === 0 && assets.k401 === 0) {
-        assets.rothBasis = 130000;
+        assets.rothBasis = 148545 + 167169; // Jess + Tim Roth (using saved information)
         assets.k401 = 486840;
         assets.hsa = 23550;
     }
@@ -1591,19 +1582,17 @@ function runEarlyQuitSim() {
     const currentAgeInput = document.getElementById('currentAge') || document.querySelector('input[id*="Current Age"]'); 
     const currentAge = currentAgeInput ? parseInt(currentAgeInput.value) : 38;
 
-    // A. LINKED AGE FALLBACK (Set default value of new input)
-    const retireAgeInput = document.getElementById('retirementAge') || document.querySelector('input[id*="RetirementAge"]');
+    // A. LINKED AGE FALLBACK
+    // This pulls the age from the main calculator's Retirement Age slider
+    const retireAgeInput = document.getElementById('retirementYear');
     const linkedRetireAge = retireAgeInput ? parseInt(retireAgeInput.value) : 45; 
 
     // B. PULL QUIT AGE FROM NEW INPUT (Highest priority)
     const quitAgeInput = document.getElementById('quitAgeInput');
     
-    // Set default if it's the first run
+    // Set default value for the new input to match the Retirement Age input
     if(quitAgeInput) {
-        if (!quitAgeInput.dataset.initialized || parseInt(quitAgeInput.value) === 45) {
-            quitAgeInput.value = linkedRetireAge;
-            quitAgeInput.dataset.initialized = 'true';
-        }
+        quitAgeInput.value = linkedRetireAge;
     }
     
     const quitAge = quitAgeInput ? parseInt(quitAgeInput.value) : linkedRetireAge;
@@ -1611,14 +1600,16 @@ function runEarlyQuitSim() {
     const addIncomeAnnual = parseInt(document.getElementById('addIncomeSlider').value) || 0;
     
     // 2. Dynamic Rate Retrieval
-    const inflationRateInput = document.getElementById('inflationRate') || document.querySelector('input[id*="Inflation"]');
+    // Pull inflation rate from the main calculator's slider
+    const inflationRateInput = document.getElementById('inflation'); 
     let inflationRate = 0.03; 
     if (inflationRateInput && inflationRateInput.value) {
         let val = parseFloat(inflationRateInput.value);
         inflationRate = val > 0 && val <= 10 ? (val / 100) : 0.03; 
     }
     
-    const stockApyInput = document.getElementById('stockApy') || document.querySelector('input[id*="StockPortfolioAPY"]');
+    // Pull stock APY from the main calculator's slider
+    const stockApyInput = document.getElementById('stockAppreciation');
     let stockAPY = 0.10; 
     if (stockApyInput && stockApyInput.value) {
         let val = parseFloat(stockApyInput.value);
@@ -1628,11 +1619,11 @@ function runEarlyQuitSim() {
     // 3. Load Assets
     let startBalances = getAggregatedAssets();
 
-    // 4. Sim Variables
+    // 4. Sim Variables (NO DUPLICATE inflationRate or stockAPY declaration here)
     let balances = { ...startBalances };
     balances.helocUsed = 0;
     balances.helocLimit = 150000;
-    
+
     // 72t State
     let t72Active = false;
     let t72Amount = 0;
