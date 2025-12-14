@@ -1174,11 +1174,14 @@
                         <div class="mb-2"><label for="retirementDrawRatePost62" class="label-style">Post-SS Draw Rate (%)</label><div class="slider-input-wrapper"><span class="slider-value-display" id="retirementDrawRatePost62Value"></span><input type="range" id="retirementDrawRatePost62" min="0" max="10" step="0.5"></div></div>
                         <div class="mb-2"><label for="socialSecurityStartAge" class="label-style">SS Start Age</label><div class="slider-input-wrapper"><span class="slider-value-display" id="socialSecurityStartAgeValue"></span><input type="range" id="socialSecurityStartAge" min="62" max="70" step="1"></div></div>
                         <div class="mb-2"><label id="socialSecurityMonthlyLabel" class="label-style">SS Monthly ($)</label><div class="slider-input-wrapper"><span class="slider-value-display" id="socialSecurityMonthlyValue"></span><input type="range" id="socialSecurityMonthly" min="0" max="5000" step="100"></div></div>
-                        <div class="mb-2"><label for="retirementYear" class="label-style">Retirement Age</label><div class="slider-input-wrapper"><span class="slider-value-display" id="retirementYearValue"></span><input type="range" id="retirementYear" min="38" max="80" step="1"></div></div>
+                        <div class="mb-2"><label for="retirementYear" class="label-style">Retirement Age (for Draw)</label>
+                            <div class="slider-input-wrapper">
+                                <span class="slider-value-display" id="retirementYearValue"></span>
+                                <input type="range" id="retirementYear" min="38" max="70" value="55" step="1" 
+                                       oninput="updateSliderValueDisplay(this, retirementYearValue, '')" 
+                                       onchange="calculateFinancials(true); runEarlyQuitSim()">
+                            </div>
                     </div>
-                </div>
-            </div>
-            
             <div class="bg-orange-50 p-6 rounded-lg shadow-md border border-orange-200 mt-8">
                 <h2 class="text-2xl font-bold mb-4 text-orange-700">3. 72(t) Fixed Distribution Projection</h2>
                 <p class="text-sm text-orange-700 mb-4">This projection calculates **fixed annual distributions** from a 401K account using the Amortization Method (based on IRS Uniform Lifetime Table and a fixed 5% interest rate). The 401K balance grows by your "Stock APY" rate. The calculation starts at your selected retirement age and is automatically recalculated at age 60.</p>
@@ -1245,7 +1248,7 @@
             <ul style="font-size: 14px; line-height: 1.6;">
                 <li>
                     Quit Age: 
-                    <input type="number" id="quitAgeInput" min="38" max="70" value="45" style="width: 50px; border: 1px solid #ccc; text-align: center;" onchange="runEarlyQuitSim()"> 
+                    <input type="number" id="quitAgeInput" min="38" max="70" value="55" style="width: 50px; border: 1px solid #ccc; text-align: center;" onchange="runEarlyQuitSim()"> 
                     (Overrides Retirement Age)
                 </li>
             </ul>
@@ -1527,26 +1530,21 @@ function getAggregatedAssets() {
         bitcoin: 0, metals: 0, checking: 0
     };
 
-    // Safety: Use try-catch to prevent a single parsing error from crashing the entire burn-down simulation
+    // CRITICAL: Safety block to prevent a single input error from crashing the simulation
     try {
         const clean = t => t ? t.toLowerCase().trim() : "";
-        const parse = v => parseFloat(v.replace(/[$,]/g, '')) || 0;
+        // Use cleanInputNumber utility function already defined in the main code
+        const parse = v => cleanInputNumber(v); 
 
-        // Find all text inputs (Potential Asset Names)
-        // We use the same selector logic as the main calculator's collectAllCurrentInputs
-        const inputs = document.querySelectorAll('.investment-row .investment-name, .other-static-asset-row .static-asset-name');
+        // Selectors based on how assets are added (Source: 1553, 1559)
+        const assetRows = document.querySelectorAll('.investment-row, .other-static-asset-row');
         
-        inputs.forEach(nameInput => {
-            let name = clean(nameInput.value);
-            if (!name) return;
-
-            let row = nameInput.closest('.investment-row') || nameInput.closest('.other-static-asset-row');
-            if (!row) return; 
-
-            // The value input is typically the next sibling input
-            let valInput = row.querySelector('.investment-value') || row.querySelector('.static-asset-value');
+        assetRows.forEach(row => {
+            const nameInput = row.querySelector('.investment-name') || row.querySelector('.static-asset-name');
+            const valInput = row.querySelector('.investment-value') || row.querySelector('.static-asset-value');
             
-            if (valInput) {
+            if (nameInput && valInput) {
+                let name = clean(nameInput.value);
                 let val = parse(valInput.value);
                 
                 // Logic Mappings
@@ -1561,13 +1559,13 @@ function getAggregatedAssets() {
         });
 
     } catch (e) {
-        // console.error("Error during asset aggregation. Using default values:", e);
+        // If aggregation fails, fall back to default assets
+        console.error("Error during early quit asset aggregation:", e);
     }
     
-    // Fallbacks if scrape fails (uses your saved data if needed)
-    if(assets.checking === 0) assets.checking = 16296; 
-    if(assets.rothBasis === 0 && assets.k401 === 0) {
-        assets.rothBasis = 148545 + 167169; // Jess + Tim Roth (using saved information)
+    // Safety net with Tim's approximate figures if live data failed
+    if(assets.checking === 0 && assets.rothBasis === 0 && assets.k401 === 0) {
+        assets.rothBasis = 315714; // Combined Roth
         assets.k401 = 486840;
         assets.hsa = 23550;
     }
@@ -1578,27 +1576,41 @@ function getAggregatedAssets() {
 
 // --- 6. MAIN BURN-DOWN SIMULATION (UPDATED QUIT AGE RETRIEVAL) ---
 function runEarlyQuitSim() {
-    // 1. Gather Inputs
-    const currentAgeInput = document.getElementById('currentAge') || document.querySelector('input[id*="Current Age"]'); 
+// 1. Gather Inputs
+    const currentAgeInput = document.getElementById('currentAge'); 
     const currentAge = currentAgeInput ? parseInt(currentAgeInput.value) : 38;
 
-    // A. LINKED AGE FALLBACK
-    // This pulls the age from the main calculator's Retirement Age slider
-    const retireAgeInput = document.getElementById('retirementYear');
-    const linkedRetireAge = retireAgeInput ? parseInt(retireAgeInput.value) : 45; 
+    // A. LINKED AGE (Pulls from Retirement Assumptions - Section 3)
+    const retireAgeInput = document.getElementById('retirementYear'); 
+    const linkedRetireAge = retireAgeInput ? parseInt(retireAgeInput.value) : 55; 
 
-    // B. PULL QUIT AGE FROM NEW INPUT (Highest priority)
+    // B. PULL QUIT AGE FROM DEDICATED QUIT PANEL INPUT (Highest priority)
     const quitAgeInput = document.getElementById('quitAgeInput');
+    let quitAge = linkedRetireAge;
     
-    // Set default value for the new input to match the Retirement Age input
+    // Set default value for the quit panel input to match the linked Retirement Age
     if(quitAgeInput) {
-        quitAgeInput.value = linkedRetireAge;
+        // Only set the initial value if it hasn't been used yet
+        if (!quitAgeInput.dataset.initialized || parseInt(quitAgeInput.value) === 55) {
+            quitAgeInput.value = linkedRetireAge;
+            quitAgeInput.dataset.initialized = 'true';
+        }
+        // Use the explicit quit panel input value
+        quitAge = parseInt(quitAgeInput.value);
     }
     
-    const quitAge = quitAgeInput ? parseInt(quitAgeInput.value) : linkedRetireAge;
+    // Safety check - Quit Age must be at least Current Age
+    if (quitAge < currentAge) {
+         quitAge = currentAge; 
+         if(quitAgeInput) quitAgeInput.value = currentAge;
+    }
+    
+    // Update the UI if a display element exists (optional)
+    if (document.getElementById('simQuitAgeDisplay')) {
+         document.getElementById('simQuitAgeDisplay').innerText = quitAge;
+    }
 
     const addIncomeAnnual = parseInt(document.getElementById('addIncomeSlider').value) || 0;
-    
     // 2. Dynamic Rate Retrieval
     // Pull inflation rate from the main calculator's slider
     const inflationRateInput = document.getElementById('inflation'); 
