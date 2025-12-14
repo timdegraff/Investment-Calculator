@@ -1243,8 +1243,11 @@
         <div style="flex: 1; min-width: 300px; padding: 10px; background: #fff; border: 1px solid #ddd;">
             <strong>Simulation Status:</strong>
             <ul style="font-size: 14px; line-height: 1.6;">
-                <li>Quit Age: <span id="simQuitAgeDisplay" style="font-weight:bold;">--</span> (Linked to Retirement Age)</li>
-                <li>Assets Found: <span id="assetsFoundDisplay" style="color:blue;">Scanning...</span></li> 
+                <li>
+                    Quit Age: 
+                    <input type="number" id="quitAgeInput" min="38" max="70" value="45" style="width: 50px; border: 1px solid #ccc; text-align: center;" onchange="runEarlyQuitSim()"> 
+                    (Overrides Retirement Age)
+                </li>
             </ul>
         </div>
     </div>
@@ -1517,61 +1520,62 @@ function updateBudgetTotals() {
     document.getElementById('totalAnnualDisplay').innerText = formatCurrency(monthly * 12);
 }
 
-// --- 5. ASSET AGGREGATION ---
+// --- 5. ASSET AGGREGATION (CRITICAL FIX FOR EMPTY TABLE) ---
 function getAggregatedAssets() {
-    // Scans the main calculator inputs to build the burn-down bucket list
     let assets = {
         k401: 0, rothBasis: 0, hsa: 0, brokerage: 0,
         bitcoin: 0, metals: 0, checking: 0
     };
 
-    // Helper: Normalize text
-    const clean = t => t ? t.toLowerCase().trim() : "";
-    const parse = v => parseFloat(v.replace(/[$,]/g, '')) || 0;
+    // Safety: Use try-catch to prevent a single parsing error from crashing the entire burn-down simulation
+    try {
+        const clean = t => t ? t.toLowerCase().trim() : "";
+        const parse = v => parseFloat(v.replace(/[$,]/g, '')) || 0;
 
-    // Find all text inputs (Potential Asset Names)
-    const inputs = document.querySelectorAll('input[type="text"]');
-    
-    inputs.forEach(nameInput => {
-        let name = clean(nameInput.value);
-        if (!name) return;
+        // Find all text inputs (Potential Asset Names)
+        const inputs = document.querySelectorAll('input[type="text"]');
+        
+        inputs.forEach(nameInput => {
+            let name = clean(nameInput.value);
+            if (!name) return;
 
-        // Try to find the value in the same row
-        let row = nameInput.closest('tr');
-        if (!row) return; // Skip if not in a table row
+            let row = nameInput.closest('tr');
+            if (!row) return; 
 
-        // Look for the number input or formatted currency input
-        let valInput = row.querySelector('input[type="number"], input.formatted-currency');
-        // If the found input is the same as the name input, look for the 'next' one
-        if(valInput === nameInput) {
-            // Primitive search for next input in row
-            let allInRow = row.querySelectorAll('input');
-            for(let i=0; i<allInRow.length; i++){
-                if(allInRow[i] === nameInput && i+1 < allInRow.length) {
-                    valInput = allInRow[i+1];
-                    break;
+            let valInput = row.querySelector('input[type="number"], input.formatted-currency');
+            
+            // Fallback for parsing value input
+            if(valInput === nameInput || !valInput) {
+                let allInRow = row.querySelectorAll('input');
+                for(let i=0; i<allInRow.length; i++){
+                    if(allInRow[i] === nameInput && i+1 < allInRow.length) {
+                        valInput = allInRow[i+1];
+                        break;
+                    }
                 }
             }
-        }
 
-        if (valInput) {
-            let val = parse(valInput.value);
-            
-            // Logic Mappings
-            if (name.includes("401")) assets.k401 += val;
-            else if (name.includes("roth")) assets.rothBasis += val;
-            else if (name.includes("hsa")) assets.hsa += val;
-            else if (name.includes("brokerage")) assets.brokerage += val;
-            else if (name.includes("bitcoin") || name.includes("btc")) assets.bitcoin += val;
-            else if (name.includes("gold") || name.includes("gld") || name.includes("silver") || name.includes("slv") || name.includes("metal")) assets.metals += val;
-            else if (name.includes("checking") || name.includes("cash") || name.includes("savings")) assets.checking += val;
-        }
-    });
+            if (valInput) {
+                let val = parse(valInput.value);
+                
+                // Logic Mappings
+                if (name.includes("401")) assets.k401 += val;
+                else if (name.includes("roth")) assets.rothBasis += val;
+                else if (name.includes("hsa")) assets.hsa += val;
+                else if (name.includes("brokerage")) assets.brokerage += val;
+                else if (name.includes("bitcoin") || name.includes("btc")) assets.bitcoin += val;
+                else if (name.includes("gold") || name.includes("gld") || name.includes("silver") || name.includes("slv") || name.includes("metal")) assets.metals += val;
+                else if (name.includes("checking") || name.includes("cash") || name.includes("savings")) assets.checking += val;
+            }
+        });
 
-    // Fallbacks if scrape fails (e.g. for "Checking" if it's a dedicated variable)
-    if(assets.checking === 0) assets.checking = 16296; // Default from profile
+    } catch (e) {
+        console.error("Error during asset aggregation. Using default values:", e);
+    }
+    
+    // Fallbacks if scrape fails (to ensure simulation runs)
+    if(assets.checking === 0) assets.checking = 16296; 
     if(assets.rothBasis === 0 && assets.k401 === 0) {
-        // Assume scrape failed, load defaults
         assets.rothBasis = 130000;
         assets.k401 = 486840;
         assets.hsa = 23550;
@@ -1580,57 +1584,51 @@ function getAggregatedAssets() {
     return assets;
 }
 
-// --- 6. MAIN BURN-DOWN SIMULATION ---
 
-function formatCurrency(num) {
-    return '$' + Math.round(num).toLocaleString();
-}
-
+// --- 6. MAIN BURN-DOWN SIMULATION (UPDATED QUIT AGE RETRIEVAL) ---
 function runEarlyQuitSim() {
     // 1. Gather Inputs
     const currentAgeInput = document.getElementById('currentAge') || document.querySelector('input[id*="Current Age"]'); 
     const currentAge = currentAgeInput ? parseInt(currentAgeInput.value) : 38;
 
-    // Robustly link to Retirement Age: Check ID, then check other common attributes.
-    const retireAgeInput = document.getElementById('retirementAge') || 
-                           document.querySelector('input[name="retirementAge"]') ||
-                           document.querySelector('input[id*="RetirementAge"]');
+    // A. LINKED AGE FALLBACK (Set default value of new input)
+    const retireAgeInput = document.getElementById('retirementAge') || document.querySelector('input[id*="RetirementAge"]');
+    const linkedRetireAge = retireAgeInput ? parseInt(retireAgeInput.value) : 45; 
 
-    // If input is found, use its value; otherwise, default to 45.
-    const quitAge = retireAgeInput ? parseInt(retireAgeInput.value) : 45; 
+    // B. PULL QUIT AGE FROM NEW INPUT (Highest priority)
+    const quitAgeInput = document.getElementById('quitAgeInput');
     
-    // Update Display with the linked Quit Age
-    document.getElementById('simQuitAgeDisplay').innerText = quitAge;
+    // Set default if it's the first run
+    if(quitAgeInput) {
+        if (!quitAgeInput.dataset.initialized || parseInt(quitAgeInput.value) === 45) {
+            quitAgeInput.value = linkedRetireAge;
+            quitAgeInput.dataset.initialized = 'true';
+        }
+    }
+    
+    const quitAge = quitAgeInput ? parseInt(quitAgeInput.value) : linkedRetireAge;
 
-    const addIncomeAnnual = parseInt(document.getElementById('addIncomeSlider').value);
+    const addIncomeAnnual = parseInt(document.getElementById('addIncomeSlider').value) || 0;
     
-    // 2. Dynamic Rate Retrieval (UPDATED LOGIC)
-    
-    // Find the input field for inflation rate (likely near the other rates)
-    const inflationRateInput = document.getElementById('inflationRate') || 
-                               document.querySelector('input[id*="Inflation"]') ||
-                               document.querySelector('input[id*="inflation"]');
-    
-    // Attempt to pull the value, defaulting to 0.03 (3%) if the input is not found or is empty/invalid.
-    // The input value must be divided by 100 if the user enters "3" instead of "0.03".
-    let inflationRate = 0.03; // Default fallback (your preference)
+    // 2. Dynamic Rate Retrieval
+    const inflationRateInput = document.getElementById('inflationRate') || document.querySelector('input[id*="Inflation"]');
+    let inflationRate = 0.03; 
     if (inflationRateInput && inflationRateInput.value) {
         let val = parseFloat(inflationRateInput.value);
-        // Assume the user enters a percentage (e.g., 3 or 3.0)
         inflationRate = val > 0 && val <= 10 ? (val / 100) : 0.03; 
     }
     
-    // Find stock APY input field
-    const stockApyInput = document.getElementById('stockApy') ||
-                          document.querySelector('input[id*="StockPortfolioAPY"]');
-                          
-    let stockAPY = 0.10; // Default fallback (your preference)
+    const stockApyInput = document.getElementById('stockApy') || document.querySelector('input[id*="StockPortfolioAPY"]');
+    let stockAPY = 0.10; 
     if (stockApyInput && stockApyInput.value) {
         let val = parseFloat(stockApyInput.value);
         stockAPY = val > 0 && val <= 15 ? (val / 100) : 0.10;
     }
+    
+    // 3. Load Assets
+    let startBalances = getAggregatedAssets();
 
-    // 3. Sim Variables
+    // 4. Sim Variables
     let balances = { ...startBalances };
     balances.helocUsed = 0;
     balances.helocLimit = 150000;
@@ -1642,7 +1640,7 @@ function runEarlyQuitSim() {
     let simData = [];
     let endAge = 80;
 
-    // 4. Simulation Loop
+    // 5. Simulation Loop
     for (let age = currentAge; age <= endAge; age++) {
         let year = new Date().getFullYear() + (age - currentAge);
         let isRetired = age >= quitAge;
