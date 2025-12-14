@@ -1179,7 +1179,7 @@
                                 <span class="slider-value-display" id="retirementYearValue"></span>
                                 <input type="range" id="retirementYear" min="38" max="70" value="55" step="1" 
                                        oninput="updateSliderValueDisplay(this, retirementYearValue, '')" 
-                                       onchange="calculateFinancials(true); runEarlyQuitSim()">
+                                       onchange="calculateFinancials(true); runEarlyQuitSim(budgetData)">
                             </div>
                     </div>
             <div class="bg-orange-50 p-6 rounded-lg shadow-md border border-orange-200 mt-8">
@@ -1248,7 +1248,7 @@
             <ul style="font-size: 14px; line-height: 1.6;">
                 <li>
                     Quit Age: 
-                    <input type="number" id="quitAgeInput" min="38" max="70" value="55" style="width: 50px; border: 1px solid #ccc; text-align: center;" onchange="runEarlyQuitSim()"> 
+                    <input type="number" id="quitAgeInput" min="38" max="70" value="55" style="width: 50px; border: 1px solid #ccc; text-align: center;" onchange="runEarlyQuitSim(budgetData)"> 
                     (Overrides Retirement Age)
                 </li>
             </ul>
@@ -1435,7 +1435,7 @@ document.addEventListener('DOMContentLoaded', function() {
 function setupListeners() {
     document.getElementById('addIncomeSlider').addEventListener('input', (e) => {
         document.getElementById('addIncomeDisplay').innerText = parseInt(e.target.value).toLocaleString();
-        runEarlyQuitSim();
+        runEarlyQuitSim(budgetData);
     });
 }
 
@@ -1456,14 +1456,14 @@ function addBudgetRow() {
     budgetData.push({ name: "New Expense", val: 0 });
     initBudgetTable(); 
     saveBudget();
-    runEarlyQuitSim();
+    runEarlyQuitSim(budgetData);
 }
 
 function deleteBudgetRow(index) {
     budgetData.splice(index, 1);
     initBudgetTable();
     saveBudget();
-    runEarlyQuitSim();
+    runEarlyQuitSim(budgetData);
 }
 
 function updateBudgetValue(index, newVal) {
@@ -1481,7 +1481,7 @@ function updateBudgetValue(index, newVal) {
     
     updateBudgetTotals();
     saveBudget();
-    runEarlyQuitSim();
+    runEarlyQuitSim(budgetData);
 
     // Trigger delayed sort
     clearTimeout(sortDebounceTimer);
@@ -1495,7 +1495,7 @@ function updateBudgetValue(index, newVal) {
 function updateBudgetName(index, newName) {
     budgetData[index].name = newName;
     saveBudget();
-    if(newName.toLowerCase().includes("medical")) runEarlyQuitSim();
+    if(newName.toLowerCase().includes("medical")) runEarlyQuitSim(budgetData);
 }
 
 function saveBudget() {
@@ -1575,7 +1575,7 @@ function getAggregatedAssets() {
 
 
 // --- 6. MAIN BURN-DOWN SIMULATION (UPDATED QUIT AGE RETRIEVAL) ---
-function runEarlyQuitSim() {
+function runEarlyQuitSim(budgetData) {
 // 1. Gather Inputs
     const currentAgeInput = document.getElementById('currentAge'); 
     const currentAge = currentAgeInput ? parseInt(currentAgeInput.value) : 38;
@@ -1677,8 +1677,6 @@ function runEarlyQuitSim() {
             isMedicaid = benefits.medicaidEligible;
         }
 
-        // ... rest of the loop continues ...
-
         let baseBudget = budgetData.reduce((s, i) => s + i.val, 0) * 12;
         let totalGrossBudget = baseBudget * inflationFactor;
 
@@ -1687,7 +1685,8 @@ function runEarlyQuitSim() {
         let medicalCostRaw = 0;
 
         if (isRetired) {
-            let medicalItem = budgetData.find(b => b.name.toLowerCase().includes("medical"));
+            // Updated search logic to find the 'medical' item in the array
+            let medicalItem = budgetData.find(b => b.name && b.name.toLowerCase().includes("medical"));
             medicalCostRaw = medicalItem ? (medicalItem.val * 12 * inflationFactor) : 0;
             
             if (isMedicaid) {
@@ -1831,6 +1830,7 @@ function renderBurnDownTable(data) {
         tbody.appendChild(tr);
     });
 }
+</div>
 </script>
         </div>
     </div>
