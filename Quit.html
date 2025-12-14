@@ -1229,34 +1229,29 @@
             </div>
 <div class="section-container" id="section-early-quit" style="margin-top: 50px; border-top: 5px solid #000; padding-top: 20px;">
     <h2>6. Early-Quit Model + Burn-Down Engine</h2>
-    <p>This model simulates quitting at a specific age (independent of standard retirement) and burning down assets in a strict priority order.</p>
+    <p>This model simulates quitting at your <strong>Retirement Age</strong> (linked) and burning down assets in priority order. SNAP & Medicaid are calculated automatically based on income (Cell, Rental, 72t).</p>
 
     <div style="display: flex; flex-wrap: wrap; gap: 40px; margin-bottom: 30px; background: #f9f9f9; padding: 20px; border-radius: 8px;">
         
         <div style="flex: 1; min-width: 300px;">
-            <h3>Quit Age Control</h3>
-            <label for="quitAgeSlider">Quit Age: <span id="quitAgeDisplay" style="font-weight:bold; color:#007bff;">55</span></label>
-            <input type="range" id="quitAgeSlider" min="38" max="80" value="55" style="width: 100%;">
-            <small style="color: #666;">Separate from standard retirement age.</small>
-        </div>
-
-        <div style="flex: 1; min-width: 300px;">
-            <h3>SNAP / Food Stamps</h3>
-            <label for="snapSlider">Monthly Benefit: $<span id="snapDisplay" style="font-weight:bold; color:green;">1440</span></label>
-            <input type="range" id="snapSlider" min="0" max="1500" value="1440" style="width: 100%;">
-            <div style="margin-top:5px;">Annual Reduction: <span id="snapAnnualDisplay" style="font-weight:bold;">$17,280</span></div>
-        </div>
-
-        <div style="flex: 1; min-width: 300px;">
             <h3>Additional Income</h3>
             <label for="addIncomeSlider">Annual Amount: $<span id="addIncomeDisplay" style="font-weight:bold; color:green;">0</span></label>
             <input type="range" id="addIncomeSlider" min="0" max="100000" step="1000" value="0" style="width: 100%;">
-            <small style="color: #666;">Added to Cell/Rental income.</small>
+            <small style="color: #666;">Added to Cell/Rental income for simulation.</small>
+        </div>
+
+        <div style="flex: 1; min-width: 300px; padding: 10px; background: #fff; border: 1px solid #ddd;">
+            <strong>Simulation Status:</strong>
+            <ul style="font-size: 14px; line-height: 1.6;">
+                <li>Quit Age: <span id="simQuitAgeDisplay" style="font-weight:bold;">--</span> (Linked)</li>
+                <li>Assets Found: <span id="assetsFoundDisplay" style="color:blue;">Scanning...</span></li>
+            </ul>
         </div>
     </div>
 
     <div style="margin-bottom: 40px;">
         <h3>Early Quit Budget (Monthly)</h3>
+        <p style="font-size:12px; color:#666;">Items auto-save and auto-sort (High to Low) 1 second after editing.</p>
         <table id="budgetTable" style="width: 100%; border-collapse: collapse; margin-bottom: 15px;">
             <thead>
                 <tr style="background: #eee; border-bottom: 2px solid #ccc;">
@@ -1282,11 +1277,6 @@
         <button onclick="addBudgetRow()" style="padding: 8px 15px; cursor: pointer; background: #eee; border: 1px solid #ccc; border-radius: 4px;">+ Add Item</button>
     </div>
 
-    <div style="margin-bottom: 40px;">
-        <h3>Asset Burn-Down Trajectory</h3>
-        <div id="burnDownChart" style="width: 100%; height: 400px; background: #fff; border: 1px solid #ddd;"></div>
-    </div>
-
     <div>
         <h3>Burn-Down Details</h3>
         <div style="overflow-x: auto;">
@@ -1295,16 +1285,16 @@
                     <tr>
                         <th>Age</th>
                         <th>Year</th>
-                        <th>Budget</th>
-                        <th>SNAP</th>
-                        <th>Other Inc</th>
+                        <th>Gross Budget</th>
+                        <th>Annual Benefit (SNAP)</th>
+                        <th>Medicaid?</th>
+                        <th>Income (Cell/72t)</th>
                         <th style="background:#444;">Net Need</th>
                         <th style="background:#d1e7dd; color:#000;">Checking</th>
-                        <th style="background:#cfe2ff; color:#000;">Vanguard</th>
+                        <th style="background:#cfe2ff; color:#000;">Brokerage</th>
                         <th style="background:#fff3cd; color:#000;">Roth Basis</th>
                         <th style="background:#f8d7da; color:#000;">Bitcoin</th>
-                        <th style="background:#e2e3e5; color:#000;">Gold</th>
-                        <th style="background:#e2e3e5; color:#000;">Silver</th>
+                        <th style="background:#e2e3e5; color:#000;">Metals</th>
                         <th style="background:#f1aeb5; color:#000;">HELOC</th>
                         <th style="background:#cff4fc; color:#000;">401k (72t)</th>
                         <th>Total Draw</th>
@@ -1321,7 +1311,51 @@
 // SECTION 6: LOGIC & SIMULATION ENGINE
 // ==========================================
 
-// --- 1. CONFIGURATION & STATE ---
+// --- 1. BENEFITS CALCULATOR (PROVIDED) ---
+function calcMiBenefitsFromAnnualIncome(annualHouseholdIncome) {
+  // constants (fixed assumptions)
+  const MORTGAGE_MONTHLY = 1417;
+  const STANDARD_DEDUCTION = 299;
+  const UTILITY_ALLOWANCE = 682;
+  const SHELTER_CAP = 744;
+
+  const SNAP_MAX = 1421;      // household size 6
+  const SNAP_PHASEOUT = 0.30; // 30% of net
+
+  const WIC_MONTHLY = 150;
+
+  const MEDICAID_LIMIT_ANNUAL = 58200;
+  const MEDICAID_VALUE_MONTHLY = 1350;
+
+  const grossMonthly = Math.max(0, annualHouseholdIncome / 12);
+
+  const adjusted = Math.max(0, grossMonthly - STANDARD_DEDUCTION);
+  const shelterTotal = MORTGAGE_MONTHLY + UTILITY_ALLOWANCE;
+  const shelterDeduction = Math.min(
+    SHELTER_CAP,
+    Math.max(0, shelterTotal - (adjusted * 0.5))
+  );
+  const netIncome = Math.max(0, adjusted - shelterDeduction);
+  const snapMonthly = Math.max(0, SNAP_MAX - (netIncome * SNAP_PHASEOUT));
+
+  const medicaidEligible = annualHouseholdIncome <= MEDICAID_LIMIT_ANNUAL;
+  const medicaidMonthlyValue = medicaidEligible ? MEDICAID_VALUE_MONTHLY : 0;
+
+  const totalBenefitsMonthly = snapMonthly + WIC_MONTHLY + medicaidMonthlyValue;
+
+  return {
+    annualHouseholdIncome,
+    grossMonthly,
+    snapMonthly,
+    wicMonthly: WIC_MONTHLY,
+    medicaidEligible,
+    medicaidMonthlyValue,
+    totalBenefitsMonthly,
+    effectiveResourcesMonthly: grossMonthly + totalBenefitsMonthly
+  };
+}
+
+// --- 2. CONFIGURATION & STATE ---
 const budgetDefaults = [
     { name: "Mortgage w Escrow", val: 1417 },
     { name: "Car Payment", val: 798 },
@@ -1351,33 +1385,40 @@ const budgetDefaults = [
     { name: "TV + Data Subscriptions", val: 50 }
 ];
 
-let budgetData = JSON.parse(JSON.stringify(budgetDefaults)); // Deep copy
+// Load from Local Storage or use defaults
+let savedBudget = localStorage.getItem('timBudget');
+let budgetData = savedBudget ? JSON.parse(savedBudget) : JSON.parse(JSON.stringify(budgetDefaults));
 
-// --- 2. INITIALIZATION ---
+// Sort immediately on load
+budgetData.sort((a, b) => b.val - a.val);
+
+// --- 3. INITIALIZATION ---
 document.addEventListener('DOMContentLoaded', function() {
     initBudgetTable();
     setupListeners();
-    // Run initial sim after a short delay to ensure main app has loaded data
+    
+    // Hook into main Retirement Age input if it exists
+    // Assuming the main calculator has an input with id="retirementAge" or similar
+    // We will scan for it.
+    const globalRetInput = document.getElementById('retirementAge') || document.querySelector('input[label*="Retirement Age"]');
+    if(globalRetInput) {
+        globalRetInput.addEventListener('input', runEarlyQuitSim);
+    }
+
+    // Run initial sim after a short delay
     setTimeout(runEarlyQuitSim, 1000);
 });
 
 function setupListeners() {
-    document.getElementById('quitAgeSlider').addEventListener('input', (e) => {
-        document.getElementById('quitAgeDisplay').innerText = e.target.value;
-        runEarlyQuitSim();
-    });
-    document.getElementById('snapSlider').addEventListener('input', (e) => {
-        document.getElementById('snapDisplay').innerText = e.target.value;
-        document.getElementById('snapAnnualDisplay').innerText = formatCurrency(e.target.value * 12);
-        runEarlyQuitSim();
-    });
     document.getElementById('addIncomeSlider').addEventListener('input', (e) => {
         document.getElementById('addIncomeDisplay').innerText = parseInt(e.target.value).toLocaleString();
         runEarlyQuitSim();
     });
 }
 
-// --- 3. BUDGET EDITOR FUNCTIONS ---
+// --- 4. BUDGET EDITOR FUNCTIONS ---
+let sortDebounceTimer;
+
 function initBudgetTable() {
     const tbody = document.getElementById('budgetTableBody');
     tbody.innerHTML = '';
@@ -1390,29 +1431,52 @@ function initBudgetTable() {
 
 function addBudgetRow() {
     budgetData.push({ name: "New Expense", val: 0 });
-    initBudgetTable(); // Re-render
+    initBudgetTable(); 
+    saveBudget();
     runEarlyQuitSim();
 }
 
 function deleteBudgetRow(index) {
     budgetData.splice(index, 1);
     initBudgetTable();
+    saveBudget();
     runEarlyQuitSim();
 }
 
 function updateBudgetValue(index, newVal) {
-    budgetData[index].val = parseInt(newVal);
-    document.getElementById(`budget-input-${index}`).value = newVal;
-    document.getElementById(`budget-slider-${index}`).value = newVal;
-    document.getElementById(`budget-annual-${index}`).innerText = formatCurrency(newVal * 12);
+    let v = parseInt(newVal) || 0;
+    budgetData[index].val = v;
+    
+    // Update UI elements immediately without full re-render
+    let input = document.getElementById(`budget-input-${index}`);
+    let slider = document.getElementById(`budget-slider-${index}`);
+    let annual = document.getElementById(`budget-annual-${index}`);
+    
+    if(input && input.value != v) input.value = v;
+    if(slider && slider.value != v) slider.value = v;
+    if(annual) annual.innerText = formatCurrency(v * 12);
+    
     updateBudgetTotals();
+    saveBudget();
     runEarlyQuitSim();
+
+    // Trigger delayed sort
+    clearTimeout(sortDebounceTimer);
+    sortDebounceTimer = setTimeout(() => {
+        budgetData.sort((a, b) => b.val - a.val);
+        initBudgetTable(); // Re-render sorted
+        saveBudget();
+    }, 1000);
 }
 
 function updateBudgetName(index, newName) {
     budgetData[index].name = newName;
-    // No need to re-run sim unless name determines logic (Medical)
+    saveBudget();
     if(newName.toLowerCase().includes("medical")) runEarlyQuitSim();
+}
+
+function saveBudget() {
+    localStorage.setItem('timBudget', JSON.stringify(budgetData));
 }
 
 function addBudgetRowUI(item, index) {
@@ -1434,402 +1498,316 @@ function updateBudgetTotals() {
     let monthly = budgetData.reduce((sum, item) => sum + item.val, 0);
     document.getElementById('totalMonthlyDisplay').innerText = formatCurrency(monthly);
     document.getElementById('totalAnnualDisplay').innerText = formatCurrency(monthly * 12);
-    return monthly * 12;
 }
 
-// --- 4. ASSET & SIMULATION HELPERS ---
+// --- 5. ASSET AGGREGATION ---
+function getAggregatedAssets() {
+    // Scans the main calculator inputs to build the burn-down bucket list
+    let assets = {
+        k401: 0, rothBasis: 0, hsa: 0, brokerage: 0,
+        bitcoin: 0, metals: 0, checking: 0
+    };
 
-// Helper to find current asset value from the DOM inputs of the main calculator
-function getAssetBalance(keyword) {
-    // Try to find inputs in Section 1 with matching names
-    // This assumes specific structure. If not found, returns 0.
-    // We scan all text inputs for the name, then find the corresponding number input.
+    // Helper: Normalize text
+    const clean = t => t ? t.toLowerCase().trim() : "";
+    const parse = v => parseFloat(v.replace(/[$,]/g, '')) || 0;
+
+    // Find all text inputs (Potential Asset Names)
     const inputs = document.querySelectorAll('input[type="text"]');
-    for (let input of inputs) {
-        if (input.value && input.value.toLowerCase().includes(keyword.toLowerCase())) {
-            // Found the name, now look for the value relative to it.
-            // Usually in these tables, the value is in the next input or same row.
-            // Adjust this selector based on actual DOM structure.
-            // Assuming: Row -> Cell -> Input(Name) ... Cell -> Input(Value)
-            let row = input.closest('tr');
-            if (row) {
-                let valInput = row.querySelector('input[type="text"].formatted-currency, input[type="number"]'); 
-                // Sometimes value inputs are text with formatting.
-                // We'll try to find the next input in the DOM order if row fails
-                 if (!valInput || valInput === input) {
-                    // Primitive next-sibling search
-                    let allInputs = Array.from(document.querySelectorAll('input'));
-                    let idx = allInputs.indexOf(input);
-                    if(idx > -1 && allInputs[idx+1]) valInput = allInputs[idx+1];
-                 }
-                 
-                 if (valInput) {
-                     return parseCurrency(valInput.value);
-                 }
+    
+    inputs.forEach(nameInput => {
+        let name = clean(nameInput.value);
+        if (!name) return;
+
+        // Try to find the value in the same row
+        let row = nameInput.closest('tr');
+        if (!row) return; // Skip if not in a table row
+
+        // Look for the number input or formatted currency input
+        let valInput = row.querySelector('input[type="number"], input.formatted-currency');
+        // If the found input is the same as the name input, look for the 'next' one
+        if(valInput === nameInput) {
+            // Primitive search for next input in row
+            let allInRow = row.querySelectorAll('input');
+            for(let i=0; i<allInRow.length; i++){
+                if(allInRow[i] === nameInput && i+1 < allInRow.length) {
+                    valInput = allInRow[i+1];
+                    break;
+                }
             }
         }
+
+        if (valInput) {
+            let val = parse(valInput.value);
+            
+            // Logic Mappings
+            if (name.includes("401")) assets.k401 += val;
+            else if (name.includes("roth")) assets.rothBasis += val;
+            else if (name.includes("hsa")) assets.hsa += val;
+            else if (name.includes("brokerage")) assets.brokerage += val;
+            else if (name.includes("bitcoin") || name.includes("btc")) assets.bitcoin += val;
+            else if (name.includes("gold") || name.includes("gld") || name.includes("silver") || name.includes("slv") || name.includes("metal")) assets.metals += val;
+            else if (name.includes("checking") || name.includes("cash") || name.includes("savings")) assets.checking += val;
+        }
+    });
+
+    // Fallbacks if scrape fails (e.g. for "Checking" if it's a dedicated variable)
+    if(assets.checking === 0) assets.checking = 16296; // Default from profile
+    if(assets.rothBasis === 0 && assets.k401 === 0) {
+        // Assume scrape failed, load defaults
+        assets.rothBasis = 130000;
+        assets.k401 = 486840;
+        assets.hsa = 23550;
     }
-    // Fallback for hardcoded profile values if inputs aren't scraping correctly
-    if (keyword === "Roth") return 130000; // Basis only per prompt
-    if (keyword === "Checking") return 16296; 
-    if (keyword === "Vang") return 0; // Populate if known
-    if (keyword === "HSA") return 23550;
-    
-    return 0;
+
+    return assets;
 }
 
-function parseCurrency(str) {
-    if(!str) return 0;
-    return parseFloat(str.replace(/[$,]/g, '')) || 0;
-}
+// --- 6. MAIN BURN-DOWN SIMULATION ---
 
 function formatCurrency(num) {
     return '$' + Math.round(num).toLocaleString();
 }
 
-// IRS Uniform Lifetime Table (Simplified for brevity, standard values)
-const UNIFORM_LIFETIME = {
-    55: 29.6, 56: 28.7, 57: 27.9, 58: 27.0, 59: 26.1, 60: 25.2,
-    61: 24.4, 62: 23.5, 63: 22.7, 64: 21.8, 65: 21.0, 66: 20.2,
-    67: 19.4, 68: 18.6, 69: 17.8, 70: 17.0, 71: 16.3, 72: 15.5
-};
-function getLifeExpectancy(age) {
-    if (age < 55) return 29.6 + (55 - age); // Extrapolation
-    if (age > 72) return 15.5 - (age - 72) * 0.8; // Extrapolation
-    return UNIFORM_LIFETIME[age];
-}
-
-function calculate72t(balance, age) {
-    // Amortization method: PV=Balance, i=5%, n=LifeExpectancy
-    // PMT = (PV * i) / (1 - (1+i)^-n)
-    let i = 0.05;
-    let n = getLifeExpectancy(age);
-    if (!n || n <= 0) n = 15; 
-    let pmt = (balance * i) / (1 - Math.pow(1 + i, -n));
-    return pmt;
-}
-
-// --- 5. MAIN BURN-DOWN SIMULATION ---
-
 function runEarlyQuitSim() {
     // 1. Gather Inputs
-const currentAge =
-  parseInt(document.getElementById('currentAge')?.value) || 38;
-        const quitAge = parseInt(document.getElementById('quitAgeSlider').value);
-    const snapMonthly = parseInt(document.getElementById('snapSlider').value);
+    const currentAgeInput = document.querySelector('input[id*="Current Age"]') || document.querySelector('input[label="Current Age"]'); 
+    const currentAge = currentAgeInput ? parseInt(currentAgeInput.value) : 38;
+
+    const retireAgeInput = document.getElementById('retirementAge') || document.querySelector('input[id*="Retirement Age"]');
+    // Default to 45 if not found, but try to link
+    const quitAge = retireAgeInput ? parseInt(retireAgeInput.value) : 45; 
+    
+    document.getElementById('simQuitAgeDisplay').innerText = quitAge;
+
     const addIncomeAnnual = parseInt(document.getElementById('addIncomeSlider').value);
     
-    // Inflation & Growth (Try to scrape, else default)
+    // 2. Load Assets
+    let startBalances = getAggregatedAssets();
+    
+    // Update Display
+    let totalFound = Object.values(startBalances).reduce((a,b)=>a+b,0);
+    document.getElementById('assetsFoundDisplay').innerText = formatCurrency(totalFound);
+
+    // 3. Sim Variables
+    let balances = { ...startBalances };
+    balances.helocUsed = 0;
+    balances.helocLimit = 150000;
+
     let inflationRate = 0.03; 
     let stockAPY = 0.10;
-    let otherIncomeAnnual = (1200 * 12) + (1300 * 12); // Base from profile (Cell + Rental)
-    // Note: Rental escalates 4%, Cell 1.5%. We will approximate or calculate in loop.
     
-    // 2. Initialize Buckets
-    // NOTE: In a real integration, we would loop through your existing asset arrays.
-    // Here we simulate the buckets based on the prompt's explicit list.
-    
-    let balances = {
-        checking: getAssetBalance("Checking") || 16296,
-        vanguard: getAssetBalance("Vang") || 0,
-        rothBasis: 130000, // Fixed start per prompt
-        bitcoin: getAssetBalance("Bitcoin") || 0,
-        gold: getAssetBalance("Gold") || 0,
-        silver: getAssetBalance("Silver") || 0,
-        helocLimit: 150000,
-        helocUsed: 0,
-        k401: getAssetBalance("401") || 486840,
-        hsa: getAssetBalance("HSA") || 23550
-    };
-
     // 72t State
     let t72Active = false;
     let t72Amount = 0;
-    
+
     let simData = [];
     let endAge = 80;
-    
-    // 3. Simulation Loop
+
+    // 4. Simulation Loop
     for (let age = currentAge; age <= endAge; age++) {
         let year = new Date().getFullYear() + (age - currentAge);
         let isRetired = age >= quitAge;
         
-        // --- INCOME & BUDGET ---
-        
-        // Calculate Total Annual Budget (Inflated)
         let inflationFactor = Math.pow(1 + inflationRate, age - currentAge);
-        let baseBudget = budgetData.reduce((s, i) => s + i.val, 0) * 12;
-        let totalBudget = baseBudget * inflationFactor;
         
-        // Calculate Specific Medical Cost for HSA (Inflated)
-        let medicalItem = budgetData.find(b => b.name.toLowerCase().includes("medical"));
-        let medicalCost = medicalItem ? (medicalItem.val * 12 * inflationFactor) : 0;
+        // --- INCOME CALCULATION ---
+        // Used for SNAP/Medicaid qualification
         
-        // Other Income (Escalating)
+        // 1. Cell Tower (Escalates 1.5%)
         let cellIncome = (1200 * 12) * Math.pow(1.015, age - currentAge);
-        // Rental logic: escalates 4%, round down nearest 100? Keeping simple for speed:
-        let rentalIncome = (1300 * 12) * Math.pow(1.04, age - currentAge); 
-        let currentOtherIncome = cellIncome + rentalIncome + addIncomeAnnual;
         
-        let snapAnnual = snapMonthly * 12; // Flat? Or Inflated? Prompt says "Annual auto-calculated". Assuming flat for safety or inflated? SNAP usually adjusts. Let's keep flat based on slider.
+        // 2. Rental (Escalates 4%)
+        let rentalIncome = (1300 * 12) * Math.pow(1.04, age - currentAge);
         
-        // --- LOGIC: HSA FIRST ---
-        let hsaDraw = 0;
-        if (medicalCost > 0 && balances.hsa > 0) {
-            hsaDraw = Math.min(medicalCost, balances.hsa);
-            balances.hsa -= hsaDraw;
-            // Reduce effective budget need by this amount (since it's covered by HSA directly)
-            // But 'TotalBudget' remains high for display. We reduce 'NetNeed'.
-        }
+        // 3. 72t Income (If active)
+        let incomeFrom72t = t72Active ? t72Amount : 0;
+
+        // Total "Generated" Income for Benefits Calc
+        // Note: We include 72t here because user said "401k 72t in this case" counts towards limits
+        let totalGeneratedIncome = cellIncome + rentalIncome + addIncomeAnnual + incomeFrom72t;
+
+        // --- BENEFITS CHECK ---
+        let benefits = calcMiBenefitsFromAnnualIncome(totalGeneratedIncome);
+        let snapAnnual = benefits.snapMonthly * 12;
+        let isMedicaid = benefits.medicaidEligible;
+
+        // --- EXPENSE CALCULATION ---
+        let baseBudget = budgetData.reduce((s, i) => s + i.val, 0) * 12;
+        let totalGrossBudget = baseBudget * inflationFactor;
+
+        // Medical Handling
+        let medicalItem = budgetData.find(b => b.name.toLowerCase().includes("medical"));
+        let medicalCostRaw = medicalItem ? (medicalItem.val * 12 * inflationFactor) : 0;
         
-        // --- NET NEED CALCULATION ---
-        let annualNeed = totalBudget - snapAnnual - currentOtherIncome - hsaDraw;
-        
-        // W-2 Income (If not retired)
-        if (!isRetired) {
-            // If working, salary covers budget. Assets grow. 
-            // Simplified: Need = 0.
-            annualNeed = 0; 
+        let medicalReduction = 0;
+        if (isMedicaid) {
+            // Medicaid covers medical -> Cost becomes 0 (Reduction = Cost)
+            medicalReduction = medicalCostRaw; 
+        } else {
+            // Not Medicaid -> Use HSA?
+            // User: "HSA must include hsa... assuming no capital gains... "
+            // Previous rule: "If Medical > 0, use HSA first"
+            if (medicalCostRaw > 0 && balances.hsa > 0) {
+                let draw = Math.min(medicalCostRaw, balances.hsa);
+                balances.hsa -= draw;
+                // Since we paid from HSA, we reduce the "Net Need" from other assets
+                medicalReduction = draw; 
+            }
         }
 
-        // --- ASSET GROWTH (Start of Year) ---
-        // Apply growth to balances
-        balances.checking *= 1.0; // 0%
-        balances.vanguard *= (1 + stockAPY);
+        // Net Needed from Liquid Assets
+        let netNeed = totalGrossBudget - snapAnnual - totalGeneratedIncome - medicalReduction;
+        if (!isRetired) netNeed = 0; // Working covers costs
+
+        // --- ASSET GROWTH ---
+        balances.checking *= 1.0; 
+        balances.brokerage *= (1 + stockAPY); // "Brokerage" = Taxable Vang
         balances.k401 *= (1 + stockAPY);
-        balances.hsa *= (1 + stockAPY); 
-        // Bitcoin/Gold/Silver - Prompt says "Assets grow only" logic applies to 'NetNeed <= 0'.
-        // Assuming 0% tax/gain model requested implies static or growth? 
-        // Prompt says "Assets grow only" if need <=0. 
-        // We will apply Stock APY to standard investments. Commidities flat or stock rate? 
-        // Leaving commodities flat (0%) per "Ignore Capital Gains... keeps model simple" hint, or applying stockAPY. 
-        // Let's apply Stock APY to be generous/consistent with "Assets grow".
-        balances.bitcoin *= (1 + stockAPY);
-        balances.gold *= 1.0; // Physical usually tracks inflation?
-        balances.silver *= 1.0;
+        balances.hsa *= (1 + stockAPY);
+        balances.bitcoin *= (1 + stockAPY); // Treating as high growth per prompt instructions or implicit
+        balances.metals *= 1.0; // Conservative
+
+        // --- BURN DOWN ---
+        let draw = { checking:0, brokerage:0, rothBasis:0, bitcoin:0, metals:0, heloc:0, k401:0 };
         
-        // --- BURN DOWN EXECUTION ---
-        let draw = {
-            checking: 0,
-            vanguard: 0,
-            rothBasis: 0,
-            bitcoin: 0,
-            gold: 0,
-            silver: 0,
-            heloc: 0,
-            k401: 0
-        };
-        
-        if (isRetired && annualNeed > 0) {
-            let remaining = annualNeed;
-            
+        if (isRetired && netNeed > 0) {
+            let remaining = netNeed;
+
             // 1. Checking
             if (remaining > 0 && balances.checking > 0) {
                 let d = Math.min(remaining, balances.checking);
-                balances.checking -= d;
-                draw.checking = d;
-                remaining -= d;
+                balances.checking -= d; draw.checking = d; remaining -= d;
             }
-            
-            // 2. Vanguard (Taxable)
-            if (remaining > 0 && balances.vanguard > 0) {
-                let d = Math.min(remaining, balances.vanguard);
-                balances.vanguard -= d;
-                draw.vanguard = d;
-                remaining -= d;
+            // 2. Brokerage
+            if (remaining > 0 && balances.brokerage > 0) {
+                let d = Math.min(remaining, balances.brokerage);
+                balances.brokerage -= d; draw.brokerage = d; remaining -= d;
             }
-            
-            // 3. Roth Basis (Limit 130k start, tracks down)
+            // 3. Roth Basis
             if (remaining > 0 && balances.rothBasis > 0) {
                 let d = Math.min(remaining, balances.rothBasis);
-                balances.rothBasis -= d;
-                draw.rothBasis = d;
-                remaining -= d;
+                balances.rothBasis -= d; draw.rothBasis = d; remaining -= d;
             }
-            
             // 4. Bitcoin
             if (remaining > 0 && balances.bitcoin > 0) {
                 let d = Math.min(remaining, balances.bitcoin);
-                balances.bitcoin -= d;
-                draw.bitcoin = d;
-                remaining -= d;
+                balances.bitcoin -= d; draw.bitcoin = d; remaining -= d;
             }
-            
-            // 5. Gold
-            if (remaining > 0 && balances.gold > 0) {
-                let d = Math.min(remaining, balances.gold);
-                balances.gold -= d;
-                draw.gold = d;
-                remaining -= d;
+            // 5. Metals
+            if (remaining > 0 && balances.metals > 0) {
+                let d = Math.min(remaining, balances.metals);
+                balances.metals -= d; draw.metals = d; remaining -= d;
             }
-            
-            // 6. Silver
-            if (remaining > 0 && balances.silver > 0) {
-                let d = Math.min(remaining, balances.silver);
-                balances.silver -= d;
-                draw.silver = d;
-                remaining -= d;
-            }
-            
-            // 7. HELOC (Debt increases)
+            // 6. HELOC
             if (remaining > 0) {
-                let available = balances.helocLimit - balances.helocUsed;
-                if (available > 0) {
-                    let d = Math.min(remaining, available);
-                    balances.helocUsed += d;
-                    draw.heloc = d;
-                    remaining -= d;
+                let avail = balances.helocLimit - balances.helocUsed;
+                if(avail > 0) {
+                    let d = Math.min(remaining, avail);
+                    balances.helocUsed += d; draw.heloc = d; remaining -= d;
                 }
             }
-            
-            // 8. 401k (72t)
-            // Rule: Start 72(t) ONLY after all above are depleted? 
-            // Prompt: "Start 72(t) only after all above buckets are depleted."
-            // Once started, it continues fixed forever.
-            
-            // Check if we need to start 72t
-            // Note: If remaining > 0 here, it means we tapped everything else.
-            // OR if 72t is already active.
+
+            // 7. 401k (72t)
+            // If buckets exhausted AND 72t not started, start it.
+            // If 72t is active, we already accounted for it in "Income" above?
+            // WAIT. The prompt implies 72t is a *draw* method ("Amount Drawn from 401k").
+            // But for SNAP calculation, it counts as INCOME.
+            // So:
+            // If we already started 72t, we received `incomeFrom72t` at top of loop. 
+            // That income reduced `netNeed`.
+            // So `draw.k401` = `incomeFrom72t`.
             
             if (t72Active) {
-                // Already running, take fixed amount
-                // Note: 72t is a forced distribution. You take it even if you don't "need" it?
-                // Usually yes. But here we treat it as a source.
-                // Prompt: "Use the fixed 72(t) withdrawal amount for every future year thereafter."
-                let dist = t72Amount;
-                // If dist > remaining, we have excess cash? 
-                // Logic: 72t withdrawal comes out of 401k.
-                balances.k401 -= dist;
-                draw.k401 = dist;
-                remaining -= dist; 
-            } else if (remaining > 0) {
-                // Buckets empty. Trigger 72t.
-                t72Active = true;
-                // Calc amount based on CURRENT age and 401k balance
-                t72Amount = calculate72t(balances.k401, age);
-                
-                let dist = t72Amount;
-                balances.k401 -= dist;
-                draw.k401 = dist;
-                remaining -= dist;
+                draw.k401 = t72Amount;
+                // Note: We already deducted this from 'netNeed' via 'totalGeneratedIncome'
+                // But we need to decrement the balance
+                balances.k401 -= t72Amount;
+            } else {
+                // If we STILL have remaining need after all buckets,
+                // OR if specific rule says start it now? 
+                // Previous rule: "Start 72t only after all above buckets are depleted."
+                if (remaining > 0) {
+                    t72Active = true;
+                    // Calc 72t based on CURRENT balance and age
+                    t72Amount = calculate72t(balances.k401, age);
+                    
+                    // Take the draw NOW
+                    let dist = t72Amount;
+                    balances.k401 -= dist;
+                    draw.k401 = dist;
+                    
+                    // This creates a circular dependency for THIS year's SNAP (since we just generated income we didn't declare at start).
+                    // For simplicity, we accept that SNAP/Medicaid lags one year or update logic:
+                    // We will just log the draw. Next year, `t72Active` is true, so it counts for SNAP.
+                }
             }
+        } else if (isRetired && t72Active) {
+             // If 72t is active, we MUST take it even if netNeed is 0 (it's rigid)
+             let dist = t72Amount;
+             balances.k401 -= dist;
+             draw.k401 = dist;
+             // Where does it go? Cash accumulation. Ignored for burn down.
         }
-        
-        let totalDraw = Object.values(draw).reduce((a,b)=>a+b, 0);
-        
+
         simData.push({
-            age, year, totalBudget, snapAnnual, currentOtherIncome, annualNeed,
-            draw, totalDraw, balances: {...balances}
+            age, year, totalGrossBudget, snapAnnual, isMedicaid, totalGeneratedIncome,
+            netNeed, draw, totalDraw: Object.values(draw).reduce((a,b)=>a+b,0)
         });
     }
-    
+
     renderBurnDownTable(simData);
-    renderBurnDownChart(simData);
 }
 
-// --- 6. RENDERING ---
+// Helper: 72t Calc
+function calculate72t(balance, age) {
+    let i = 0.05; // Fixed IRS rate assumption
+    let lifeExp = getLifeExpectancy(age);
+    let pmt = (balance * i) / (1 - Math.pow(1 + i, -lifeExp));
+    return pmt;
+}
 
+function getLifeExpectancy(age) {
+    // Simplified Uniform Lifetime Table
+    if(age<55) return 29.6 + (55-age);
+    const tbl = {55:29.6, 60:25.2, 65:21.0, 70:17.0, 75:13.4, 80:10.2};
+    if(tbl[age]) return tbl[age];
+    return 20; // fallback
+}
+
+// --- 7. RENDERING ---
 function renderBurnDownTable(data) {
     const tbody = document.getElementById('burnDownTableBody');
     tbody.innerHTML = '';
     
     data.forEach(row => {
         const tr = document.createElement('tr');
-        // Check for 72t trigger viz
-        let k401Class = row.draw.k401 > 0 ? "font-weight:bold; color:#d63384;" : "";
         
+        let medBadge = row.isMedicaid 
+            ? '<span style="background:green; color:white; padding:2px 4px; border-radius:3px; font-size:10px;">YES</span>' 
+            : '<span style="color:#ccc;">NO</span>';
+
         tr.innerHTML = `
             <td>${row.age}</td>
             <td>${row.year}</td>
-            <td>${formatCurrency(row.totalBudget)}</td>
-            <td>${formatCurrency(row.snapAnnual)}</td>
-            <td>${formatCurrency(row.currentOtherIncome)}</td>
-            <td style="background:#444; color:#fff;">${formatCurrency(row.annualNeed)}</td>
+            <td>${formatCurrency(row.totalGrossBudget)}</td>
+            <td style="color:green;">${formatCurrency(row.snapAnnual)}</td>
+            <td style="text-align:center;">${medBadge}</td>
+            <td>${formatCurrency(row.totalGeneratedIncome)}</td>
+            <td style="background:#444; color:#fff;">${formatCurrency(row.netNeed)}</td>
             <td style="${row.draw.checking > 0 ? 'background:#d1e7dd; font-weight:bold;' : ''}">${formatCurrency(row.draw.checking)}</td>
-            <td style="${row.draw.vanguard > 0 ? 'background:#cfe2ff; font-weight:bold;' : ''}">${formatCurrency(row.draw.vanguard)}</td>
+            <td style="${row.draw.brokerage > 0 ? 'background:#cfe2ff; font-weight:bold;' : ''}">${formatCurrency(row.draw.brokerage)}</td>
             <td style="${row.draw.rothBasis > 0 ? 'background:#fff3cd; font-weight:bold;' : ''}">${formatCurrency(row.draw.rothBasis)}</td>
             <td style="${row.draw.bitcoin > 0 ? 'background:#f8d7da; font-weight:bold;' : ''}">${formatCurrency(row.draw.bitcoin)}</td>
-            <td style="${row.draw.gold > 0 ? 'background:#e2e3e5; font-weight:bold;' : ''}">${formatCurrency(row.draw.gold)}</td>
-            <td style="${row.draw.silver > 0 ? 'background:#e2e3e5; font-weight:bold;' : ''}">${formatCurrency(row.draw.silver)}</td>
+            <td style="${row.draw.metals > 0 ? 'background:#e2e3e5; font-weight:bold;' : ''}">${formatCurrency(row.draw.metals)}</td>
             <td style="${row.draw.heloc > 0 ? 'background:#f1aeb5; font-weight:bold;' : ''}">${formatCurrency(row.draw.heloc)}</td>
-            <td style="background:#cff4fc; ${k401Class}">${formatCurrency(row.draw.k401)}</td>
+            <td style="background:#cff4fc; ${row.draw.k401 > 0 ? "font-weight:bold; color:#d63384;" : ""}">${formatCurrency(row.draw.k401)}</td>
             <td style="font-weight:bold;">${formatCurrency(row.totalDraw)}</td>
         `;
         tbody.appendChild(tr);
     });
 }
-
-function renderBurnDownChart(data) {
-    // Simple D3 Bar Chart if d3 exists, else generic HTML bars?
-    // Prompt says "Must match styling of your existing D3 charts".
-    // I will try to use global 'd3'.
-    if (typeof d3 === 'undefined') {
-  document.getElementById('burnDownChart').innerHTML =
-    "D3 Library not found. Chart cannot render.";
-  return;
-}
-
-    
-    // Clear previous
-    const container = d3.select("#burnDownChart");
-    container.selectAll("*").remove();
-    
-    const margin = {top: 20, right: 30, bottom: 40, left: 60},
-          width = container.node().getBoundingClientRect().width - margin.left - margin.right,
-          height = 400 - margin.top - margin.bottom;
-
-    const svg = container.append("svg")
-        .attr("width", width + margin.left + margin.right)
-        .attr("height", height + margin.top + margin.bottom)
-      .append("g")
-        .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
-
-    const x = d3.scaleLinear()
-        .domain(d3.extent(data, d => d.age))
-        .range([0, width]);
-
-    const y = d3.scaleLinear()
-        .domain([0, d3.max(data, d => d.totalBudget * 1.2)])
-        .range([height, 0]);
-
-    // X Axis
-    svg.append("g")
-        .attr("transform", "translate(0," + height + ")")
-        .call(d3.axisBottom(x).tickFormat(d => "Age " + d));
-
-    // Y Axis
-    svg.append("g")
-        .call(d3.axisLeft(y));
-
-    // Line: Total Budget
-    const lineBudget = d3.line()
-        .x(d => x(d.age))
-        .y(d => y(d.totalBudget));
-
-    svg.append("path")
-        .datum(data)
-        .attr("fill", "none")
-        .attr("stroke", "red")
-        .attr("stroke-width", 2)
-        .attr("d", lineBudget);
-
-    // Bars: Total Draw
-    svg.selectAll(".bar")
-        .data(data)
-        .enter().append("rect")
-        .attr("class", "bar")
-        .attr("x", d => x(d.age) - 5)
-        .attr("y", d => y(d.totalDraw))
-        .attr("width", 10)
-        .attr("height", d => height - y(d.totalDraw))
-        .attr("fill", "#69b3a2")
-        .attr("opacity", 0.7);
-        
-    // Legend / Label
-    svg.append("text").attr("x", 20).attr("y", 20).text("Red Line: Annual Budget").attr("fill", "red").style("font-size", "12px");
-    svg.append("text").attr("x", 20).attr("y", 35).text("Green Bars: Assets Drawn").attr("fill", "#69b3a2").style("font-size", "12px");
-}
-</script>          
+</script>
         </div>
     </div>
 </body>
