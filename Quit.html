@@ -1243,8 +1243,8 @@
         <div style="flex: 1; min-width: 300px; padding: 10px; background: #fff; border: 1px solid #ddd;">
             <strong>Simulation Status:</strong>
             <ul style="font-size: 14px; line-height: 1.6;">
-                <li>Quit Age: <span id="simQuitAgeDisplay" style="font-weight:bold;">--</span> (Linked)</li>
-                <li>Assets Found: <span id="assetsFoundDisplay" style="color:blue;">Scanning...</span></li>
+                <li>Quit Age: <span id="simQuitAgeDisplay" style="font-weight:bold;">--</span> (Linked to Retirement Age)</li>
+                <li>Assets Found: <span id="assetsFoundDisplay" style="color:blue;">Scanning...</span></li> 
             </ul>
         </div>
     </div>
@@ -1311,21 +1311,35 @@
 // SECTION 6: LOGIC & SIMULATION ENGINE
 // ==========================================
 
-// --- 1. BENEFITS CALCULATOR (PROVIDED) ---
-function calcMiBenefitsFromAnnualIncome(annualHouseholdIncome) {
-  // constants (fixed assumptions)
-  const MORTGAGE_MONTHLY = 1417;
-  const STANDARD_DEDUCTION = 299;
-  const UTILITY_ALLOWANCE = 682;
-  const SHELTER_CAP = 744;
+// --- 1. BENEFITS CALCULATOR (UPDATED) ---
+function calcMiBenefitsFromAnnualIncome(annualHouseholdIncome, inflationFactor) {
+  // constants (fixed assumptions) - These base values are for Year 1 (inflationFactor=1)
+  const MORTGAGE_MONTHLY_BASE = 1417;
+  const STANDARD_DEDUCTION_BASE = 299;
+  const UTILITY_ALLOWANCE_BASE = 682;
+  const SHELTER_CAP_BASE = 744;
 
-  const SNAP_MAX = 1421;      // household size 6
-  const SNAP_PHASEOUT = 0.30; // 30% of net
+  const SNAP_MAX_BASE = 1421;      // household size 6
+  const SNAP_PHASEOUT = 0.30; 
 
-  const WIC_MONTHLY = 150;
+  // WIC_MONTHLY is typically fixed, but we'll include it in the escalation for simplicity/conservatism
+  const WIC_MONTHLY_BASE = 150;
 
-  const MEDICAID_LIMIT_ANNUAL = 58200;
-  const MEDICAID_VALUE_MONTHLY = 1350;
+  const MEDICAID_LIMIT_ANNUAL_BASE = 58200;
+  const MEDICAID_VALUE_MONTHLY_BASE = 1350;
+  
+  // Apply Inflation Factor to all limits and benefits
+  const STANDARD_DEDUCTION = STANDARD_DEDUCTION_BASE * inflationFactor;
+  const UTILITY_ALLOWANCE = UTILITY_ALLOWANCE_BASE * inflationFactor;
+  const SHELTER_CAP = SHELTER_CAP_BASE * inflationFactor;
+  const SNAP_MAX = SNAP_MAX_BASE * inflationFactor;
+  const WIC_MONTHLY = WIC_MONTHLY_BASE * inflationFactor;
+  const MEDICAID_LIMIT_ANNUAL = MEDICAID_LIMIT_ANNUAL_BASE * inflationFactor;
+  const MEDICAID_VALUE_MONTHLY = MEDICAID_VALUE_MONTHLY_BASE * inflationFactor;
+  
+  // Note: MORTGAGE is an expense, so it should be pulled from the budget table's escalated value, not constant here.
+  // Using the fixed BASE for now, assuming the budget table accounts for mortgage escalation if it's a fixed expense.
+  const MORTGAGE_MONTHLY = MORTGAGE_MONTHLY_BASE; 
 
   const grossMonthly = Math.max(0, annualHouseholdIncome / 12);
 
@@ -1337,16 +1351,19 @@ function calcMiBenefitsFromAnnualIncome(annualHouseholdIncome) {
   );
   const netIncome = Math.max(0, adjusted - shelterDeduction);
   const snapMonthly = Math.max(0, SNAP_MAX - (netIncome * SNAP_PHASEOUT));
+  // Snap cannot be higher than the max, even if calculation results in a higher number
+  const finalSnapMonthly = Math.min(SNAP_MAX, snapMonthly);
+
 
   const medicaidEligible = annualHouseholdIncome <= MEDICAID_LIMIT_ANNUAL;
   const medicaidMonthlyValue = medicaidEligible ? MEDICAID_VALUE_MONTHLY : 0;
 
-  const totalBenefitsMonthly = snapMonthly + WIC_MONTHLY + medicaidMonthlyValue;
+  const totalBenefitsMonthly = finalSnapMonthly + WIC_MONTHLY + medicaidMonthlyValue;
 
   return {
     annualHouseholdIncome,
     grossMonthly,
-    snapMonthly,
+    snapMonthly: finalSnapMonthly,
     wicMonthly: WIC_MONTHLY,
     medicaidEligible,
     medicaidMonthlyValue,
@@ -1571,23 +1588,24 @@ function formatCurrency(num) {
 
 function runEarlyQuitSim() {
     // 1. Gather Inputs
-    const currentAgeInput = document.querySelector('input[id*="Current Age"]') || document.querySelector('input[label="Current Age"]'); 
+    const currentAgeInput = document.getElementById('currentAge') || document.querySelector('input[id*="Current Age"]'); 
     const currentAge = currentAgeInput ? parseInt(currentAgeInput.value) : 38;
 
-    const retireAgeInput = document.getElementById('retirementAge') || document.querySelector('input[id*="Retirement Age"]');
-    // Default to 45 if not found, but try to link
+    // Robustly link to Retirement Age: Check ID, then check other common attributes.
+    const retireAgeInput = document.getElementById('retirementAge') || 
+                           document.querySelector('input[name="retirementAge"]') ||
+                           document.querySelector('input[id*="RetirementAge"]');
+
+    // If input is found, use its value; otherwise, default to 45.
     const quitAge = retireAgeInput ? parseInt(retireAgeInput.value) : 45; 
     
+    // Update Display with the linked Quit Age
     document.getElementById('simQuitAgeDisplay').innerText = quitAge;
 
     const addIncomeAnnual = parseInt(document.getElementById('addIncomeSlider').value);
     
-    // 2. Load Assets
+    // 2. Load Assets (Removed display logic as requested)
     let startBalances = getAggregatedAssets();
-    
-    // Update Display
-    let totalFound = Object.values(startBalances).reduce((a,b)=>a+b,0);
-    document.getElementById('assetsFoundDisplay').innerText = formatCurrency(totalFound);
 
     // 3. Sim Variables
     let balances = { ...startBalances };
@@ -1612,63 +1630,70 @@ function runEarlyQuitSim() {
         let inflationFactor = Math.pow(1 + inflationRate, age - currentAge);
         
         // --- INCOME CALCULATION ---
-        // Used for SNAP/Medicaid qualification
         
         // 1. Cell Tower (Escalates 1.5%)
         let cellIncome = (1200 * 12) * Math.pow(1.015, age - currentAge);
         
-        // 2. Rental (Escalates 4%)
-        // Rental income is zeroed out (0*) as it is expected to be offset by depreciation/losses,
-        // resulting in $0 net taxable income for the simulation.
-        let rentalIncome = 0 * (1300 * 12) * Math.pow(1.04, age - currentAge);
-        
+        // 2. Rental (Set to zero as expected to be offset by losses)
+        let rentalIncome = 0 * (1300 * 12) * Math.pow(1.04, age - currentAge); 
+
         // 3. 72t Income (If active)
         let incomeFrom72t = t72Active ? t72Amount : 0;
 
         // Total "Generated" Income for Benefits Calc
-        // Note: We include 72t here because user said "401k 72t in this case" counts towards limits
-        let totalGeneratedIncome = cellIncome + rentalIncome + addIncomeAnnual + incomeFrom72t;
+        let totalGeneratedIncome = cellIncome + rentalIncome + addIncomeAnnual + incomeFrom72t; 
 
-        // --- BENEFITS CHECK ---
-        let benefits = calcMiBenefitsFromAnnualIncome(totalGeneratedIncome);
-        let snapAnnual = benefits.snapMonthly * 12;
-        let isMedicaid = benefits.medicaidEligible;
+        // --- BENEFITS CHECK & EXPENSE CALCULATION ---
+        
+        let snapAnnual = 0;
+        let isMedicaid = false;
+        
+        // W2 income check: If still working (age < quitAge), no SNAP or Medicaid
+        if (isRetired) {
+            // PASS inflationFactor HERE
+            let benefits = calcMiBenefitsFromAnnualIncome(totalGeneratedIncome, inflationFactor); 
+            snapAnnual = benefits.snapMonthly * 12;
+            isMedicaid = benefits.medicaidEligible;
+        }
 
-        // --- EXPENSE CALCULATION ---
+        // ... rest of the loop continues ...
+
         let baseBudget = budgetData.reduce((s, i) => s + i.val, 0) * 12;
         let totalGrossBudget = baseBudget * inflationFactor;
 
-        // Medical Handling
-        let medicalItem = budgetData.find(b => b.name.toLowerCase().includes("medical"));
-        let medicalCostRaw = medicalItem ? (medicalItem.val * 12 * inflationFactor) : 0;
-        
+        // Medical Handling (Only applies if retired, otherwise assumed paid via W2 cash flow)
         let medicalReduction = 0;
-        if (isMedicaid) {
-            // Medicaid covers medical -> Cost becomes 0 (Reduction = Cost)
-            medicalReduction = medicalCostRaw; 
-        } else {
-            // Not Medicaid -> Use HSA?
-            // User: "HSA must include hsa... assuming no capital gains... "
-            // Previous rule: "If Medical > 0, use HSA first"
-            if (medicalCostRaw > 0 && balances.hsa > 0) {
+        let medicalCostRaw = 0;
+
+        if (isRetired) {
+            let medicalItem = budgetData.find(b => b.name.toLowerCase().includes("medical"));
+            medicalCostRaw = medicalItem ? (medicalItem.val * 12 * inflationFactor) : 0;
+            
+            if (isMedicaid) {
+                // Medicaid covers medical
+                medicalReduction = medicalCostRaw; 
+            } else if (medicalCostRaw > 0 && balances.hsa > 0) {
+                // Use HSA if not Medicaid eligible
                 let draw = Math.min(medicalCostRaw, balances.hsa);
                 balances.hsa -= draw;
-                // Since we paid from HSA, we reduce the "Net Need" from other assets
                 medicalReduction = draw; 
             }
         }
 
         // Net Needed from Liquid Assets
-        let netNeed = totalGrossBudget - snapAnnual - totalGeneratedIncome - medicalReduction;
-        if (!isRetired) netNeed = 0; // Working covers costs
+        let netNeed = 0;
+        if (isRetired) {
+            netNeed = totalGrossBudget - snapAnnual - totalGeneratedIncome - medicalReduction;
+        }
+        // If not retired, netNeed is 0 (W2 covers costs)
 
         // --- ASSET GROWTH ---
         balances.checking *= 1.0; 
-        balances.brokerage *= (1 + stockAPY); // "Brokerage" = Taxable Vang
+        balances.brokerage *= (1 + stockAPY);
         balances.k401 *= (1 + stockAPY);
         balances.hsa *= (1 + stockAPY);
-        balances.bitcoin *= (1 + stockAPY); // Treating as high growth per prompt instructions or implicit
-        balances.metals *= 1.0; // Conservative
+        balances.bitcoin *= (1 + stockAPY); 
+        balances.metals *= 1.0; 
 
         // --- BURN DOWN ---
         let draw = { checking:0, brokerage:0, rothBasis:0, bitcoin:0, metals:0, heloc:0, k401:0 };
@@ -1711,45 +1736,21 @@ function runEarlyQuitSim() {
             }
 
             // 7. 401k (72t)
-            // If buckets exhausted AND 72t not started, start it.
-            // If 72t is active, we already accounted for it in "Income" above?
-            // WAIT. The prompt implies 72t is a *draw* method ("Amount Drawn from 401k").
-            // But for SNAP calculation, it counts as INCOME.
-            // So:
-            // If we already started 72t, we received `incomeFrom72t` at top of loop. 
-            // That income reduced `netNeed`.
-            // So `draw.k401` = `incomeFrom72t`.
-            
-            if (t72Active) {
-                draw.k401 = t72Amount;
-                // Note: We already deducted this from 'netNeed' via 'totalGeneratedIncome'
-                // But we need to decrement the balance
-                balances.k401 -= t72Amount;
-            } else {
-                // If we STILL have remaining need after all buckets,
-                // OR if specific rule says start it now? 
-                // Previous rule: "Start 72t only after all above buckets are depleted."
-                if (remaining > 0) {
-                    t72Active = true;
-                    // Calc 72t based on CURRENT balance and age
-                    t72Amount = calculate72t(balances.k401, age);
-                    
-                    // Take the draw NOW
-                    let dist = t72Amount;
-                    balances.k401 -= dist;
-                    draw.k401 = dist;
-                    
-                    // This creates a circular dependency for THIS year's SNAP (since we just generated income we didn't declare at start).
-                    // For simplicity, we accept that SNAP/Medicaid lags one year or update logic:
-                    // We will just log the draw. Next year, `t72Active` is true, so it counts for SNAP.
-                }
+            if (remaining > 0) {
+                // If buckets exhausted, start 72t
+                t72Active = true;
+                t72Amount = calculate72t(balances.k401, age);
+                
+                // Take the draw
+                let dist = t72Amount;
+                balances.k401 -= dist;
+                draw.k401 = dist;
             }
         } else if (isRetired && t72Active) {
-             // If 72t is active, we MUST take it even if netNeed is 0 (it's rigid)
+             // If 72t is active, MUST take it (rigid rule)
              let dist = t72Amount;
              balances.k401 -= dist;
              draw.k401 = dist;
-             // Where does it go? Cash accumulation. Ignored for burn down.
         }
 
         simData.push({
