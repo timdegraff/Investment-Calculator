@@ -1618,7 +1618,9 @@ function runEarlyQuitSim() {
         let cellIncome = (1200 * 12) * Math.pow(1.015, age - currentAge);
         
         // 2. Rental (Escalates 4%)
-        let rentalIncome = (1300 * 12) * Math.pow(1.04, age - currentAge);
+        // Rental income is zeroed out (0*) as it is expected to be offset by depreciation/losses,
+        // resulting in $0 net taxable income for the simulation.
+        let rentalIncome = 0 * (1300 * 12) * Math.pow(1.04, age - currentAge);
         
         // 3. 72t Income (If active)
         let incomeFrom72t = t72Active ? t72Amount : 0;
