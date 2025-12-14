@@ -1604,16 +1604,36 @@ function runEarlyQuitSim() {
 
     const addIncomeAnnual = parseInt(document.getElementById('addIncomeSlider').value);
     
-    // 2. Load Assets (Removed display logic as requested)
-    let startBalances = getAggregatedAssets();
+    // 2. Dynamic Rate Retrieval (UPDATED LOGIC)
+    
+    // Find the input field for inflation rate (likely near the other rates)
+    const inflationRateInput = document.getElementById('inflationRate') || 
+                               document.querySelector('input[id*="Inflation"]') ||
+                               document.querySelector('input[id*="inflation"]');
+    
+    // Attempt to pull the value, defaulting to 0.03 (3%) if the input is not found or is empty/invalid.
+    // The input value must be divided by 100 if the user enters "3" instead of "0.03".
+    let inflationRate = 0.03; // Default fallback (your preference)
+    if (inflationRateInput && inflationRateInput.value) {
+        let val = parseFloat(inflationRateInput.value);
+        // Assume the user enters a percentage (e.g., 3 or 3.0)
+        inflationRate = val > 0 && val <= 10 ? (val / 100) : 0.03; 
+    }
+    
+    // Find stock APY input field
+    const stockApyInput = document.getElementById('stockApy') ||
+                          document.querySelector('input[id*="StockPortfolioAPY"]');
+                          
+    let stockAPY = 0.10; // Default fallback (your preference)
+    if (stockApyInput && stockApyInput.value) {
+        let val = parseFloat(stockApyInput.value);
+        stockAPY = val > 0 && val <= 15 ? (val / 100) : 0.10;
+    }
 
     // 3. Sim Variables
     let balances = { ...startBalances };
     balances.helocUsed = 0;
     balances.helocLimit = 150000;
-
-    let inflationRate = 0.03; 
-    let stockAPY = 0.10;
     
     // 72t State
     let t72Active = false;
