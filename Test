@@ -1,0 +1,694 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Investment Calculator</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://d3js.org/d3.v7.min.js"></script>
+  <style>
+    .app-shell { max-width: 1200px; margin: 0 auto; }
+    table { border-collapse: collapse; width: 100%; }
+    th, td { padding: 8px 10px; border-bottom: 1px solid #e5e7eb; }
+    th { text-align: left; font-weight: 700; color: #334155; background: #f8fafc; position: sticky; top: 0; }
+  </style>
+</head>
+
+<body class="bg-slate-50 text-slate-900">
+  <div class="app-shell p-4 md:p-6">
+    <header class="mb-4 md:mb-6">
+      <div class="flex flex-col md:flex-row md:items-end md:justify-between gap-2">
+        <div>
+          <h1 class="text-2xl md:text-3xl font-black">Investment Calculator</h1>
+          <div class="text-slate-600 text-sm">Single-file build. Layout-safe. Early-quit model wired.</div>
+        </div>
+        <div class="text-sm text-slate-600">Revision: <span id="appRevisionDisplay" class="font-semibold text-slate-800">3.0</span></div>
+      </div>
+    </header>
+
+    <!-- MAIN GRID -->
+    <main class="space-y-4 md:space-y-6">
+      <!-- LEFT: Inputs -->
+      <section class="space-y-4 md:space-y-6">
+        <!-- 1. Static Inputs -->
+        <div class="rounded-2xl bg-white shadow-sm border border-slate-200 p-4 md:p-6">
+          <div class="flex items-center justify-between gap-2">
+            <div class="text-xl font-bold text-slate-900">1. Inputs</div>
+            <div class="text-slate-600 text-sm">All values auto-calc</div>
+          </div>
+
+          <div class="mt-4 grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div>
+              <label class="text-sm font-semibold">Current Age</label>
+              <input id="currentAge" type="range" min="18" max="70" step="1" value="39" class="w-full">
+              <div class="text-slate-600 text-sm">Value: <span id="currentAgeValue">39</span></div>
+            </div>
+
+            <div>
+              <label class="text-sm font-semibold">Retirement Age</label>
+              <input id="retirementYear" type="range" min="18" max="70" step="1" value="55" class="w-full">
+              <div class="text-slate-600 text-sm">Value: <span id="retirementYearValue">55</span></div>
+            </div>
+
+            <div>
+              <label class="text-sm font-semibold">Base Salary ($)</label>
+              <input id="baseSalary" class="w-full rounded-lg border border-slate-300 px-3 py-2" value="179,386" inputmode="numeric">
+            </div>
+
+            <div>
+              <label class="text-sm font-semibold">Bonus Rate (%)</label>
+              <input id="bonusRate" type="range" min="0" max="60" step="0.1" value="21.6" class="w-full">
+              <div class="text-slate-600 text-sm">Value: <span id="bonusRateValue">21.6%</span></div>
+            </div>
+
+            <div>
+              <label class="text-sm font-semibold">My 401(k) Contrib (%)</label>
+              <input id="my401kContributionRate" type="range" min="0" max="30" step="0.1" value="16" class="w-full">
+              <div class="text-slate-600 text-sm">Value: <span id="my401kContributionRateValue">16%</span></div>
+            </div>
+
+            <div>
+              <label class="text-sm font-semibold">Company 401(k) Contrib (%)</label>
+              <input id="company401kContributionRate" type="range" min="0" max="30" step="0.1" value="0" class="w-full">
+              <div class="text-slate-600 text-sm">Value: <span id="company401kContributionRateValue">0%</span></div>
+            </div>
+
+            <div>
+              <label class="text-sm font-semibold">Annual Roth Contribution ($)</label>
+              <input id="annualRothContribution" class="w-full rounded-lg border border-slate-300 px-3 py-2" value="0" inputmode="numeric">
+            </div>
+
+            <div>
+              <label class="text-sm font-semibold">Monthly HSA Contribution ($)</label>
+              <input id="monthlyHSAContribution" class="w-full rounded-lg border border-slate-300 px-3 py-2" value="0" inputmode="numeric">
+            </div>
+
+            <div>
+              <label class="text-sm font-semibold">Annual Salary Raise (%)</label>
+              <input id="annualSalaryRaise" type="range" min="0" max="10" step="0.1" value="3.5" class="w-full">
+              <div class="text-slate-600 text-sm">Value: <span id="annualSalaryRaiseValue">3.5%</span></div>
+            </div>
+
+            <div>
+              <label class="text-sm font-semibold">Stock APY (%)</label>
+              <input id="stockAppreciation" type="range" min="0" max="20" step="0.1" value="9" class="w-full">
+              <div class="text-slate-600 text-sm">Value: <span id="stockAppreciationValue">9%</span></div>
+            </div>
+
+            <div>
+              <label class="text-sm font-semibold">Inflation (%)</label>
+              <input id="inflation" type="range" min="0" max="10" step="0.1" value="2.5" class="w-full">
+              <div class="text-slate-600 text-sm">Value: <span id="inflationValue">2.5%</span></div>
+            </div>
+
+            <div>
+              <label class="text-sm font-semibold">SS Start Age</label>
+              <input id="socialSecurityStartAge" type="range" min="62" max="70" step="1" value="62" class="w-full">
+              <div class="text-slate-600 text-sm">Value: <span id="socialSecurityStartAgeValue">62</span></div>
+            </div>
+
+            <div>
+              <label class="text-sm font-semibold">SS Monthly ($)</label>
+              <input id="socialSecurityMonthly" type="range" min="0" max="8000" step="50" value="0" class="w-full">
+              <div class="text-slate-600 text-sm">Value: <span id="socialSecurityMonthlyValue">0</span></div>
+            </div>
+          </div>
+
+          <div class="mt-4 grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div class="rounded-xl bg-slate-50 border border-slate-200 p-3">
+              <div class="text-slate-600 text-xs">Current Net Worth</div>
+              <div id="currentNetWorth" class="text-2xl font-black">$0</div>
+            </div>
+            <div class="rounded-xl bg-slate-50 border border-slate-200 p-3">
+              <div class="text-slate-600 text-xs">Annual Income (incl. other)</div>
+              <div id="annualIncomeDisplay" class="text-2xl font-black">$0</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 2. Accounts -->
+        <div class="rounded-2xl bg-white shadow-sm border border-slate-200 p-4 md:p-6">
+          <div class="flex items-center justify-between">
+            <div class="text-xl font-bold text-slate-900">2. Assets & Liabilities</div>
+            <div class="text-slate-600 text-sm">Used by all models</div>
+          </div>
+
+          <div class="mt-4">
+            <div class="font-semibold mb-2">Investments</div>
+            <div id="investmentAccountsContainer" class="space-y-2"></div>
+            <button id="addInvestmentBtn" class="mt-2 inline-flex items-center justify-center rounded-xl px-4 py-2 font-semibold shadow-sm bg-violet-600 text-white hover:bg-violet-700" type="button">+ Add Investment</button>
+          </div>
+
+          <div class="mt-6">
+            <div class="font-semibold mb-2">Other Income (Monthly)</div>
+            <div id="otherIncomeContainer" class="space-y-2"></div>
+            <button id="addOtherIncomeBtn" class="mt-2 inline-flex items-center justify-center rounded-xl px-4 py-2 font-semibold shadow-sm bg-violet-600 text-white hover:bg-violet-700" type="button">+ Add Other Income</button>
+          </div>
+
+          <div class="mt-6">
+            <div class="font-semibold mb-2">Liabilities</div>
+            <div id="liabilitiesContainer" class="space-y-2"></div>
+            <button id="addLiabilityBtn" class="mt-2 inline-flex items-center justify-center rounded-xl px-4 py-2 font-semibold shadow-sm bg-violet-600 text-white hover:bg-violet-700" type="button">+ Add Liability</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- RIGHT: Results -->
+      <section class="space-y-4 md:space-y-6">
+        <!-- 3. 72(t) -->
+        <div class="rounded-2xl shadow-sm border border-amber-100 bg-amber-50/60 p-4 md:p-6">
+          <div class="text-xl font-bold text-amber-800">3. 72(t) Fixed Distribution Projection</div>
+          <p class="text-slate-600 mt-2">
+            Uses amortization method with a fixed 5% interest assumption, and a life expectancy table.
+          </p>
+
+          <div class="mt-4">
+            <label class="text-sm font-semibold">Retirement Age (Linked)</label>
+            <input id="seventyTwoTRetirementYear" type="range" min="18" max="70" step="1" value="55" class="w-full">
+            <div class="text-slate-600 text-sm">Value: <span id="seventyTwoTRetirementYearValue">55</span></div>
+          </div>
+
+          <div class="mt-4 overflow-auto rounded-xl border border-amber-200 bg-white">
+            <table>
+              <thead>
+                <tr>
+                  <th>Age</th>
+                  <th>401(k) Balance</th>
+                  <th>72(t) Annual</th>
+                </tr>
+              </thead>
+              <tbody id="seventyTwoTTableBody"></tbody>
+            </table>
+          </div>
+
+          <div class="mt-4 rounded-xl border border-amber-200 bg-white p-3">
+            <div id="seventyTwoTChartContainer"></div>
+          </div>
+        </div>
+
+        <!-- 6. Early quit -->
+        <div class="rounded-2xl bg-white shadow-sm border border-slate-200 p-4 md:p-6">
+          <div class="text-xl font-bold text-slate-900">6. Early-Quit Model + Burn-Down Engine</div>
+          <p class="text-slate-600 mt-2">
+            Simulates quitting and burning down accounts in priority order. Budget is editable. Outputs yearly rows.
+          </p>
+
+          <div class="mt-4 grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div class="rounded-xl border border-slate-200 bg-slate-50 p-3">
+              <div class="font-semibold">Simulation Status</div>
+              <div class="mt-2 flex items-center gap-2">
+                <label class="text-sm font-semibold">Quit Age</label>
+                <input id="quitAge" type="number" min="18" max="70" step="1" class="w-24 rounded-lg border border-slate-300 px-2 py-1" />
+                <label class="ml-2 text-sm text-slate-600 flex items-center gap-2">
+                  <input id="quitAgeOverride" type="checkbox" class="rounded">
+                  Overrides Retirement Age
+                </label>
+              </div>
+              <div class="text-slate-600 text-xs mt-1">If override is off, Quit Age stays synced to Retirement Age.</div>
+            </div>
+
+            <div class="rounded-xl border border-slate-200 bg-slate-50 p-3">
+              <div class="font-semibold">Additional Income</div>
+              <div class="text-slate-600 text-sm">Annual Amount: <span id="earlyQuitAdditionalIncomeLabel" class="font-semibold text-green-700">$0</span></div>
+              <input id="earlyQuitAdditionalIncome" type="range" min="0" max="500000" step="1000" value="0" class="w-full mt-2">
+              <div class="text-slate-600 text-xs mt-1">Added to other income during simulation.</div>
+            </div>
+          </div>
+
+          <div class="mt-5">
+            <div class="flex items-end justify-between gap-3">
+              <div>
+                <div class="text-lg font-bold">Early Quit Budget (Monthly)</div>
+                <div class="text-slate-600 text-xs">Auto-sums. Edit items inline.</div>
+              </div>
+              <button id="addBudgetItemBtn" class="inline-flex items-center justify-center rounded-xl px-4 py-2 font-semibold shadow-sm bg-violet-600 text-white hover:bg-violet-700" type="button">+ Add Item</button>
+            </div>
+
+            <div class="mt-3 overflow-auto rounded-xl border border-slate-200 bg-white">
+              <table>
+                <thead>
+                  <tr>
+                    <th style="min-width: 180px;">Expense Name</th>
+                    <th style="min-width: 120px;">Monthly ($)</th>
+                    <th style="min-width: 90px;">Adjust</th>
+                    <th style="min-width: 120px;">Annual ($)</th>
+                  </tr>
+                </thead>
+                <tbody id="budgetTableBody"></tbody>
+                <tfoot>
+                  <tr>
+                    <td class="font-bold">TOTALS</td>
+                    <td id="budgetTotalMonthly" class="font-bold">$0</td>
+                    <td></td>
+                    <td id="budgetTotalAnnual" class="font-bold">$0</td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+          </div>
+
+          <div class="mt-6">
+            <div class="text-lg font-bold">Burn-Down Details</div>
+            <div class="text-slate-600 text-xs">One row per year from quit age to 59.5 (rounded down).</div>
+
+            <div class="mt-3 overflow-auto rounded-xl border border-slate-200 bg-white" style="max-height: 360px;">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Age</th>
+                    <th>Year</th>
+                    <th>Gross Budget</th>
+                    <th>Income (Other)</th>
+                    <th>Net Need</th>
+                    <th>Checking</th>
+                    <th>Brokerage</th>
+                    <th>Roth Basis</th>
+                    <th>401(k)</th>
+                    <th>Total Draw</th>
+                  </tr>
+                </thead>
+                <tbody id="burnDownTbody"></tbody>
+              </table>
+            </div>
+          </div>
+
+          <div class="mt-4 flex gap-2">
+            <button id="runEarlyQuitBtn" class="inline-flex items-center justify-center rounded-xl px-4 py-2 font-semibold shadow-sm bg-violet-600 text-white hover:bg-violet-700" type="button">Re-run Simulation</button>
+            <button id="resetEarlyQuitBtn" class="inline-flex items-center justify-center rounded-xl px-4 py-2 font-semibold shadow-sm border border-slate-200 bg-white hover:bg-slate-50" type="button">Reset Budget to Defaults</button>
+          </div>
+
+          <div id="earlyQuitError" class="mt-3 text-sm text-red-700 hidden"></div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+<script type="module">
+const appRevision = "3.0";
+document.getElementById("appRevisionDisplay").textContent = appRevision;
+
+function cleanNumber(v) {
+  if (v === null || v === undefined) return 0;
+  const n = Number(String(v).replace(/[^0-9.-]/g, ""));
+  return Number.isFinite(n) ? n : 0;
+}
+function fmtInt(n) { return new Intl.NumberFormat("en-US",{maximumFractionDigits:0}).format(Math.round(n)); }
+function fmtMoney(n) { return new Intl.NumberFormat("en-US",{style:"currency",currency:"USD",maximumFractionDigits:0}).format(Math.round(n)); }
+function clamp(n, min, max) { return Math.min(max, Math.max(min, n)); }
+
+const sliderPairs = [
+  { id: "currentAge", out: "currentAgeValue", unit: "" },
+  { id: "retirementYear", out: "retirementYearValue", unit: "" },
+  { id: "bonusRate", out: "bonusRateValue", unit: "%" },
+  { id: "my401kContributionRate", out: "my401kContributionRateValue", unit: "%" },
+  { id: "company401kContributionRate", out: "company401kContributionRateValue", unit: "%" },
+  { id: "annualSalaryRaise", out: "annualSalaryRaiseValue", unit: "%" },
+  { id: "stockAppreciation", out: "stockAppreciationValue", unit: "%" },
+  { id: "inflation", out: "inflationValue", unit: "%" },
+  { id: "socialSecurityStartAge", out: "socialSecurityStartAgeValue", unit: "" },
+  { id: "socialSecurityMonthly", out: "socialSecurityMonthlyValue", unit: "" },
+  { id: "seventyTwoTRetirementYear", out: "seventyTwoTRetirementYearValue", unit: "" },
+];
+
+function updateSliderLabel(id) {
+  const pair = sliderPairs.find(p => p.id === id);
+  if (!pair) return;
+  const el = document.getElementById(pair.id);
+  const out = document.getElementById(pair.out);
+  if (!el || !out) return;
+  const val = Number(el.value);
+  out.textContent = pair.unit ? `${val}${pair.unit}` : `${val}`;
+}
+
+const investmentAccountsContainer = document.getElementById("investmentAccountsContainer");
+const otherIncomeContainer = document.getElementById("otherIncomeContainer");
+const liabilitiesContainer = document.getElementById("liabilitiesContainer");
+
+function rowTemplate({ name="", value=0 }, type) {
+  const common = "w-full rounded-lg border border-slate-300 px-3 py-2";
+  const del = `<button type="button" class="px-3 py-2 rounded-xl border border-red-200 text-red-600 hover:bg-red-50 font-semibold" data-act="del">X</button>`;
+  if (type === "investment") {
+    return `<div class="flex flex-wrap gap-2 items-center">
+        <input class="${common} flex-1 min-w-[180px]" data-k="name" placeholder="Account Name" value="${name}">
+        <input class="${common} w-44" data-k="value" placeholder="Value ($)" value="${fmtInt(value)}" inputmode="numeric">
+        ${del}
+      </div>`;
+  }
+  if (type === "income") {
+    return `<div class="flex flex-wrap gap-2 items-center">
+        <input class="${common} flex-1 min-w-[180px]" data-k="name" placeholder="Income Source" value="${name}">
+        <input class="${common} w-44" data-k="value" placeholder="Monthly ($)" value="${fmtInt(value)}" inputmode="numeric">
+        ${del}
+      </div>`;
+  }
+  if (type === "liability") {
+    return `<div class="flex flex-wrap gap-2 items-center">
+        <input class="${common} flex-1 min-w-[180px]" data-k="name" placeholder="Liability Name" value="${name}">
+        <input class="${common} w-44" data-k="value" placeholder="Balance ($)" value="${fmtInt(value)}" inputmode="numeric">
+        ${del}
+      </div>`;
+  }
+  return "";
+}
+
+function addRow(container, type, data) {
+  const wrap = document.createElement("div");
+  wrap.className = "rounded-xl border border-slate-200 bg-white p-3";
+  wrap.dataset.type = type;
+  wrap.innerHTML = rowTemplate(data, type);
+  container.appendChild(wrap);
+
+  wrap.addEventListener("click", (e) => {
+    const btn = e.target.closest("[data-act='del']");
+    if (!btn) return;
+    wrap.remove();
+    recalcAll();
+  });
+
+  wrap.querySelectorAll("input").forEach(inp => {
+    inp.addEventListener("change", () => {
+      if (inp.dataset.k === "value") inp.value = fmtInt(cleanNumber(inp.value));
+      recalcAll();
+    });
+  });
+}
+
+document.getElementById("addInvestmentBtn").addEventListener("click", () => addRow(investmentAccountsContainer, "investment", {name:"", value:0}));
+document.getElementById("addOtherIncomeBtn").addEventListener("click", () => addRow(otherIncomeContainer, "income", {name:"", value:0}));
+document.getElementById("addLiabilityBtn").addEventListener("click", () => addRow(liabilitiesContainer, "liability", {name:"", value:0}));
+
+function collectInputs() {
+  const currentAge = Number(document.getElementById("currentAge").value);
+  const retirementYear = Number(document.getElementById("retirementYear").value);
+  const baseSalary = cleanNumber(document.getElementById("baseSalary").value);
+  const bonusRate = Number(document.getElementById("bonusRate").value) / 100;
+  const my401k = Number(document.getElementById("my401kContributionRate").value) / 100;
+  const company401k = Number(document.getElementById("company401kContributionRate").value) / 100;
+  const annualRoth = cleanNumber(document.getElementById("annualRothContribution").value);
+  const monthlyHSA = cleanNumber(document.getElementById("monthlyHSAContribution").value);
+  const raise = Number(document.getElementById("annualSalaryRaise").value) / 100;
+  const stockApy = Number(document.getElementById("stockAppreciation").value) / 100;
+  const inflation = Number(document.getElementById("inflation").value) / 100;
+  const ssAge = Number(document.getElementById("socialSecurityStartAge").value);
+  const ssMonthly = Number(document.getElementById("socialSecurityMonthly").value);
+  const seventyTwoTAge = Number(document.getElementById("seventyTwoTRetirementYear").value);
+
+  const investments = [...investmentAccountsContainer.querySelectorAll("[data-type='investment']")].map(w => ({
+    name: w.querySelector("[data-k='name']").value.trim() || "Investment",
+    value: cleanNumber(w.querySelector("[data-k='value']").value)
+  }));
+  const otherIncome = [...otherIncomeContainer.querySelectorAll("[data-type='income']")].map(w => ({
+    name: w.querySelector("[data-k='name']").value.trim() || "Income",
+    monthly: cleanNumber(w.querySelector("[data-k='value']").value)
+  }));
+  const liabilities = [...liabilitiesContainer.querySelectorAll("[data-type='liability']")].map(w => ({
+    name: w.querySelector("[data-k='name']").value.trim() || "Liability",
+    value: cleanNumber(w.querySelector("[data-k='value']").value)
+  }));
+
+  return { currentAge, retirementYear, baseSalary, bonusRate, my401k, company401k, annualRoth, monthlyHSA, raise, stockApy, inflation, ssAge, ssMonthly, seventyTwoTAge, investments, otherIncome, liabilities };
+}
+
+function syncRetirementSliders(changedId) {
+  if (changedId === "retirementYear") {
+    document.getElementById("seventyTwoTRetirementYear").value = document.getElementById("retirementYear").value;
+    updateSliderLabel("seventyTwoTRetirementYear");
+  }
+  if (changedId === "seventyTwoTRetirementYear") {
+    document.getElementById("retirementYear").value = document.getElementById("seventyTwoTRetirementYear").value;
+    updateSliderLabel("retirementYear");
+  }
+  const override = document.getElementById("quitAgeOverride").checked;
+  if (!override) {
+    document.getElementById("quitAge").value = document.getElementById("retirementYear").value;
+  }
+}
+
+const irsLifeExpectancyTable = { 40:44.6, 41:43.6, 42:42.6, 43:41.7, 44:40.7, 45:39.8, 46:38.8, 47:37.9, 48:36.9, 49:36.0, 50:35.0, 51:34.1, 52:33.1, 53:32.2, 54:31.2, 55:30.3, 56:29.3, 57:28.4, 58:27.4, 59:26.5, 60:25.5, 61:24.6, 62:23.6, 63:22.7, 64:21.8, 65:20.8, 66:19.9, 67:19.0, 68:18.1, 69:17.2, 70:16.3 };
+
+function compute72tAnnual(balance, age, interestRate=0.05) {
+  const le = irsLifeExpectancyTable[age];
+  if (!le || balance <= 0) return 0;
+  const r = interestRate;
+  const n = le;
+  return balance * (r / (1 - Math.pow(1 + r, -n)));
+}
+
+function render72t(inputs) {
+  const tbody = document.getElementById("seventyTwoTTableBody");
+  tbody.innerHTML = "";
+  const container = document.getElementById("seventyTwoTChartContainer");
+  container.innerHTML = "";
+
+  const startAge = inputs.seventyTwoTAge;
+  const endAge = Math.min(70, startAge + 15);
+
+  const inv401 = inputs.investments.filter(a => a.name.toLowerCase().includes("401"));
+  let balance = inv401.length ? inv401.reduce((s,a)=>s+a.value,0) : inputs.investments.reduce((s,a)=>s+a.value,0);
+
+  const data = [];
+  for (let age = startAge; age <= endAge; age++) {
+    const annual = compute72tAnnual(balance, age, 0.05);
+    tbody.insertAdjacentHTML("beforeend", `<tr><td>${age}</td><td>${fmtMoney(balance)}</td><td>${fmtMoney(annual)}</td></tr>`);
+    data.push({ age, balance, annual });
+    balance = Math.max(0, balance * (1 + inputs.stockApy) - annual);
+  }
+
+  const w = Math.max(520, container.clientWidth || 520);
+  const h = 260;
+  const m = { top: 10, right: 50, bottom: 35, left: 55 };
+  const svg = d3.select(container).append("svg").attr("width", w).attr("height", h);
+  const x = d3.scaleLinear().domain(d3.extent(data, d=>d.age)).range([m.left, w - m.right]);
+  const yL = d3.scaleLinear().domain([0, d3.max(data, d=>d.balance) || 1]).nice().range([h - m.bottom, m.top]);
+  const yR = d3.scaleLinear().domain([0, d3.max(data, d=>d.annual) || 1]).nice().range([h - m.bottom, m.top]);
+
+  svg.append("g").attr("transform", `translate(0,${h-m.bottom})`).call(d3.axisBottom(x).ticks(data.length));
+  svg.append("g").attr("transform", `translate(${m.left},0)`).call(d3.axisLeft(yL).ticks(6).tickFormat(d=>`$${Math.round(d/1000)}K`));
+  svg.append("g").attr("transform", `translate(${w-m.right},0)`).call(d3.axisRight(yR).ticks(6).tickFormat(d=>`$${Math.round(d/1000)}K`));
+
+  const lineL = d3.line().x(d=>x(d.age)).y(d=>yL(d.balance));
+  const lineR = d3.line().x(d=>x(d.age)).y(d=>yR(d.annual));
+
+  svg.append("path").datum(data).attr("fill","none").attr("stroke","steelblue").attr("stroke-width",3).attr("d", lineL);
+  svg.append("path").datum(data).attr("fill","none").attr("stroke","darkorange").attr("stroke-width",3).attr("d", lineR);
+}
+
+const budgetTbody = document.getElementById("budgetTableBody");
+const budgetTotalMonthly = document.getElementById("budgetTotalMonthly");
+const budgetTotalAnnual = document.getElementById("budgetTotalAnnual");
+
+const DEFAULT_BUDGET = [
+  { name: "Mortgage w/ Escrow", monthly: 1514 },
+  { name: "Utilities + Internet", monthly: 375 },
+  { name: "Food", monthly: 1300 },
+  { name: "Gas + Maintenance", monthly: 319 },
+  { name: "Insurance", monthly: 183 },
+  { name: "Kid Stuff", monthly: 150 },
+  { name: "Discretionary", monthly: 415 }
+];
+
+let budgetItems = structuredClone(DEFAULT_BUDGET);
+
+function renderBudget() {
+  budgetTbody.innerHTML = "";
+  budgetItems.forEach((item, idx) => {
+    budgetTbody.insertAdjacentHTML("beforeend", `
+      <tr data-i="${idx}">
+        <td><input class="w-full rounded-lg border border-slate-200 px-2 py-1" data-k="name" value="${item.name}"></td>
+        <td><input class="w-full rounded-lg border border-slate-200 px-2 py-1 text-right" data-k="monthly" inputmode="numeric" value="${fmtInt(item.monthly)}"></td>
+        <td><button class="px-3 py-2 rounded-xl border border-red-200 text-red-600 hover:bg-red-50 font-semibold" data-act="del">X</button></td>
+        <td class="text-right font-semibold">${fmtMoney(item.monthly * 12)}</td>
+      </tr>
+    `);
+  });
+  updateBudgetTotals();
+}
+
+function updateBudgetTotals() {
+  const totalM = budgetItems.reduce((s, it) => s + (Number(it.monthly) || 0), 0);
+  budgetTotalMonthly.textContent = fmtMoney(totalM);
+  budgetTotalAnnual.textContent = fmtMoney(totalM * 12);
+}
+
+budgetTbody.addEventListener("change", (e) => {
+  const tr = e.target.closest("tr");
+  if (!tr) return;
+  const idx = Number(tr.dataset.i);
+  const k = e.target.dataset.k;
+  if (!budgetItems[idx] || !k) return;
+  if (k === "name") budgetItems[idx].name = e.target.value;
+  if (k === "monthly") {
+    budgetItems[idx].monthly = clamp(cleanNumber(e.target.value), 0, 1_000_000);
+    e.target.value = fmtInt(budgetItems[idx].monthly);
+  }
+  renderBudget();
+  recalcEarlyQuit();
+});
+
+budgetTbody.addEventListener("click", (e) => {
+  const tr = e.target.closest("tr");
+  const del = e.target.closest("[data-act='del']");
+  if (!tr || !del) return;
+  budgetItems.splice(Number(tr.dataset.i), 1);
+  renderBudget();
+  recalcEarlyQuit();
+});
+
+document.getElementById("addBudgetItemBtn").addEventListener("click", () => {
+  budgetItems.push({ name: "New Item", monthly: 0 });
+  renderBudget();
+  recalcEarlyQuit();
+});
+document.getElementById("resetEarlyQuitBtn").addEventListener("click", () => {
+  budgetItems = structuredClone(DEFAULT_BUDGET);
+  renderBudget();
+  recalcEarlyQuit();
+});
+
+function splitAccounts(investments) {
+  const bucket = { checking:0, brokerage:0, roth:0, k401:0 };
+  for (const a of investments) {
+    const n = a.name.toLowerCase();
+    if (n.includes("check")) bucket.checking += a.value;
+    else if (n.includes("broker")) bucket.brokerage += a.value;
+    else if (n.includes("roth")) bucket.roth += a.value;
+    else if (n.includes("401")) bucket.k401 += a.value;
+  }
+  return bucket;
+}
+
+function sumOtherIncomeAnnual(inputs) {
+  const baseOther = inputs.otherIncome.reduce((s, i) => s + (i.monthly * 12), 0);
+  const extra = Number(document.getElementById("earlyQuitAdditionalIncome").value || 0);
+  return baseOther + extra;
+}
+
+function recalcEarlyQuit() {
+  const inputs = collectInputs();
+  const burnTbody = document.getElementById("burnDownTbody");
+  burnTbody.innerHTML = "";
+  const errEl = document.getElementById("earlyQuitError");
+  errEl.classList.add("hidden");
+  errEl.textContent = "";
+  const quitAgeEl = document.getElementById("quitAge");
+  const overrideEl = document.getElementById("quitAgeOverride");
+  const override = !!(overrideEl && overrideEl.checked);
+
+  let quitAge = override ? Number(quitAgeEl.value || inputs.retirementYear) : inputs.retirementYear;
+  quitAge = clamp(quitAge, inputs.currentAge, 70);
+
+  // Keep UI in sync unless the user explicitly overrides it
+  if (quitAgeEl && !override) quitAgeEl.value = quitAge;
+
+
+  const endAge = 59;
+  if (quitAge > endAge) {
+    errEl.textContent = "Quit age is already >= 59. Simulation expects quitting before 59.5.";
+    errEl.classList.remove("hidden");
+    return;
+  }
+
+  const b = splitAccounts(inputs.investments);
+  let checking = b.checking, brokerage = b.brokerage, roth = b.roth, k401 = b.k401;
+
+  const annualOtherIncome = sumOtherIncomeAnnual(inputs);
+  document.getElementById("earlyQuitAdditionalIncomeLabel").textContent = fmtMoney(Number(document.getElementById("earlyQuitAdditionalIncome").value || 0));
+
+  const annualBudget = budgetItems.reduce((s, it) => s + it.monthly, 0) * 12;
+  const thisYear = new Date().getFullYear();
+
+  for (let age = quitAge; age <= endAge; age++) {
+    brokerage *= (1 + inputs.stockApy);
+    roth *= (1 + inputs.stockApy);
+    k401 *= (1 + inputs.stockApy);
+
+    const grossBudget = annualBudget;
+    const income = annualOtherIncome;
+    let netNeed = Math.max(0, grossBudget - income);
+
+    const draw = (bal) => { const a = Math.min(bal, netNeed); netNeed -= a; return a; };
+    let totalDraw = 0;
+
+    const dCheck = draw(checking); checking -= dCheck; totalDraw += dCheck;
+    const dBrok  = draw(brokerage); brokerage -= dBrok; totalDraw += dBrok;
+    const dRoth  = draw(roth); roth -= dRoth; totalDraw += dRoth;
+    const d401   = draw(k401); k401 -= d401; totalDraw += d401;
+
+    burnTbody.insertAdjacentHTML("beforeend", `
+      <tr>
+        <td>${age}</td>
+        <td>${thisYear + (age - inputs.currentAge)}</td>
+        <td>${fmtMoney(grossBudget)}</td>
+        <td>${fmtMoney(income)}</td>
+        <td>${fmtMoney(grossBudget - income)}</td>
+        <td>${fmtMoney(checking)}</td>
+        <td>${fmtMoney(brokerage)}</td>
+        <td>${fmtMoney(roth)}</td>
+        <td>${fmtMoney(k401)}</td>
+        <td>${fmtMoney(totalDraw)}</td>
+      </tr>
+    `);
+
+    if (checking + brokerage + roth + k401 <= 0 && age < endAge) {
+      burnTbody.insertAdjacentHTML("beforeend", `<tr><td colspan="10" class="text-red-700 font-semibold">Ran out of funds at age ${age}.</td></tr>`);
+      break;
+    }
+  }
+}
+
+function recalcSummary(inputs) {
+  const invTotal = inputs.investments.reduce((s,a)=>s+a.value,0);
+  const liabTotal = inputs.liabilities.reduce((s,l)=>s+l.value,0);
+  const netWorth = invTotal - liabTotal;
+  const annualOther = inputs.otherIncome.reduce((s,i)=>s+i.monthly*12,0);
+  const totalAnnualIncome = inputs.baseSalary * (1 + inputs.bonusRate) + annualOther;
+
+  document.getElementById("currentNetWorth").textContent = fmtMoney(netWorth);
+  document.getElementById("annualIncomeDisplay").textContent = fmtMoney(totalAnnualIncome);
+}
+
+function recalcAll(changedId=null) {
+  if (changedId) {
+    updateSliderLabel(changedId);
+    if (changedId === "retirementYear" || changedId === "seventyTwoTRetirementYear") syncRetirementSliders(changedId);
+  }
+  const inputs = collectInputs();
+  recalcSummary(inputs);
+  render72t(inputs);
+  recalcEarlyQuit();
+}
+
+sliderPairs.forEach(p => {
+  const el = document.getElementById(p.id);
+  if (!el) return;
+  el.addEventListener("input", () => recalcAll(p.id));
+});
+
+["baseSalary","annualRothContribution","monthlyHSAContribution"].forEach(id => {
+  const el = document.getElementById(id);
+  el.addEventListener("change", () => { el.value = fmtInt(cleanNumber(el.value)); recalcAll(); });
+});
+
+document.getElementById("quitAgeOverride").addEventListener("change", () => { syncRetirementSliders("retirementYear"); recalcEarlyQuit(); });
+document.getElementById("quitAge").addEventListener("change", () => recalcEarlyQuit());
+document.getElementById("earlyQuitAdditionalIncome").addEventListener("input", () => recalcEarlyQuit());
+document.getElementById("runEarlyQuitBtn").addEventListener("click", () => recalcEarlyQuit());
+
+addRow(investmentAccountsContainer, "investment", { name: "Checking", value: 50000 });
+addRow(investmentAccountsContainer, "investment", { name: "Brokerage", value: 160375 });
+addRow(investmentAccountsContainer, "investment", { name: "Roth Basis", value: 130000 });
+addRow(investmentAccountsContainer, "investment", { name: "401K", value: 459863 });
+
+addRow(otherIncomeContainer, "income", { name: "Rental House", value: 1500 });
+addRow(otherIncomeContainer, "income", { name: "Cell Tower", value: 1200 });
+
+addRow(liabilitiesContainer, "liability", { name: "Mortgage", value: 200000 });
+
+document.getElementById("quitAge").value = document.getElementById("retirementYear").value;
+
+sliderPairs.forEach(p => updateSliderLabel(p.id));
+renderBudget();
+recalcAll();
+</script>
+</body>
+</html>
