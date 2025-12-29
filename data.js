@@ -46,11 +46,19 @@ window.addRow = function(containerId, type) {
         row.innerHTML = `
             <td class="px-4 py-3"><input type="text" placeholder="Account" class="bg-transparent outline-none w-full text-sm"></td>
             <td class="px-4 py-3">
-                <select class="bg-transparent outline-none font-medium text-slate-500 text-xs">
+                <select class="bg-transparent outline-none font-medium text-slate-500 text-xs" onchange="toggleCostBasis(this)">
                     ${INVEST_CLASSES.map(c => `<option value="${c}">${c}</option>`).join('')}
                 </select>
             </td>
-            <td class="px-4 py-3"><input type="number" placeholder="0" class="w-full text-right font-bold outline-none bg-transparent text-sm"></td>
+            <td class="px-4 py-3 text-right">
+                <div class="flex flex-col items-end">
+                    <input type="number" placeholder="Total Balance" class="w-full text-right font-bold outline-none bg-transparent text-sm">
+                    <div class="cost-basis-container hidden mt-1">
+                        <label class="text-[8px] font-bold text-indigo-400 uppercase block">Cost Basis</label>
+                        <input type="number" placeholder="Basis Amount" class="w-full text-right text-[10px] text-slate-500 outline-none bg-transparent border-b border-indigo-100">
+                    </div>
+                </div>
+            </td>
             <td class="px-4 py-2 text-right"><button onclick="this.closest('tr').remove()" class="text-slate-200 hover:text-red-500"><i class="fas fa-times text-xs"></i></button></td>`;
         container.appendChild(row);
     }
@@ -67,15 +75,15 @@ window.addRow = function(containerId, type) {
             </div>
             <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div class="flex flex-col">
-                    <div class="flex justify-between text-[10px] font-bold text-slate-500 mb-1 uppercase"><span>Annual Increase</span><span id="inc-val-0">%</span></div>
+                    <div class="flex justify-between text-[10px] font-bold text-slate-500 mb-1 uppercase"><span>Annual Increase</span><span class="val-display">2%</span></div>
                     <input type="range" min="0" max="10" step="0.5" value="2" class="w-full" oninput="this.previousElementSibling.lastElementChild.innerText = this.value + '%'">
                 </div>
                 <div class="flex flex-col">
-                    <div class="flex justify-between text-[10px] font-bold text-slate-500 mb-1 uppercase"><span>Personal 401k %</span><span id="cont-val-0">%</span></div>
+                    <div class="flex justify-between text-[10px] font-bold text-slate-500 mb-1 uppercase"><span>Personal 401k %</span><span class="val-display">0%</span></div>
                     <input type="range" min="0" max="30" step="1" value="0" class="w-full" oninput="this.previousElementSibling.lastElementChild.innerText = this.value + '%'">
                 </div>
                 <div class="flex flex-col">
-                    <div class="flex justify-between text-[10px] font-bold text-slate-500 mb-1 uppercase"><span>Company Match %</span><span id="match-val-0">%</span></div>
+                    <div class="flex justify-between text-[10px] font-bold text-slate-500 mb-1 uppercase"><span>Company Match %</span><span class="val-display">0%</span></div>
                     <input type="range" min="0" max="20" step="0.5" value="0" class="w-full" oninput="this.previousElementSibling.lastElementChild.innerText = this.value + '%'">
                 </div>
             </div>`;
@@ -93,6 +101,16 @@ window.addRow = function(containerId, type) {
     }
 };
 
+window.toggleCostBasis = function(selectElement) {
+    const row = selectElement.closest('tr');
+    const basisContainer = row.querySelector('.cost-basis-container');
+    if (selectElement.value === "Post-Tax (Roth)") {
+        basisContainer.classList.remove('hidden');
+    } else {
+        basisContainer.classList.add('hidden');
+    }
+};
+
 window.addEventListener('DOMContentLoaded', () => {
     window.calculateUserAge();
     window.addRow('investment-rows', 'investment');
@@ -100,3 +118,53 @@ window.addEventListener('DOMContentLoaded', () => {
     window.addRow('housing-list', 'housing');
     window.addRow('income-list', 'income');
 });
+
+// Function to repopulate UI from Firebase data
+window.loadUserDataIntoUI = (data) => {
+    if (!data) return;
+
+    // Load Birth Year
+    if (data.birthYear) {
+        document.getElementById('user-birth-year').value = data.birthYear;
+        window.calculateUserAge();
+    }
+
+    // Clear existing rows before loading
+    document.getElementById('investment-rows').innerHTML = '';
+    document.getElementById('income-list').innerHTML = '';
+
+    // Repopulate Investments
+    if (data.investments) {
+        data.investments.forEach(inv => {
+            window.addRow('investment-rows', 'investment');
+            const lastRow = document.querySelector('#investment-rows tr:last-child');
+            lastRow.cells[0].querySelector('input').value = inv.name || '';
+            lastRow.cells[1].querySelector('select').value = inv.class || 'Taxable';
+            lastRow.cells[2].querySelector('input[placeholder="Total Balance"]').value = inv.balance || '';
+            
+            if (inv.class === "Post-Tax (Roth)") {
+                window.toggleCostBasis(lastRow.cells[1].querySelector('select'));
+                lastRow.cells[2].querySelector('.cost-basis-container input').value = inv.basis || '';
+            }
+        });
+    }
+
+    // Repopulate Income
+    if (data.income) {
+        data.income.forEach(inc => {
+            window.addRow('income-list', 'income');
+            const lastDiv = document.querySelector('#income-list > div:last-child');
+            lastDiv.querySelector('input[placeholder="Income Name"]').value = inc.name || '';
+            lastDiv.querySelector('input[placeholder="Annual Amt"]').value = inc.amount || '';
+            lastDiv.querySelector('input[placeholder="Never"]').value = inc.taxFreeUntil || '';
+            
+            const sliders = lastDiv.querySelectorAll('input[type=range]');
+            sliders[0].value = inc.increase || 2;
+            sliders[1].value = inc.contribution || 0;
+            sliders[2].value = inc.match || 0;
+            
+            // Update the % text displays
+            sliders.forEach(s => s.previousElementSibling.lastElementChild.innerText = s.value + '%');
+        });
+    }
+};
