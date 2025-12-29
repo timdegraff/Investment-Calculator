@@ -1,38 +1,52 @@
-// constants.js - 2026 Data & Financial Rules
+// constants.js - 2026 Comprehensive Data
 export const TAX_CONSTANTS = {
     YEAR: 2026,
-    STANDARD_DEDUCTION_MFJ: 32200, // Up from $31,500 in 2025
-    ADDITIONAL_65_PLUS_MFJ: 1650,  // Per spouse over 65
-    
-    // 2026 MFJ Tax Brackets
-    BRACKETS_MFJ: [
-        { min: 0, max: 24800, rate: 0.10 },
-        { min: 24801, max: 100800, rate: 0.12 },
-        { min: 100801, max: 211400, rate: 0.22 },
-        { min: 211401, max: 403550, rate: 0.24 },
-        { min: 403551, max: 512450, rate: 0.32 },
-        { min: 512451, max: 768700, rate: 0.35 },
-        { min: 768701, max: Infinity, rate: 0.37 }
-    ],
-    
-    // Retirement Contribution Limits 2026
-    LIMIT_401K: 24500,     // Up from $23,500
-    LIMIT_IRA: 7500,       // Up from $7,000
-    CATCH_UP_50_PLUS: 8000 // Total 401k for age 50+ is $32,500
+    STANDARD_DEDUCTION: {
+        SINGLE: 16100,
+        MFJ: 32200,
+        HOH: 24150 // Head of Household
+    },
+    // 2026 Income Tax Brackets
+    BRACKETS: {
+        SINGLE: [
+            { min: 0, max: 12400, rate: 0.10 },
+            { min: 12401, max: 50400, rate: 0.12 },
+            { min: 50401, max: 105700, rate: 0.22 },
+            { min: 105701, max: 211400, rate: 0.24 },
+            { min: 211401, max: 256225, rate: 0.32 },
+            { min: 256226, max: 640600, rate: 0.35 },
+            { min: 640601, max: Infinity, rate: 0.37 }
+        ],
+        MFJ: [
+            { min: 0, max: 24800, rate: 0.10 },
+            { min: 24801, max: 100800, rate: 0.12 },
+            { min: 100801, max: 211400, rate: 0.22 },
+            { min: 211401, max: 403550, rate: 0.24 },
+            { min: 403551, max: 512450, rate: 0.32 },
+            { min: 512451, max: 768700, rate: 0.35 },
+            { min: 768701, max: Infinity, rate: 0.37 }
+        ]
+    },
+    // Child Tax Credit (CTC) 2026
+    CTC: {
+        MAX_PER_CHILD: 2200,
+        MAX_REFUNDABLE: 1700,
+        PHASE_OUT_START: { SINGLE: 200000, MFJ: 400000 },
+        PHASE_OUT_RATE: 0.05, // $50 for every $1000 over
+        OTHER_DEPENDENT_CREDIT: 500
+    }
 };
 
 export const SOCIAL_PROGRAMS = {
-    // SNAP FY2026 (Effective Oct 2025 - Sept 2026)
-    SNAP_MAX_ALLOTMENT_FAMILY_6: 1421, // Family of 6
-    SNAP_GROSS_INCOME_LIMIT_MFJ_6: 4675, // 130% FPL for Family of 6
-    SNAP_ASSET_LIMIT: 3000,              // Standard (House/Retirement usually exempt)
-};
-
-export const RETIREMENT_RULES = {
-    AGE_72T_PENALTY_FREE: 59.5,
-    SEPP_INTEREST_RATE_MAX: 0.05, // Greater of 5% or 120% AFR
-    PENALTY_EARLY_WITHDRAW: 0.10,
-    // User Preferences
-    SAFE_WITHDRAWAL_EARLY: 0.07, 
-    SAFE_WITHDRAWAL_STD: 0.05
+    // SNAP 130% Gross Monthly Income Limits (Continental US 2026)
+    SNAP_GROSS_MONTHLY: {
+        1: 1696, 2: 2292, 3: 2888, 4: 3483,
+        5: 4079, 6: 4675, 7: 5271, 8: 5867,
+        EACH_ADDITIONAL: 596
+    },
+    SNAP_MAX_ALLOTMENT: {
+        1: 298, 2: 546, 3: 785, 4: 994,
+        5: 1183, 6: 1421, 7: 1571, 8: 1789,
+        EACH_ADDITIONAL: 218
+    }
 };
