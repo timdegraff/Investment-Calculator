@@ -43,24 +43,25 @@ export function triggerAutoSave(userId) {
  * Updates the Dashboard numbers using math.js
  */
 function updateUIResults(data) {
-    const netWorth = calculateNetWorth(data.assets, data.liabilities);
-    const status = data.filingStatus || 'MFJ'; // Default to MFJ
-    const tax = calculateEstimatedTax(data.monthlyIncome * 12, status);
-    const ctc = calculateCTC(data.monthlyIncome * 12, data.kidsCount, status);
-    // Calculate SNAP for family size (Kids + 2 Adults)
-    const snap = checkSnapEligibility(data.monthlyIncome, data.kidsCount + 2);
-
-    // Calculate Federal Tax
+    const status = data.filingStatus || 'MFJ';
+    const familySize = (parseInt(data.kidsCount) || 0) + 2;
     const annualGross = (parseFloat(data.monthlyIncome) || 0) * 12;
-    const estimatedTax = calculateEstimatedTax(annualGross, status);
 
-    // Update UI
-    document.getElementById('tax-display').innerText = `-$${estimatedTax.toLocaleString()}/yr`;
+    // 1. Calculations
+    const netWorth = calculateNetWorth(data.assets, data.liabilities);
+    const estTax = calculateEstimatedTax(annualGross, status);
+    const ctc = calculateCTC(annualGross, data.kidsCount, status);
+    const benefits = checkMichiganBenefits(data.monthlyIncome, familySize);
 
-    // Update UI
+    // 2. UI Updates
     document.getElementById('total-net-worth').innerText = `$${netWorth.toLocaleString()}`;
-    document.getElementById('ctc-display').innerText = `$${ctc.toLocaleString()}/yr`;
-    document.getElementById('snap-limit-display').innerText = `$${snap.limit.toLocaleString()}/mo`;
+    document.getElementById('tax-display').innerText = `$${estTax.toLocaleString()}`;
+    document.getElementById('ctc-display').innerText = `$${ctc.toLocaleString()}`;
+    document.getElementById('snap-limit-display').innerText = `$${benefits.snapLimit.toLocaleString()}`;
+
+    // 3. Visual Feedback for SNAP
+    const snapLabel = document.getElementById('snap-limit-display');
+    snapLabel.className = benefits.snapEligible ? "font-bold text-green-600" : "font-bold text-gray-700";
 }
 
 /**
