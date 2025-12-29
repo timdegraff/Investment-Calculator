@@ -3,19 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Retirement Burn-Down | Professional Dashboard</title>
+    <title>Retirement Burn-Down | Dashboard</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        .bento-card {
-            background: white;
-            border-radius: 1rem;
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-            padding: 1.5rem;
-            height: 100%;
-        }
-        #login-screen {
-            background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
-        }
+        .bento-card { background: white; border-radius: 1rem; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); padding: 1.5rem; height: 100%; }
+        #login-screen { background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%); }
+        input[type=number]::-webkit-inner-spin-button { display: none; }
     </style>
 </head>
 <body class="bg-gray-50 font-sans text-gray-900">
@@ -24,8 +17,7 @@
         <div class="text-center p-8 bg-white rounded-2xl shadow-2xl max-w-sm w-full">
             <h1 class="text-2xl font-bold mb-4">Investment Calculator</h1>
             <p class="text-gray-600 mb-8">Sign in with Google to start your retirement plan.</p>
-            <button id="google-login-btn" class="flex items-center justify-center w-full bg-blue-600 text-white font-semibold py-3 px-4 rounded-lg hover:bg-blue-700 transition duration-200">
-                <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" class="w-6 h-6 mr-2" alt="Google">
+            <button id="google-login-btn" class="flex items-center justify-center w-full bg-blue-600 text-white font-semibold py-3 px-4 rounded-lg hover:bg-blue-700 transition">
                 Sign in with Google
             </button>
         </div>
@@ -43,38 +35,27 @@
         <main class="grid grid-cols-1 lg:grid-cols-12 gap-6">
             <div class="lg:col-span-4 space-y-6">
                 <div class="bento-card">
-                    <h3 class="font-bold text-lg mb-4 border-b pb-2">Investments & Assets</h3>
-                    <div id="assets-list" class="space-y-3">
-                        </div>
-                </div>
-
-                <div class="bento-card">
-                    <h3 class="font-bold text-lg mb-4 border-b pb-2">Liabilities</h3>
-                    <div id="liabilities-list" class="space-y-3">
-                        </div>
+                    <h3 class="font-bold text-lg mb-4 border-b pb-2 text-red-600">Liabilities</h3>
+                    <div id="liabilities-list" class="space-y-3"></div>
                 </div>
             </div>
 
             <div class="lg:col-span-8 space-y-6">
-                <div class="bento-card overflow-hidden">
-                    <h3 class="font-bold text-lg mb-4 border-b pb-2">Retirement Burn-Down Chart</h3>
-                    <div class="h-96 w-full flex items-center justify-center bg-gray-100 italic text-gray-400">
-                        Chart rendering...
+                <div class="bento-card bg-slate-900 text-white">
+                    <h3 class="font-bold text-lg mb-4 border-b border-slate-700 pb-2">Net Worth Overview</h3>
+                    <div class="flex items-baseline gap-2">
+                        <span id="total-net-worth" class="text-5xl font-black text-green-400">$0</span>
                     </div>
                 </div>
-                
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div class="bento-card text-center">
-                        <p class="text-sm text-gray-500 uppercase">Estimated Freedom Date</p>
-                        <p id="freedom-date" class="text-3xl font-black text-blue-600">--</p>
+                        <p class="text-sm text-gray-500 uppercase">Total Debt</p>
+                        <p id="total-debt" class="text-3xl font-black text-red-500">$0</p>
                     </div>
                     <div class="bento-card text-center">
-                        <p class="text-sm text-gray-500 uppercase">Net Worth</p>
-                        <p id="total-net-worth" class="text-3xl font-black text-green-600">$0</p>
-                    </div>
-                    <div class="bento-card text-center">
-                        <p class="text-sm text-gray-500 uppercase">Monthly Burn</p>
-                        <p id="monthly-burn" class="text-3xl font-black text-red-600">$0</p>
+                        <p class="text-sm text-gray-500 uppercase">Status</p>
+                        <p id="save-status" class="text-xl font-bold text-gray-400 italic">Syncing...</p>
                     </div>
                 </div>
             </div>
@@ -82,20 +63,10 @@
     </div>
 
     <script type="module">
+        import { firebaseConfig } from './firebase-config.js';
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
         import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
         import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
-
-        // CONFIGURATION
-        const firebaseConfig = {
-            apiKey: "AIzaSyAqvvl6O3-2TLK4-j6ei1WU5SuaMY3HnO4",
-            authDomain: "investment-calculator-931f2.firebaseapp.com",
-            projectId: "investment-calculator-931f2",
-            storageBucket: "investment-calculator-931f2.firebasestorage.app",
-            messagingSenderId: "943895110805",
-            appId: "1:943895110805:web:ba6e1e6177ae31d7af279c",
-            measurementId: "G-F0CRPKLS7G"
-        };
 
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
@@ -105,89 +76,94 @@
         let currentUser = null;
         let saveTimeout = null;
 
-        // AUTHENTICATION LOGIC
-        const loginBtn = document.getElementById('google-login-btn');
-        const logoutBtn = document.getElementById('logout-btn');
-
-        loginBtn.addEventListener('click', () => {
-            signInWithPopup(auth, provider).catch(err => console.error(err));
-        });
-
-        logoutBtn.addEventListener('click', () => {
-            signOut(auth).then(() => location.reload());
-        });
-
-        onAuthStateChanged(auth, (user) => {
+        onAuthStateChanged(auth, async (user) => {
             if (user) {
                 currentUser = user;
                 document.getElementById('login-screen').classList.add('hidden');
                 document.getElementById('app-container').classList.remove('hidden');
-                loadUserData();
+                const docSnap = await getDoc(doc(db, "users", currentUser.uid));
+                docSnap.exists() ? renderDashboard(docSnap.data()) : loadDemoData();
             } else {
                 document.getElementById('login-screen').classList.remove('hidden');
                 document.getElementById('app-container').classList.add('hidden');
             }
         });
 
-        // DATA LOGIC
-        async function loadUserData() {
-            const userRef = doc(db, "users", currentUser.uid);
-            const docSnap = await getDoc(userRef);
+        document.getElementById('google-login-btn').onclick = () => signInWithPopup(auth, provider);
+        document.getElementById('logout-btn').onclick = () => signOut(auth).then(() => location.reload());
 
-            if (docSnap.exists()) {
-                renderData(docSnap.data());
-            } else {
-                initBlankState();
-            }
-        }
-
-        function initBlankState() {
-            // Permanent HELOC initialization
-            const initialData = {
-                liabilities: [{ name: "HELOC", limit: 0, balance: 0, permanent: true }],
-                assets: [],
-                budget: []
-            };
-            renderData(initialData);
-        }
-
-        function renderData(data) {
+        function renderDashboard(data) {
             const libList = document.getElementById('liabilities-list');
             libList.innerHTML = '';
-            
             data.liabilities.forEach((item, index) => {
                 const div = document.createElement('div');
-                div.className = "flex flex-col gap-2 p-3 bg-gray-50 rounded border";
+                div.className = "p-3 bg-gray-50 rounded border border-gray-200";
                 div.innerHTML = `
-                    <div class="flex justify-between items-center">
-                        <span class="font-semibold text-sm">${item.name}</span>
-                        ${!item.permanent ? '<button class="text-xs text-red-500">Delete</button>' : ''}
+                    <div class="flex justify-between text-sm font-bold mb-1">
+                        <span>${item.name}</span>
+                        ${item.permanent ? '<span class="text-gray-400 text-[10px] uppercase">Permanent</span>' : ''}
                     </div>
                     <div class="grid grid-cols-2 gap-2">
-                        <input type="number" value="${item.limit}" placeholder="Limit" class="text-sm p-1 border rounded w-full">
-                        <input type="number" value="${item.balance}" placeholder="Balance" class="text-sm p-1 border rounded w-full">
+                        <div>
+                            <label class="text-[10px] uppercase text-gray-400">Limit</label>
+                            <input type="number" data-type="limit" data-name="${item.name}" value="${item.limit}" class="w-full p-1 border rounded text-sm">
+                        </div>
+                        <div>
+                            <label class="text-[10px] uppercase text-gray-400">Balance</label>
+                            <input type="number" data-type="balance" data-name="${item.name}" value="${item.balance}" class="w-full p-1 border rounded text-sm font-bold">
+                        </div>
                     </div>
                 `;
                 libList.appendChild(div);
             });
 
-            // Auto-save listener
             document.querySelectorAll('input').forEach(input => {
-                input.addEventListener('input', triggerAutoSave);
+                input.oninput = () => { calculateTotals(); triggerAutoSave(); };
             });
+            calculateTotals();
+        }
+
+        function calculateTotals() {
+            let totalDebt = 0;
+            document.querySelectorAll('input[data-type="balance"]').forEach(input => {
+                totalDebt += parseFloat(input.value) || 0;
+            });
+            document.getElementById('total-debt').innerText = `$${totalDebt.toLocaleString()}`;
+            document.getElementById('total-net-worth').innerText = `-$${totalDebt.toLocaleString()}`;
         }
 
         function triggerAutoSave() {
+            document.getElementById('save-status').innerText = "Typing...";
             clearTimeout(saveTimeout);
-            saveTimeout = setTimeout(saveToFirebase, 2000); // 2 second debounce
+            saveTimeout = setTimeout(async () => {
+                if (!currentUser) return;
+                const data = {
+                    liabilities: Array.from(document.querySelectorAll('#liabilities-list > div')).map(div => ({
+                        name: div.querySelector('span').innerText,
+                        limit: div.querySelector('input[data-type="limit"]').value,
+                        balance: div.querySelector('input[data-type="balance"]').value,
+                        permanent: div.innerText.includes('PERMANENT')
+                    })),
+                    lastUpdated: new Date()
+                };
+                try {
+                    await setDoc(doc(db, "users", currentUser.uid), data);
+                    document.getElementById('save-status').innerText = "Saved to Cloud";
+                } catch (e) {
+                    document.getElementById('save-status').innerText = "Save Error";
+                }
+            }, 1500);
         }
 
-        async function saveToFirebase() {
-            if (!currentUser) return;
-            // Logic to scrape inputs and save to doc(db, "users", currentUser.uid)
-            console.log("Auto-saving data...");
+        function loadDemoData() {
+            renderDashboard({
+                liabilities: [
+                    { name: "HELOC", limit: 50000, balance: 12500, permanent: true },
+                    { name: "Suburban Loan", limit: 45000, balance: 32000, permanent: false }
+                ]
+            });
         }
-
+        document.getElementById('load-demo-btn').onclick = loadDemoData;
     </script>
 </body>
 </html>
