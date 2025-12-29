@@ -1,8 +1,7 @@
-// constants.js - 2026 OBBBA & Michigan Official
+// constants.js - 2026 Federal (OBBBA) & Michigan Official
 export const TAX_CONSTANTS = {
     YEAR: 2026,
     STANDARD_DEDUCTION: { SINGLE: 16100, MFJ: 32200 },
-    // OBBBA Permanent Brackets (Indexed for 2026)
     BRACKETS: {
         SINGLE: [
             { min: 0, max: 12400, rate: 0.10 },
@@ -24,13 +23,15 @@ export const TAX_CONSTANTS = {
         ]
     },
     CTC: { MAX_PER_CHILD: 2200, PHASE_OUT_START: { SINGLE: 200000, MFJ: 400000 } },
-    SALT_CAP: 40400, // OBBBA 2026 Limit
-    NON_ITEMIZER_CHARITY_LIMIT: { SINGLE: 1000, MFJ: 2000 },
-    MI_STATE_TAX_RATE: 0.0425 // Michigan Flat Rate
+    SALT_CAP: 40400,
+    MI_STATE_TAX_RATE: 0.0425
 };
 
 export const MICHIGAN_PROGRAMS = {
-    SNAP_GROSS_MONTHLY_LIMIT: { 1: 2610, 2: 3526, 3: 4442, 4: 5360, 5: 6276, 6: 7192 },
+    // SNAP: Michigan uses 200% FPL for Categorical Eligibility
+    SNAP_MONTHLY_LIMIT: { 1: 2610, 2: 3526, 3: 4442, 4: 5360, 5: 6276, 6: 7192, 7: 8110, 8: 9026 },
+    // Medicaid: 138% FPL for Adults
     MEDICAID_ADULT_MONTHLY: { 1: 1799, 2: 2432, 3: 3064, 4: 3697, 5: 4329, 6: 4962 },
+    // MiChild: 217% FPL for Kids
     MEDICAID_KIDS_MONTHLY: { 1: 2831, 2: 3825, 3: 4819, 4: 5813, 5: 6807, 6: 7801 }
 };
