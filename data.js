@@ -8,6 +8,25 @@ window.showTab = (tabId) => {
     document.getElementById(`btn-${tabId}`)?.classList.add('active', 'border-indigo-600', 'text-indigo-600');
 };
 
+window.addRow = (containerId, type) => {
+    const container = document.getElementById(containerId);
+    const row = document.createElement(type === 'income' ? 'div' : 'tr');
+    if (type !== 'income') row.className = "border-t border-slate-100";
+    row.innerHTML = templates[type]();
+    container.appendChild(row);
+    return row;
+};
+
+import { templates } from './templates.js';
+import { engine } from './engine.js';
+
+window.showTab = (tabId) => {
+    document.querySelectorAll('.tab-content').forEach(tab => tab.classList.add('hidden'));
+    document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active', 'border-indigo-600', 'text-indigo-600'));
+    document.getElementById(`tab-${tabId}`)?.classList.remove('hidden');
+    document.getElementById(`btn-${tabId}`)?.classList.add('active', 'border-indigo-600', 'text-indigo-600');
+};
+
 window.calculateUserAge = () => {
     const val = document.getElementById('user-birth-year').value;
     document.getElementById('display-age').innerText = new Date().getFullYear() - val;

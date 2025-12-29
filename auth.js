@@ -45,8 +45,7 @@ onAuthStateChanged(auth, async (user) => {
         
         const docSnap = await getDoc(doc(db, "users", user.uid));
         if (docSnap.exists() && window.loadUserDataIntoUI) {
-            window.loadUserDataIntoUI(docSnap.data().financialData);
-            console.log("✅ Data loaded from Firebase");
+        window.loadUserDataIntoUI(docSnap.data().financialData);
         }
     } else {
         loginScreen?.classList.remove('hidden');

@@ -30,21 +30,42 @@
     </div>
 
     <div id="app-container" class="hidden min-h-screen p-4 md:p-8 max-w-7xl mx-auto">
-        <header class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4 bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
-            <div>
-                <h2 class="text-2xl font-black text-slate-800">Finance <span class="text-indigo-600">Engine</span></h2>
-                <div class="flex items-center gap-4 mt-2">
-                    <div class="flex flex-col">
-                        <label class="text-[10px] uppercase font-bold text-slate-400">Birth Year</label>
-                        <input type="number" id="user-birth-year" value="1990" oninput="window.calculateUserAge()" class="w-20 font-bold text-lg border-b-2 border-indigo-200 outline-none text-slate-700">
+        <header class="bg-white rounded-2xl border border-slate-200 shadow-sm p-6 mb-8">
+            <div class="flex flex-col lg:flex-row justify-between gap-6">
+                <div class="flex items-center gap-6 pr-6 border-r border-slate-100">
+                    <div>
+                        <h2 class="text-xl font-black text-slate-800 leading-none">Finance <span class="text-indigo-600">Engine</span></h2>
+                        <div class="flex items-center gap-3 mt-3">
+                            <input type="number" id="user-birth-year" value="1990" oninput="window.calculateUserAge()" class="w-16 font-bold text-slate-700 border-b border-slate-200 outline-none text-sm">
+                            <span id="display-age" class="text-xs font-bold text-slate-400 bg-slate-100 px-2 py-1 rounded">-- YRS OLD</span>
+                        </div>
                     </div>
-                    <div class="flex flex-col border-l pl-4 border-slate-100">
-                        <span class="text-[10px] uppercase font-bold text-slate-400">Current Age</span>
-                        <span id="display-age" class="text-lg font-bold text-slate-700">--</span>
+                    <button onclick="logoutUser()" class="text-[10px] font-bold text-red-400 hover:text-red-600 transition uppercase">Sign Out</button>
+                </div>
+
+                <div class="flex-grow grid grid-cols-2 md:grid-cols-5 gap-4">
+                    <div class="px-2">
+                        <p class="text-[9px] font-bold text-slate-400 uppercase tracking-wider">Net Worth</p>
+                        <p id="sum-networth" class="text-lg font-black text-indigo-600">$0</p>
+                    </div>
+                    <div class="px-2 border-l border-slate-50">
+                        <p class="text-[9px] font-bold text-slate-400 uppercase tracking-wider">Assets / Debt</p>
+                        <p class="text-sm font-bold text-slate-700"><span id="sum-assets">$0</span> <span class="text-slate-300">/</span> <span id="sum-liabilities" class="text-red-400">$0</span></p>
+                    </div>
+                    <div class="px-2 border-l border-slate-50">
+                        <p class="text-[9px] font-bold text-slate-400 uppercase tracking-wider">2026 Gross</p>
+                        <p id="sum-income" class="text-lg font-black text-slate-800">$0</p>
+                    </div>
+                    <div class="px-2 border-l border-slate-50">
+                        <p class="text-[9px] font-bold text-slate-400 uppercase tracking-wider">Annual Savings</p>
+                        <p id="sum-savings" class="text-lg font-black text-emerald-600">$0</p>
+                    </div>
+                    <div class="px-2 border-l border-slate-50">
+                        <p class="text-[9px] font-bold text-slate-400 uppercase tracking-wider">Ret. Income</p>
+                        <p id="sum-ret-income" class="text-lg font-black text-slate-300">$0</p>
                     </div>
                 </div>
             </div>
-            <button onclick="logoutUser()" class="text-xs font-bold text-red-500 border border-red-100 px-4 py-2 rounded-lg hover:bg-red-50 transition uppercase">Sign Out</button>
         </header>
 
         <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-8">
