@@ -12,6 +12,9 @@
         .tab-btn.active { border-color: #4f46e5; color: #4f46e5; font-weight: 700; }
         .hidden { display: none !important; }
         input[type=range] { accent-color: #4f46e5; }
+        /* Remove number input arrows */
+        input::-webkit-outer-spin-button, input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+        input[type=number] { -moz-appearance: textfield; }
     </style>
 </head>
 <body class="bg-[#f8fafc] text-slate-900">
@@ -34,7 +37,7 @@
                 <div class="flex items-center gap-4 mt-2">
                     <div class="flex flex-col">
                         <label class="text-[10px] uppercase font-bold text-slate-400">Birth Year</label>
-                        <input type="number" id="user-birth-year" value="1990" onchange="calculateUserAge()" class="w-20 font-bold text-lg border-b-2 border-indigo-200 outline-none text-slate-700">
+                        <input type="number" id="user-birth-year" value="1990" onchange="window.calculateUserAge()" class="w-20 font-bold text-lg border-b-2 border-indigo-200 outline-none text-slate-700">
                     </div>
                     <div class="flex flex-col border-l pl-4 border-slate-100">
                         <span class="text-[10px] uppercase font-bold text-slate-400">Current Age</span>
@@ -42,7 +45,7 @@
                     </div>
                 </div>
             </div>
-            <button onclick="logoutUser()" class="text-xs font-bold text-red-500 border border-red-100 px-4 py-2 rounded-lg hover:bg-red-50 transition">SIGN OUT</button>
+            <button onclick="logoutUser()" class="text-xs font-bold text-red-500 border border-red-100 px-4 py-2 rounded-lg hover:bg-red-50 transition uppercase">Sign Out</button>
         </header>
 
         <nav class="flex space-x-2 border-b border-slate-200 mb-8 overflow-x-auto no-scrollbar">
@@ -62,12 +65,7 @@
                     <div class="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
                         <table class="w-full text-left text-sm">
                             <thead class="bg-slate-50 text-slate-400 uppercase text-[9px] font-bold">
-                                <tr>
-                                    <th class="px-4 py-3">Account Name</th>
-                                    <th class="px-4 py-3">Tax Class</th>
-                                    <th class="px-4 py-3 text-right">Portfolio Values</th>
-                                    <th class="px-4 py-3"></th>
-                                </tr>
+                                <tr><th class="px-4 py-3">Account Name</th><th class="px-4 py-3">Tax Class</th><th class="px-4 py-3 text-right">Portfolio Values</th><th class="px-4 py-3"></th></tr>
                             </thead>
                             <tbody id="investment-rows"></tbody>
                         </table>
@@ -79,7 +77,14 @@
                         <h3 class="font-black text-slate-800 uppercase tracking-tight text-xs">Other Assets</h3>
                         <button onclick="addRow('other-assets-list', 'other')" class="text-[10px] bg-indigo-600 text-white font-black px-3 py-1.5 rounded-lg hover:bg-indigo-700 transition">+ ADD ASSET</button>
                     </div>
-                    <div id="other-assets-list" class="space-y-3"></div>
+                    <div class="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
+                        <table class="w-full text-left text-sm">
+                            <thead class="bg-slate-50 text-slate-400 uppercase text-[9px] font-bold">
+                                <tr><th class="px-4 py-3">Asset</th><th class="px-4 py-3 text-right">Value</th><th class="px-4 py-3"></th></tr>
+                            </thead>
+                            <tbody id="other-assets-list"></tbody>
+                        </table>
+                    </div>
                 </div>
 
                 <div class="lg:col-span-3">
@@ -87,7 +92,20 @@
                         <h3 class="font-black text-slate-800 uppercase tracking-tight text-xs">Real Estate</h3>
                         <button onclick="addRow('housing-list', 'housing')" class="text-[10px] bg-indigo-600 text-white font-black px-3 py-1.5 rounded-lg hover:bg-indigo-700 transition">+ ADD PROPERTY</button>
                     </div>
-                    <div id="housing-list" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
+                    <div class="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
+                        <table class="w-full text-left text-sm">
+                            <thead class="bg-slate-50 text-slate-400 uppercase text-[9px] font-bold">
+                                <tr>
+                                    <th class="px-4 py-3">Property Description</th>
+                                    <th class="px-4 py-3 text-right">Market Value</th>
+                                    <th class="px-4 py-3 text-right">Mortgage</th>
+                                    <th class="px-4 py-3 text-right">Tax/Ins (Yr)</th>
+                                    <th class="px-4 py-3"></th>
+                                </tr>
+                            </thead>
+                            <tbody id="housing-list"></tbody>
+                        </table>
+                    </div>
                 </div>
             </section>
 
@@ -101,8 +119,8 @@
                 </div>
             </section>
 
-            <section id="tab-savings" class="tab-content hidden"><div class="p-12 text-center text-slate-400 italic">Savings & Expense Tracker Placeholder</div></section>
-            <section id="tab-assumptions" class="tab-content hidden"><div class="p-12 text-center text-slate-400 italic">Projection Assumptions Placeholder</div></section>
+            <section id="tab-savings" class="tab-content hidden"><div class="p-12 text-center text-slate-400 italic">Savings Logic Pending</div></section>
+            <section id="tab-assumptions" class="tab-content hidden"><div class="p-12 text-center text-slate-400 italic">Assumptions Logic Pending</div></section>
         </main>
     </div>
 
