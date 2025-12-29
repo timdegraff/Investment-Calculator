@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Finance Engine | 2026</title>
+    <title>Finance Engine</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <style>
@@ -11,6 +11,7 @@
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
         .tab-btn.active { border-color: #4f46e5; color: #4f46e5; font-weight: 700; }
         .hidden { display: none !important; }
+        input[type=range] { accent-color: #4f46e5; }
     </style>
 </head>
 <body class="bg-[#f8fafc] text-slate-900">
@@ -33,10 +34,10 @@
                 <div class="flex items-center gap-4 mt-2">
                     <div class="flex flex-col">
                         <label class="text-[10px] uppercase font-bold text-slate-400">Birth Year</label>
-                        <input type="number" id="user-birth-year" value="1985" onchange="calculateUserAge()" class="w-20 font-bold text-lg border-b-2 border-indigo-200 outline-none">
+                        <input type="number" id="user-birth-year" value="1990" onchange="calculateUserAge()" class="w-20 font-bold text-lg border-b-2 border-indigo-200 outline-none">
                     </div>
                     <div class="flex flex-col border-l pl-4 border-slate-100">
-                        <span class="text-[10px] uppercase font-bold text-slate-400">Age</span>
+                        <span class="text-[10px] uppercase font-bold text-slate-400">Current Age</span>
                         <span id="display-age" class="text-lg font-bold text-slate-700">--</span>
                     </div>
                 </div>
@@ -56,12 +57,12 @@
                 <div class="lg:col-span-2">
                     <div class="flex justify-between items-center mb-4">
                         <h3 class="font-black text-slate-800 uppercase tracking-tight text-xs">Investments</h3>
-                        <button onclick="addRow('investment-rows', 'investment')" class="text-[10px] bg-indigo-600 text-white font-black px-3 py-1.5 rounded-lg">+ ADD INVESTMENT</button>
+                        <button onclick="addRow('investment-rows', 'investment')" class="text-[10px] bg-indigo-600 text-white font-black px-3 py-1.5 rounded-lg">+ ADD ACCOUNT</button>
                     </div>
                     <div class="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
                         <table class="w-full text-left text-sm">
                             <thead class="bg-slate-50 text-slate-400 uppercase text-[9px] font-bold">
-                                <tr><th class="px-4 py-3">Account Name</th><th class="px-4 py-3">Class</th><th class="px-4 py-3 text-right">Balance</th><th class="px-4 py-3"></th></tr>
+                                <tr><th class="px-4 py-3">Account Name</th><th class="px-4 py-3">Tax Class</th><th class="px-4 py-3 text-right">Balance</th><th class="px-4 py-3"></th></tr>
                             </thead>
                             <tbody id="investment-rows"></tbody>
                         </table>
@@ -79,25 +80,26 @@
                 <div class="lg:col-span-3">
                     <div class="flex justify-between items-center mb-4">
                         <h3 class="font-black text-slate-800 uppercase tracking-tight text-xs">Real Estate</h3>
-                        <button onclick="addRow('housing-list', 'housing')" class="text-[10px] bg-indigo-600 text-white font-black px-3 py-1.5 rounded-lg">+ ADD HOME</button>
+                        <button onclick="addRow('housing-list', 'housing')" class="text-[10px] bg-indigo-600 text-white font-black px-3 py-1.5 rounded-lg">+ ADD PROPERTY</button>
                     </div>
                     <div id="housing-list" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
                 </div>
             </section>
 
             <section id="tab-income" class="tab-content hidden">
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div class="space-y-6">
                     <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
-                        <h3 class="font-black text-slate-800 uppercase text-xs mb-4">Primary Household Income</h3>
-                        <div class="space-y-4" id="income-list">
-                            </div>
-                        <button onclick="addRow('income-list', 'income')" class="mt-4 text-[10px] font-bold text-indigo-600 uppercase tracking-widest">+ Add Income Source</button>
+                        <div class="flex justify-between items-center mb-6">
+                            <h3 class="font-black text-slate-800 uppercase text-xs">Income Sources</h3>
+                            <button onclick="addRow('income-list', 'income')" class="text-[10px] bg-indigo-600 text-white font-black px-3 py-1.5 rounded-lg">+ ADD INCOME</button>
+                        </div>
+                        <div id="income-list" class="space-y-4"></div>
                     </div>
                 </div>
             </section>
 
-            <section id="tab-savings" class="tab-content hidden"><div class="p-12 text-center text-slate-400 italic">Savings Logic - Coming Soon</div></section>
-            <section id="tab-assumptions" class="tab-content hidden"><div class="p-12 text-center text-slate-400 italic">Assumptions Logic - Coming Soon</div></section>
+            <section id="tab-savings" class="tab-content hidden"><div class="p-12 text-center text-slate-400 italic">Savings & Expense Tracking Logic</div></section>
+            <section id="tab-assumptions" class="tab-content hidden"><div class="p-12 text-center text-slate-400 italic">Market & Inflation Assumptions</div></section>
         </main>
     </div>
 
