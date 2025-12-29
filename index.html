@@ -19,10 +19,8 @@
         <div class="bg-white p-8 rounded-2xl shadow-xl border border-slate-200 text-center max-w-sm w-full">
             <h1 class="text-2xl font-black text-slate-800 mb-2">Finance <span class="text-indigo-600">Engine</span></h1>
             <p class="text-slate-500 text-sm mb-6">Secure Sign-in Required</p>
-            <button type="button" 
-                    onclick="console.log('HTML Click'); window.loginWithGoogle()" 
-                    class="w-full flex items-center justify-center gap-3 bg-white border border-slate-300 py-3 px-4 rounded-xl font-bold text-slate-700 hover:bg-slate-50 transition shadow-sm">
-                <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/layout/google.svg" width="18" alt="Google">
+            <button type="button" onclick="loginWithGoogle()" class="w-full flex items-center justify-center gap-3 bg-white border border-slate-300 py-3 px-4 rounded-xl font-bold text-slate-700 hover:bg-slate-50 transition shadow-sm">
+                <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/layout/google.svg" width="18">
                 Sign in with Google
             </button>
         </div>
@@ -35,7 +33,7 @@
                 <div class="flex items-center gap-4 mt-2">
                     <div class="flex flex-col">
                         <label class="text-[10px] uppercase font-bold text-slate-400">Birth Year</label>
-                        <input type="number" id="user-birth-year" value="1985" onchange="window.calculateUserAge()" class="w-20 font-bold text-lg border-b-2 border-indigo-200 outline-none">
+                        <input type="number" id="user-birth-year" value="1985" onchange="calculateUserAge()" class="w-20 font-bold text-lg border-b-2 border-indigo-200 outline-none">
                     </div>
                     <div class="flex flex-col border-l pl-4 border-slate-100">
                         <span class="text-[10px] uppercase font-bold text-slate-400">Age</span>
@@ -43,14 +41,12 @@
                     </div>
                 </div>
             </div>
-            <button onclick="window.logoutUser()" class="text-xs font-bold text-red-500 border border-red-100 px-4 py-2 rounded-lg hover:bg-red-50">SIGN OUT</button>
+            <button onclick="logoutUser()" class="text-xs font-bold text-red-500 border border-red-100 px-4 py-2 rounded-lg hover:bg-red-50">SIGN OUT</button>
         </header>
 
         <nav class="flex space-x-2 border-b border-slate-200 mb-8 overflow-x-auto no-scrollbar">
             <button onclick="showTab('balance')" id="btn-balance" class="tab-btn active px-4 py-3 text-sm font-bold border-b-2 border-indigo-600 text-indigo-600">Assets & Debts</button>
             <button onclick="showTab('income')" id="btn-income" class="tab-btn px-4 py-3 text-sm font-bold text-slate-500">Income</button>
-            <button onclick="showTab('savings')" id="btn-savings" class="tab-btn px-4 py-3 text-sm font-bold text-slate-500">Savings</button>
-            <button onclick="showTab('assumptions')" id="btn-assumptions" class="tab-btn px-4 py-3 text-sm font-bold text-slate-500">Assumptions</button>
         </nav>
 
         <main id="tab-balance" class="tab-content grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -60,27 +56,6 @@
                     <button onclick="addRow('housing-list', 'housing')" class="text-[10px] bg-indigo-600 text-white font-black px-3 py-1.5 rounded-lg">+ ADD HOME</button>
                 </div>
                 <div id="housing-list" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
-            </div>
-            <div class="lg:col-span-2">
-                <div class="flex justify-between items-center mb-4">
-                    <h3 class="font-black text-slate-800 uppercase tracking-tight text-xs">Investments</h3>
-                    <button onclick="addRow('investment-rows', 'investment')" class="text-[10px] bg-indigo-600 text-white font-black px-3 py-1.5 rounded-lg">+ ADD INVESTMENT</button>
-                </div>
-                <div class="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
-                    <table class="w-full text-left text-sm">
-                        <thead class="bg-slate-50 text-slate-400 uppercase text-[9px] font-bold">
-                            <tr><th class="px-4 py-3">Account Name</th><th class="px-4 py-3">Class</th><th class="px-4 py-3 text-right">Balance</th><th class="px-4 py-3"></th></tr>
-                        </thead>
-                        <tbody id="investment-rows"></tbody>
-                    </table>
-                </div>
-            </div>
-            <div>
-                <div class="flex justify-between items-center mb-4">
-                    <h3 class="font-black text-slate-800 uppercase tracking-tight text-xs">Other Assets</h3>
-                    <button onclick="addRow('other-assets-list', 'other')" class="text-[10px] bg-indigo-600 text-white font-black px-3 py-1.5 rounded-lg">+ ADD ASSET</button>
-                </div>
-                <div id="other-assets-list" class="space-y-3"></div>
             </div>
         </main>
     </div>

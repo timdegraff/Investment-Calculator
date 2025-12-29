@@ -1,7 +1,7 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
 import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
-// Hardcoded config to bypass the 404 error from config.js
+// Hardcoded to bypass the 404 config.js error
 const firebaseConfig = {
     apiKey: "AIzaSyAqvvl6O3-2TLK4-j6ei1WU5SuaMY3HnO4",
     authDomain: "investment-calculator-931f2.firebaseapp.com",
@@ -16,14 +16,14 @@ const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const provider = new GoogleAuthProvider();
 
-// Attached to window immediately
+// Attach to window so HTML onclick="loginWithGoogle()" works
 window.loginWithGoogle = async function() {
-    console.log("Attempting Login...");
+    console.log("Button clicked: Launching Google Auth...");
     try {
         await signInWithPopup(auth, provider);
     } catch (error) {
         console.error("Auth Error:", error);
-        alert("Login Error: " + error.message);
+        alert("Login failed. Check if pop-ups are blocked.");
     }
 };
 
@@ -36,7 +36,6 @@ onAuthStateChanged(auth, (user) => {
     if (user) {
         loginScreen?.classList.add('hidden');
         appContainer?.classList.remove('hidden');
-        console.log("Logged in as:", user.email);
     } else {
         loginScreen?.classList.remove('hidden');
         appContainer?.classList.add('hidden');
