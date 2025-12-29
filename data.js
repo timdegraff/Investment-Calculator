@@ -37,6 +37,10 @@ window.autoSave = () => {
             increase: div.querySelectorAll('input[type=range]')[0].value,
             contribution: div.querySelectorAll('input[type=range]')[1].value,
             match: div.querySelectorAll('input[type=range]')[2].value
+        })),
+        budget: Array.from(document.querySelectorAll('#budget-rows tr')).map(row => ({
+            name: row.cells[0].querySelector('input').value,
+            amount: row.cells[1].querySelector('input').value
         }))
     };
     // Safer check for Firebase bridge
@@ -56,7 +60,8 @@ window.loadUserDataIntoUI = (data) => {
         { id: 'investment-rows', type: 'investment', list: data.investments },
         { id: 'other-assets-list', type: 'other', list: data.otherAssets },
         { id: 'housing-list', type: 'housing', list: data.realEstate },
-        { id: 'income-list', type: 'income', list: data.income }
+        { id: 'income-list', type: 'income', list: data.income },
+        { id: 'budget-rows', type: 'budget', list: data.budget }
     ];
 
     sections.forEach(section => {
@@ -91,6 +96,9 @@ window.loadUserDataIntoUI = (data) => {
                     const s = row.querySelectorAll('input[type=range]');
                     s[0].value = item.increase || 2; s[1].value = item.contribution || 0; s[2].value = item.match || 0;
                     s.forEach(slider => slider.previousElementSibling.lastElementChild.innerText = slider.value + '%');
+                } else if (section.type === 'budget') {
+                    row.cells[0].querySelector('input').value = item.name || '';
+                    row.cells[1].querySelector('input').value = item.amount || '';
                 }
             });
         }
@@ -155,6 +163,14 @@ window.addRow = (containerId, type) => {
                 </div>
             </div>`;
         container.appendChild(div);
+    } else if (type === 'budget') {
+        const row = document.createElement('tr');
+        row.className = "border-t border-slate-100";
+        row.innerHTML = `
+            <td class="px-4 py-3"><input type="text" oninput="window.autoSave()" placeholder="Expense Name" class="bg-transparent outline-none w-full text-sm"></td>
+            <td class="px-4 py-3 text-right"><input type="number" oninput="window.autoSave()" placeholder="0" class="w-full text-right font-bold text-red-400 outline-none bg-transparent text-sm"></td>
+            <td class="px-4 py-2 text-right"><button onclick="this.closest('tr').remove(); window.autoSave()" class="text-slate-200 hover:text-red-500"><i class="fas fa-times text-xs"></i></button></td>`;
+        container.appendChild(row);
     }
 };
 

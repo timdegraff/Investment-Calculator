@@ -121,7 +121,25 @@
                 </div>
             </section>
 
-            <section id="tab-savings" class="tab-content hidden"><div class="p-12 text-center text-slate-400 italic">Savings Logic Pending</div></section>
+            <section id="tab-savings" class="tab-content hidden">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="font-black text-slate-800 uppercase tracking-tight text-xs">Monthly Budget & Expenses</h3>
+                    <button onclick="addRow('budget-rows', 'budget')" class="text-[10px] bg-indigo-600 text-white font-black px-3 py-1.5 rounded-lg hover:bg-indigo-700 transition">+ ADD EXPENSE</button>
+                </div>
+                <div class="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
+                    <table class="w-full text-left text-sm">
+                        <thead class="bg-slate-50 text-slate-400 uppercase text-[9px] font-bold">
+                            <tr>
+                                <th class="px-4 py-3">Expense Category</th>
+                                <th class="px-4 py-3 text-right">Monthly Amount</th>
+                                <th class="px-4 py-3"></th>
+                            </tr>
+                        </thead>
+                        <tbody id="budget-rows"></tbody>
+                    </table>
+                </div>
+            </section>
+            
             <section id="tab-assumptions" class="tab-content hidden"><div class="p-12 text-center text-slate-400 italic">Assumptions Logic Pending</div></section>
         </main>
     </div>
