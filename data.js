@@ -44,13 +44,18 @@ export function triggerAutoSave(userId) {
  */
 function updateUIResults(data) {
     const netWorth = calculateNetWorth(data.assets, data.liabilities);
-    const ctc = calculateCTC(data.monthlyIncome * 12, data.kidsCount, data.filingStatus);
+    
+    // Calculate 2026 Child Tax Credit
+    const annualIncome = (parseFloat(data.monthlyIncome) || 0) * 12;
+    const ctc = calculateCTC(annualIncome, data.kidsCount, data.filingStatus);
+    
+    // Calculate SNAP for family size (Kids + 2 Adults)
     const snap = checkSnapEligibility(data.monthlyIncome, data.kidsCount + 2);
 
+    // Update UI
     document.getElementById('total-net-worth').innerText = `$${netWorth.toLocaleString()}`;
-    if (document.getElementById('ctc-display')) {
-        document.getElementById('ctc-display').innerText = `$${ctc.toLocaleString()}`;
-    }
+    document.getElementById('ctc-display').innerText = `$${ctc.toLocaleString()}/yr`;
+    document.getElementById('snap-limit-display').innerText = `$${snap.limit.toLocaleString()}/mo`;
 }
 
 /**
