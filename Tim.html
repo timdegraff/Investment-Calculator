@@ -7,11 +7,15 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://d3js.org/d3.v7.min.js"></script>
     <script type="module">
-    const appRevision = "3.8";
+    const appRevision = "4.0";
 
+    // Import specific functions needed for Auth and Firestore
     import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
     import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
     import { getFirestore, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+   
+    // This pulls your keys from the private file you created
+    import { firebaseConfig } from './config.js';
 
     let app;
     let db;
@@ -179,27 +183,8 @@
 
     const initFirebase = async () => {
         try {
-            let config;
-            const fallbackConfig = {
-                apiKey: "AIzaSyCC1UKUPFRUnWyQ09hGFkJxVEVBBkZ7X40",
-                authDomain: "investment-calculator-931f2.firebaseapp.com",
-                projectId: "investment-calculator-931f2",
-                storageBucket: "investment-calculator-931f2.firebasestorage.app",
-                messagingSenderId: "943895110805",
-                appId: "1:943895110805:web:ba6e1e6177ae31d7af279c",
-                measurementId: "G-F0CRPKLS7G"
-            };
-
-            try {
-                config = (typeof __firebase_config !== 'undefined' && __firebase_config.trim() !== '' && __firebase_config !== 'undefined') ? JSON.parse(__firebase_config) : fallbackConfig;
-                if (!config || !config.projectId) {
-                     config = fallbackConfig;
-                }
-            } catch(e) {
-                config = fallbackConfig;
-            }
-
-            app = initializeApp(config);
+            // No more fallbackConfig here—it's safely in config.js
+            app = initializeApp(firebaseConfig);
             db = getFirestore(app);
             auth = getAuth(app);
 
@@ -222,7 +207,7 @@
             }
 
         } catch (error) {
-            console.error("Firebase initialization or authentication failed. Running in offline mode.", error);
+            console.error("Firebase initialization failed. Running in offline mode.", error);
             loadDefaultDataAndCalculate();
         }
     };
@@ -1813,7 +1798,7 @@ function runEarlyQuitSim(budgetDataArg = budgetData) {
     // 4. Sim Variables
     let balances = { ...startBalances };
     balances.helocUsed = 0;
-    balances.helocLimit = 150000;
+    balances.helocLimit = 275000;
 
     // 72t State
     let t72Active = false;
