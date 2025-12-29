@@ -42,3 +42,14 @@ export function checkMichiganBenefits(monthlyIncome, familySize) {
         medicaidKidsEligible: monthlyIncome <= medicaidKidsLimit
     };
 }
+
+export function calculateBestDeduction(annualIncome, propertyTax, filingStatus) {
+    const miTax = annualIncome * TAX_CONSTANTS.MI_STATE_TAX_RATE;
+    const totalSALT = Math.min(miTax + propertyTax, TAX_CONSTANTS.SALT_CAP);
+    const standard = TAX_CONSTANTS.STANDARD_DEDUCTION[filingStatus];
+    
+    return {
+        amount: Math.max(standard, totalSALT),
+        isItemizing: totalSALT > standard
+    };
+}
