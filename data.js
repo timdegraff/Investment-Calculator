@@ -44,13 +44,18 @@ export function triggerAutoSave(userId) {
  */
 function updateUIResults(data) {
     const netWorth = calculateNetWorth(data.assets, data.liabilities);
-    
-    // Calculate 2026 Child Tax Credit
-    const annualIncome = (parseFloat(data.monthlyIncome) || 0) * 12;
-    const ctc = calculateCTC(annualIncome, data.kidsCount, data.filingStatus);
-    
+    const status = data.filingStatus || 'MFJ'; // Default to MFJ
+    const tax = calculateEstimatedTax(data.monthlyIncome * 12, status);
+    const ctc = calculateCTC(data.monthlyIncome * 12, data.kidsCount, status);
     // Calculate SNAP for family size (Kids + 2 Adults)
     const snap = checkSnapEligibility(data.monthlyIncome, data.kidsCount + 2);
+
+    // Calculate Federal Tax
+    const annualGross = (parseFloat(data.monthlyIncome) || 0) * 12;
+    const estimatedTax = calculateEstimatedTax(annualGross, status);
+
+    // Update UI
+    document.getElementById('tax-display').innerText = `-$${estimatedTax.toLocaleString()}/yr`;
 
     // Update UI
     document.getElementById('total-net-worth').innerText = `$${netWorth.toLocaleString()}`;
