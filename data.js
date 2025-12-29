@@ -42,6 +42,58 @@ window.autoSave = () => {
     if (window.saveUserData) window.saveUserData(data);
 };
 
+window.loadUserDataIntoUI = (data) => {
+    if (!data) return;
+    if (data.birthYear) { 
+        document.getElementById('user-birth-year').value = data.birthYear; 
+        window.calculateUserAge(); 
+    }
+
+    const sections = [
+        { id: 'investment-rows', type: 'investment', list: data.investments },
+        { id: 'other-assets-list', type: 'other', list: data.otherAssets },
+        { id: 'housing-list', type: 'housing', list: data.realEstate },
+        { id: 'income-list', type: 'income', list: data.income }
+    ];
+
+    sections.forEach(section => {
+        const container = document.getElementById(section.id);
+        if (!container) return;
+        container.innerHTML = '';
+        if (section.list) {
+            section.list.forEach(item => {
+                window.addRow(section.id, section.type);
+                const row = container.lastElementChild;
+                
+                if (section.type === 'investment') {
+                    row.cells[0].querySelector('input').value = item.name || '';
+                    row.cells[1].querySelector('select').value = item.class || 'Taxable';
+                    row.cells[2].querySelector('input[placeholder="Total Balance"]').value = item.balance || '';
+                    if (item.class === "Post-Tax (Roth)") {
+                        window.toggleCostBasis(row.cells[1].querySelector('select'));
+                        row.cells[2].querySelector('.cost-basis-container input').value = item.basis || '';
+                    }
+                } else if (section.type === 'other') {
+                    row.cells[0].querySelector('input').value = item.name || '';
+                    row.cells[1].querySelector('input').value = item.value || '';
+                } else if (section.type === 'housing') {
+                    row.cells[0].querySelector('input').value = item.name || '';
+                    row.cells[1].querySelector('input').value = item.value || '';
+                    row.cells[2].querySelector('input').value = item.mortgage || '';
+                    row.cells[3].querySelector('input').value = item.tax || '';
+                } else if (section.type === 'income') {
+                    row.querySelector('input[placeholder="Income Name"]').value = item.name || '';
+                    row.querySelector('input[placeholder="Annual Amt"]').value = item.amount || '';
+                    row.querySelector('input[placeholder="Never"]').value = item.taxFreeUntil || '';
+                    const s = row.querySelectorAll('input[type=range]');
+                    s[0].value = item.increase || 2; s[1].value = item.contribution || 0; s[2].value = item.match || 0;
+                    s.forEach(slider => slider.previousElementSibling.lastElementChild.innerText = slider.value + '%');
+                }
+            });
+        }
+    });
+};
+
 window.addRow = (containerId, type) => {
     const container = document.getElementById(containerId);
     if (type === 'investment') {
