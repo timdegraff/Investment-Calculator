@@ -19,7 +19,9 @@
         <div class="bg-white p-8 rounded-2xl shadow-xl border border-slate-200 text-center max-w-sm w-full">
             <h1 class="text-2xl font-black text-slate-800 mb-2">Finance <span class="text-indigo-600">Engine</span></h1>
             <p class="text-slate-500 text-sm mb-6">Secure Sign-in Required</p>
-            <button type="button" onclick="window.loginWithGoogle()" class="w-full flex items-center justify-center gap-3 bg-white border border-slate-300 py-3 px-4 rounded-xl font-bold text-slate-700 hover:bg-slate-50 transition shadow-sm">
+            <button type="button" 
+                    onclick="console.log('HTML Click'); window.loginWithGoogle()" 
+                    class="w-full flex items-center justify-center gap-3 bg-white border border-slate-300 py-3 px-4 rounded-xl font-bold text-slate-700 hover:bg-slate-50 transition shadow-sm">
                 <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/layout/google.svg" width="18" alt="Google">
                 Sign in with Google
             </button>
@@ -33,7 +35,7 @@
                 <div class="flex items-center gap-4 mt-2">
                     <div class="flex flex-col">
                         <label class="text-[10px] uppercase font-bold text-slate-400">Birth Year</label>
-                        <input type="number" id="user-birth-year" value="1985" onchange="calculateUserAge()" class="w-20 font-bold text-lg border-b-2 border-indigo-200 outline-none">
+                        <input type="number" id="user-birth-year" value="1985" onchange="window.calculateUserAge()" class="w-20 font-bold text-lg border-b-2 border-indigo-200 outline-none">
                     </div>
                     <div class="flex flex-col border-l pl-4 border-slate-100">
                         <span class="text-[10px] uppercase font-bold text-slate-400">Age</span>
