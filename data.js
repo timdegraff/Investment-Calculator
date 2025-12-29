@@ -39,7 +39,10 @@ window.autoSave = () => {
             match: div.querySelectorAll('input[type=range]')[2].value
         }))
     };
-    if (window.saveUserData) window.saveUserData(data);
+    // Safer check for Firebase bridge
+    if (typeof window.saveUserData === 'function') {
+        window.saveUserData(data);
+    }
 };
 
 window.loadUserDataIntoUI = (data) => {

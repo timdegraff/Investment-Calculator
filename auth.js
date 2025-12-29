@@ -1,7 +1,7 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
 import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
-// Hardcoded to bypass the 404 config.js error
 const firebaseConfig = {
     apiKey: "AIzaSyAqvvl6O3-2TLK4-j6ei1WU5SuaMY3HnO4",
     authDomain: "investment-calculator-931f2.firebaseapp.com",
@@ -14,28 +14,41 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
+const db = getFirestore(app);
 const provider = new GoogleAuthProvider();
 
-// Attach to window so HTML onclick="loginWithGoogle()" works
-window.loginWithGoogle = async function() {
-    console.log("Button clicked: Launching Google Auth...");
-    try {
-        await signInWithPopup(auth, provider);
-    } catch (error) {
-        console.error("Auth Error:", error);
-        alert("Login failed. Check if pop-ups are blocked.");
-    }
+window.loginWithGoogle = async () => {
+    try { await signInWithPopup(auth, provider); } 
+    catch (e) { console.error("Login Error:", e); }
 };
 
 window.logoutUser = () => signOut(auth);
 
-onAuthStateChanged(auth, (user) => {
+// CRITICAL: This must be on window to be seen by data.js
+window.saveUserData = async (data) => {
+    const user = auth.currentUser;
+    if (!user) return;
+    try {
+        await setDoc(doc(db, "users", user.uid), { financialData: data }, { merge: true });
+        console.log("✅ Data auto-saved to Firebase");
+    } catch (e) {
+        console.error("❌ Save Error:", e);
+    }
+};
+
+onAuthStateChanged(auth, async (user) => {
     const loginScreen = document.getElementById('login-screen');
     const appContainer = document.getElementById('app-container');
     
     if (user) {
         loginScreen?.classList.add('hidden');
         appContainer?.classList.remove('hidden');
+        
+        const docSnap = await getDoc(doc(db, "users", user.uid));
+        if (docSnap.exists() && window.loadUserDataIntoUI) {
+            window.loadUserDataIntoUI(docSnap.data().financialData);
+            console.log("✅ Data loaded from Firebase");
+        }
     } else {
         loginScreen?.classList.remove('hidden');
         appContainer?.classList.add('hidden');
