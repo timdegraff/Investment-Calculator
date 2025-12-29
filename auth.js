@@ -24,7 +24,6 @@ window.loginWithGoogle = async () => {
 
 window.logoutUser = () => signOut(auth);
 
-// CRITICAL: This must be on window to be seen by data.js
 window.saveUserData = async (data) => {
     const user = auth.currentUser;
     if (!user) return;
