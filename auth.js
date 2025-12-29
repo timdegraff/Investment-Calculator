@@ -1,23 +1,36 @@
-import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+import firebaseConfig from "./config.js";
 
-export function initAuth(app, onUserIn, onUserOut) {
-    const auth = getAuth(app);
-    const provider = new GoogleAuthProvider();
+// Initialize Firebase
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const provider = new GoogleAuthProvider();
 
-    onAuthStateChanged(auth, (user) => {
-        if (user) {
-            document.getElementById('login-screen').classList.add('hidden');
-            document.getElementById('app-container').classList.remove('hidden');
-            onUserIn(user);
-        } else {
-            document.getElementById('login-screen').classList.remove('hidden');
-            document.getElementById('app-container').classList.add('hidden');
-            onUserOut();
-        }
-    });
+// Login Function
+window.loginWithGoogle = async () => {
+    try {
+        await signInWithPopup(auth, provider);
+    } catch (error) {
+        console.error("Login Failed:", error.message);
+        alert("Login Failed: " + error.message);
+    }
+};
 
-    document.getElementById('google-login-btn').onclick = () => signInWithPopup(auth, provider);
-    document.getElementById('logout-btn').onclick = () => signOut(auth).then(() => location.reload());
-    
-    return auth;
-}
+// Logout Function
+document.getElementById('logout-btn')?.addEventListener('click', () => {
+    signOut(auth);
+});
+
+// Auth State Observer
+onAuthStateChanged(auth, (user) => {
+    const appContainer = document.getElementById('app-container');
+    if (user) {
+        appContainer.classList.remove('hidden');
+        console.log("User logged in:", user.displayName);
+    } else {
+        appContainer.classList.add('hidden');
+        // If not logged in, trigger login (or show a login button)
+        window.loginWithGoogle();
+    }
+});
