@@ -62,21 +62,23 @@
         </main>
     </div>
 
-    <script type="module">
+<script type="module">
     import { firebaseConfig } from './firebase-config.js';
     import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
     import { initAuth } from './auth.js';
-    import { calculateNetWorth, calculateRunway } from './math.js';
+    import { loadUserData, triggerAutoSave } from './data.js';
 
     const app = initializeApp(firebaseConfig);
 
-    // Initialize Auth and pass a callback for when user logs in
     initAuth(app, (user) => {
-        console.log("Logged in as:", user.displayName);
-        // We will put the Data Loading call here next
-    }, () => {
-        console.log("Logged out");
+        loadUserData(user.uid, (data) => {
+            // Logic to populate your inputs with 'data' goes here
+            console.log("Data loaded for", user.uid);
+        });
+
+        // Set up global listener for any input change
+        document.addEventListener('input', () => triggerAutoSave(user.uid));
     });
-    </script>
+</script>
 </body>
 </html>
