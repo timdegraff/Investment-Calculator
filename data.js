@@ -32,11 +32,13 @@ window.autoSave = () => {
         })),
         income: Array.from(document.querySelectorAll('#income-list > div')).map(div => ({
             name: div.querySelector('input[placeholder="Income Name"]').value,
-            amount: div.querySelector('input[placeholder="Annual Amt"]').value,
-            taxFreeUntil: div.querySelector('input[placeholder="Never"]').value,
-            increase: div.querySelectorAll('input[type=range]')[0].value,
+            amount: div.querySelectorAll('input[type=number]')[0].value,
+            bonusPct: div.querySelectorAll('input[type=number]')[1].value,
+            increase: div.querySelector('input[type=range]').value,
             contribution: div.querySelectorAll('input[type=range]')[1].value,
-            match: div.querySelectorAll('input[type=range]')[2].value
+            contribIncludeBonus: div.querySelectorAll('input[type=checkbox]')[0].checked,
+            match: div.querySelectorAll('input[type=range]')[2].value,
+            matchIncludeBonus: div.querySelectorAll('input[type=checkbox]')[1].checked
         })),
         budget: Array.from(document.querySelectorAll('#budget-rows tr')).map(row => ({
             name: row.cells[0].querySelector('input').value,
@@ -91,11 +93,19 @@ window.loadUserDataIntoUI = (data) => {
                     row.cells[3].querySelector('input').value = item.tax || '';
                 } else if (section.type === 'income') {
                     row.querySelector('input[placeholder="Income Name"]').value = item.name || '';
-                    row.querySelector('input[placeholder="Annual Amt"]').value = item.amount || '';
-                    row.querySelector('input[placeholder="Never"]').value = item.taxFreeUntil || '';
+                    const nums = row.querySelectorAll('input[type=number]');
+                    nums[0].value = item.amount || '';
+                    nums[1].value = item.bonusPct || '';
+                    
                     const s = row.querySelectorAll('input[type=range]');
-                    s[0].value = item.increase || 2; s[1].value = item.contribution || 0; s[2].value = item.match || 0;
+                    s[0].value = item.increase || 3.5; 
+                    s[1].value = item.contribution || 0; 
+                    s[2].value = item.match || 0;
                     s.forEach(slider => slider.previousElementSibling.lastElementChild.innerText = slider.value + '%');
+                    
+                    const checks = row.querySelectorAll('input[type=checkbox]');
+                    checks[0].checked = item.contribIncludeBonus ?? true;
+                    checks[1].checked = item.matchIncludeBonus ?? true;
                 } else if (section.type === 'budget') {
                     row.cells[0].querySelector('input').value = item.name || '';
                     row.cells[1].querySelector('input').value = item.amount || '';
@@ -145,21 +155,27 @@ window.addRow = (containerId, type) => {
             <button onclick="this.parentElement.remove(); window.autoSave()" class="absolute top-2 right-2 text-slate-300 hover:text-red-500 opacity-0 group-hover:opacity-100"><i class="fas fa-times text-xs"></i></button>
             <div class="flex flex-wrap gap-4 items-center">
                 <input type="text" oninput="window.autoSave()" placeholder="Income Name" class="bg-transparent font-black text-slate-700 outline-none text-sm flex-grow">
-                <div class="flex items-center gap-1"><span class="text-slate-400 text-xs">$</span><input type="number" oninput="window.autoSave()" placeholder="Annual Amt" class="w-28 bg-white border border-slate-200 p-1.5 rounded font-bold text-right text-sm outline-none"></div>
-                <div class="flex flex-col"><label class="text-[8px] font-bold text-slate-400 uppercase">Tax Free Until (Year)</label><input type="number" oninput="window.autoSave()" placeholder="Never" class="w-20 bg-white border border-slate-200 p-1 rounded text-xs outline-none text-center"></div>
+                <div class="flex flex-col"><label class="text-[8px] font-bold text-slate-400 uppercase">Base Salary</label>
+                    <div class="flex items-center gap-1"><span class="text-slate-400 text-xs">$</span><input type="number" oninput="window.autoSave()" placeholder="0" class="w-28 bg-white border border-slate-200 p-1.5 rounded font-bold text-right text-sm outline-none"></div>
+                </div>
+                <div class="flex flex-col"><label class="text-[8px] font-bold text-slate-400 uppercase">Bonus %</label>
+                    <div class="flex items-center gap-1"><input type="number" oninput="window.autoSave()" placeholder="0" class="w-16 bg-white border border-slate-200 p-1.5 rounded font-bold text-right text-sm outline-none"><span class="text-slate-400 text-xs">%</span></div>
+                </div>
             </div>
             <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div class="flex flex-col">
-                    <div class="flex justify-between text-[9px] font-bold text-slate-500 mb-1 uppercase"><span>Annual Increase</span><span class="text-indigo-600">2%</span></div>
-                    <input type="range" min="0" max="10" step="0.5" value="2" oninput="this.previousElementSibling.lastElementChild.innerText = this.value + '%'; window.autoSave()" class="w-full">
+                <div class="flex flex-col justify-center">
+                    <div class="flex justify-between text-[9px] font-bold text-slate-500 mb-1 uppercase"><span>Annual Increase</span><span class="text-indigo-600">3.5%</span></div>
+                    <input type="range" min="0" max="10" step="0.5" value="3.5" oninput="this.previousElementSibling.lastElementChild.innerText = this.value + '%'; window.autoSave()" class="w-full">
                 </div>
-                <div class="flex flex-col">
-                    <div class="flex justify-between text-[9px] font-bold text-slate-500 mb-1 uppercase"><span>Personal 401k %</span><span class="text-indigo-600">0%</span></div>
-                    <input type="range" min="0" max="30" step="1" value="0" oninput="this.previousElementSibling.lastElementChild.innerText = this.value + '%'; window.autoSave()" class="w-full">
+                <div class="flex flex-col gap-2">
+                    <div class="flex justify-between text-[9px] font-bold text-slate-500 uppercase"><span>401k Personal</span><span class="text-indigo-600">6%</span></div>
+                    <input type="range" min="0" max="30" step="1" value="6" oninput="this.previousElementSibling.lastElementChild.innerText = this.value + '%'; window.autoSave()" class="w-full">
+                    <label class="flex items-center gap-2 text-[10px] text-slate-500"><input type="checkbox" onchange="window.autoSave()" checked> Include Bonus</label>
                 </div>
-                <div class="flex flex-col">
-                    <div class="flex justify-between text-[9px] font-bold text-slate-500 mb-1 uppercase"><span>Company Match %</span><span class="text-indigo-600">0%</span></div>
-                    <input type="range" min="0" max="20" step="0.5" value="0" oninput="this.previousElementSibling.lastElementChild.innerText = this.value + '%'; window.autoSave()" class="w-full">
+                <div class="flex flex-col gap-2">
+                    <div class="flex justify-between text-[9px] font-bold text-slate-500 uppercase"><span>401k Company</span><span class="text-indigo-600">10%</span></div>
+                    <input type="range" min="0" max="20" step="0.5" value="10" oninput="this.previousElementSibling.lastElementChild.innerText = this.value + '%'; window.autoSave()" class="w-full">
+                    <label class="flex items-center gap-2 text-[10px] text-slate-500"><input type="checkbox" onchange="window.autoSave()" checked> Include Bonus</label>
                 </div>
             </div>`;
         container.appendChild(div);
