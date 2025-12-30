@@ -6,207 +6,281 @@
     <title>Wealth Dashboard</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <link rel="icon" href="data:,">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📈</text></svg>">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
     <link rel="stylesheet" href="style.css">
 </head>
-<body class="bg-slate-50 text-slate-900">
+<body class="bg-gray-100 text-slate-900">
 
     <div id="login-screen" class="fixed inset-0 flex items-center justify-center bg-indigo-600 z-50">
         <div class="bg-white p-10 rounded-3xl shadow-2xl text-center max-w-sm w-full">
-            <h1 class="text-3xl font-black mb-2">Wealth Tracker</h1>
-            <p class="text-slate-500 mb-8 font-medium">Securely track your financial future.</p>
-            <button onclick="window.loginWithGoogle()" class="w-full py-4 bg-slate-900 text-white rounded-xl font-bold hover:bg-slate-800 transition-all flex items-center justify-center gap-3">
+            <h1 class="text-4xl font-bold mb-2 text-indigo-600">WealthCraft</h1>
+            <p class="text-slate-500 mb-8 font-medium">Securely Chart Your Financial Future</p>
+            <button onclick="window.loginWithGoogle()" class="w-full py-4 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 transition-all flex items-center justify-center gap-3">
                 <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" class="w-6" alt="Google">
                 Sign in with Google
             </button>
         </div>
     </div>
 
-    <div id="app-container" class="hidden p-4 md:p-8 max-w-6xl mx-auto">
-        <header class="grid grid-cols-2 md:grid-cols-6 gap-4 mb-8">
-            <div class="bg-indigo-600 p-4 rounded-2xl shadow-sm flex flex-col justify-center items-center text-white">
-                <p class="text-[9px] font-bold uppercase opacity-80">Birth Year</p>
-                <input type="number" id="user-birth-year" value="1986" oninput="window.autoSave()"
-                       class="bg-transparent text-xl font-black text-center outline-none w-full">
-                <p id="display-age" class="text-[10px] font-black uppercase tracking-tighter mt-1">40 YRS OLD</p>
+    <div id="app-container" class="hidden">
+        <div class="sidebar">
+            <div class="sidebar-header">
+                <h1 class="text-2xl font-bold text-white">WealthCraft</h1>
             </div>
-            <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm text-center">
-                <p class="text-[10px] font-bold text-slate-400 uppercase">Net Worth</p>
-                <p id="sum-networth" class="text-xl font-black text-indigo-600">$0</p>
+            <nav class="flex flex-col space-y-2">
+                <button onclick="showTab('dashboard')" id="btn-dashboard" class="tab-btn active"><i class="fas fa-tachometer-alt"></i><span>Dashboard</span></button>
+                <button onclick="showTab('assets')" id="btn-assets" class="tab-btn"><i class="fas fa-wallet"></i><span>Assets</span></button>
+                <button onclick="showTab('debts')" id="btn-debts" class="tab-btn"><i class="fas fa-credit-card"></i><span>Debts</span></button>
+                <button onclick="showTab('income')" id="btn-income" class="tab-btn"><i class="fas fa-money-bill-wave"></i><span>Income</span></button>
+                <button onclick="showTab('budget')" id="btn-budget" class="tab-btn"><i class="fas fa-chart-pie"></i><span>Budget</span></button>
+                <button onclick="showTab('assumptions')" id="btn-assumptions" class="tab-btn"><i class="fas fa-cogs"></i><span>Assumptions</span></button>
+                <button onclick="showTab('projection')" id="btn-projection" class="tab-btn"><i class="fas fa-chart-line"></i><span>Projection</span></button>
+            </nav>
+            <div class="sidebar-footer">
+                <button onclick="window.logoutUser()" class="text-slate-300 hover:text-white font-bold py-2 px-4 rounded-lg w-full text-left"><i class="fas fa-sign-out-alt"></i><span>Logout</span></button>
             </div>
-            <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm text-center">
-                <p class="text-[10px] font-bold text-slate-400 uppercase">Assets</p>
-                <p id="sum-assets" class="text-xl font-black text-slate-800">$0</p>
-            </div>
-            <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm text-center">
-                <p class="text-[10px] font-bold text-slate-400 uppercase">Liabilities</p>
-                <p id="sum-liabilities" class="text-xl font-black text-red-500">$0</p>
-            </div>
-            <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm text-center relative">
-                <p class="text-[10px] font-bold text-slate-400 uppercase">Gross Income</p>
-                <p id="sum-income" class="text-xl font-black text-slate-800">$0</p>
-            </div>
-            <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm text-center">
-                <button onclick="window.logoutUser()" class="absolute top-1 right-2 text-[8px] text-slate-300 hover:text-red-500 uppercase font-bold">Logout</button>
-                <p class="text-[10px] font-bold text-slate-400 uppercase">Ret. Income</p>
-                <p id="sum-ret-income" class="text-xl font-black text-emerald-600">$0</p>
-            </div>
-        </header>
+        </div>
 
-        <nav class="flex space-x-2 border-b border-slate-200 mb-8 overflow-x-auto no-scrollbar">
-            <button onclick="showTab('balance')" id="btn-balance" class="tab-btn active px-4 py-3 text-sm font-bold border-b-2 transition-all">Assets & Debts</button>
-            <button onclick="showTab('income')" id="btn-income" class="tab-btn px-4 py-3 text-sm font-bold text-slate-500 border-b-2 border-transparent transition-all">Income & Savings</button>
-            <button onclick="showTab('budget')" id="btn-budget" class="tab-btn px-4 py-3 text-sm font-bold text-slate-500 border-b-2 border-transparent transition-all">Budget</button>
-            <button onclick="showTab('assumptions')" id="btn-assumptions" class="tab-btn px-4 py-3 text-sm font-bold text-slate-500 border-b-2 border-transparent transition-all">Assumptions</button>
-            <button onclick="showTab('growth')" id="btn-growth" class="tab-btn px-4 py-3 text-sm font-bold text-slate-500 border-b-2 border-transparent transition-all">Growth Projection</button>
-        </nav>
-
-        <main>
-            <section id="tab-balance" class="tab-content space-y-8">
-                <div>
-                    <div class="flex justify-between items-center mb-4">
-                        <h3 class="font-black text-slate-800 uppercase text-xs">Liquid Investments</h3>
-                        <button onclick="addRow('investment-rows', 'investment')" class="text-[10px] bg-indigo-600 text-white font-black px-3 py-1.5 rounded-lg">+ ADD ACCOUNT</button>
+        <main class="main-content">
+            <section id="tab-dashboard" class="tab-content">
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                    <div class="bg-white p-6 rounded-2xl shadow-md">
+                        <p class="text-sm font-bold text-slate-500 uppercase">Net Worth</p>
+                        <p id="sum-networth" class="text-3xl font-black text-indigo-600">$0</p>
                     </div>
-                    <div class="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
-                        <table class="w-full text-left text-sm">
-                            <thead class="bg-slate-50 text-slate-400 uppercase text-[9px] font-bold">
-                                <tr><th class="px-4 py-3">Account</th><th class="px-4 py-3">Class</th><th class="px-4 py-3 text-right">Balance</th><th class="px-4 py-3 w-10"></th></tr>
-                            </thead>
-                            <tbody id="investment-rows"></tbody>
-                        </table>
+                    <div class="bg-white p-6 rounded-2xl shadow-md">
+                        <p class="text-sm font-bold text-slate-500 uppercase">Assets</p>
+                        <p id="sum-assets" class="text-3xl font-black text-slate-800">$0</p>
+                    </div>
+                    <div class="bg-white p-6 rounded-2xl shadow-md">
+                        <p class="text-sm font-bold text-slate-500 uppercase">Liabilities</p>
+                        <p id="sum-liabilities" class="text-3xl font-black text-red-500">$0</p>
+                    </div>
+                    <div class="bg-white p-6 rounded-2xl shadow-md">
+                        <p class="text-sm font-bold text-slate-500 uppercase">Gross Income</p>
+                        <p id="sum-income" class="text-3xl font-black text-slate-800">$0</p>
                     </div>
                 </div>
-                <div>
-                    <div class="flex justify-between items-center mb-4">
-                        <h3 class="font-black text-slate-800 uppercase text-xs">Real Estate</h3>
-                        <button onclick="addRow('housing-list', 'housing')" class="text-[10px] bg-indigo-600 text-white font-black px-3 py-1.5 rounded-lg">+ ADD PROPERTY</button>
-                    </div>
-                    <div class="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
-                        <table class="w-full text-left text-sm">
-                            <thead class="bg-slate-50 text-slate-400 uppercase text-[9px] font-bold">
-                                <tr><th class="px-4 py-3">Address</th><th class="px-4 py-3 text-right">Value</th><th class="px-4 py-3 text-right">Mortgage</th><th class="px-4 py-3 text-right">Rent (Net)</th><th class="px-4 py-3 w-10"></th></tr>
-                            </thead>
-                            <tbody id="housing-list"></tbody>
-                        </table>
-                    </div>
-                </div>
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
-                    <div>
-                        <div class="flex justify-between items-center mb-4">
-                            <h3 class="font-black text-slate-800 uppercase text-xs">Other Assets</h3>
-                            <button onclick="addRow('other-assets-list', 'other')" class="text-[10px] bg-indigo-600 text-white font-black px-3 py-1.5 rounded-lg">+ ADD ASSET</button>
-                        </div>
-                        <div class="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
-                            <table class="w-full text-left text-sm">
-                                <thead class="bg-slate-50 text-slate-400 uppercase text-[9px] font-bold">
-                                    <tr><th class="px-4 py-3">Asset</th><th class="px-4 py-3 text-right">Value</th><th class="px-4 py-3 text-right">Debt</th><th class="px-4 py-3"></th></tr>
-                                </thead>
-                                <tbody id="other-assets-list"></tbody>
-                            </table>
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                    <div class="bg-white p-6 rounded-2xl shadow-md">
+                        <h3 class="font-bold text-lg mb-4">Asset Allocation</h3>
+                        <div class="h-64">
+                            <canvas id="asset-allocation-chart"></canvas>
                         </div>
                     </div>
-                    <div>
-                        <div class="flex justify-between items-center mb-4">
-                            <h3 class="font-black text-slate-800 uppercase text-xs">Consumer Debts</h3>
-                            <button onclick="addRow('debt-rows', 'debt')" class="text-[10px] bg-red-600 text-white font-black px-3 py-1.5 rounded-lg">+ ADD DEBT</button>
-                        </div>
-                        <div class="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
-                            <table class="w-full text-left text-sm">
-                                <thead class="bg-slate-50 text-slate-400 uppercase text-[9px] font-bold">
-                                    <tr><th class="px-4 py-3">Lender</th><th class="px-4 py-3 text-right">Balance</th><th class="px-4 py-3"></th></tr>
-                                </thead>
-                                <tbody id="debt-rows"></tbody>
-                            </table>
+                    <div class="bg-white p-6 rounded-2xl shadow-md">
+                        <h3 class="font-bold text-lg mb-4">Net Worth Growth</h3>
+                        <div class="h-64">
+                            <canvas id="growthChart"></canvas>
                         </div>
                     </div>
                 </div>
             </section>
 
-            <section id="tab-income" class="tab-content hidden space-y-6">
-                <div class="flex justify-between items-center">
-                    <h3 class="font-black text-slate-800 uppercase text-xs">Active Income</h3>
-                    <button onclick="addRow('income-list', 'income')" class="text-[10px] bg-indigo-600 text-white font-black px-3 py-1.5 rounded-lg">+ ADD SOURCE</button>
+            <section id="tab-assets" class="tab-content hidden">
+                <div class="space-y-8">
+                    <!-- Investments -->
+                    <div class="bg-white rounded-2xl shadow-md">
+                        <div class="p-6 border-b border-slate-100">
+                            <h3 class="text-lg font-bold">Investments</h3>
+                            <p class="text-sm text-slate-500">Brokerage, retirement, crypto, and other investment accounts.</p>
+                        </div>
+                        <table class="w-full text-left text-sm">
+                            <thead class="bg-slate-50 text-slate-500 uppercase text-xs font-bold">
+                                <tr>
+                                    <th class="px-4 py-3">Account Name</th>
+                                    <th class="px-4 py-3">Type</th>
+                                    <th class="px-4 py-3 text-right">Value</th>
+                                    <th class="px-4 py-3 w-10"></th>
+                                </tr>
+                            </thead>
+                            <tbody id="investment-rows" class="divide-y divide-slate-100"></tbody>
+                        </table>
+                        <div class="p-4">
+                            <button onclick="addRow('investment-rows', 'investment')" class="w-full text-center py-3 bg-indigo-50 text-indigo-600 font-bold rounded-lg hover:bg-indigo-100"><i class="fas fa-plus mr-2"></i> Add Investment</button>
+                        </div>
+                    </div>
+
+                    <!-- Real Estate -->
+                    <div class="bg-white rounded-2xl shadow-md">
+                        <div class="p-6 border-b border-slate-100">
+                            <h3 class="text-lg font-bold">Real Estate</h3>
+                            <p class="text-sm text-slate-500">Primary residence, rental properties, and land.</p>
+                        </div>
+                        <table class="w-full text-left text-sm">
+                            <thead class="bg-slate-50 text-slate-500 uppercase text-xs font-bold">
+                                <tr>
+                                    <th class="px-4 py-3">Property</th>
+                                    <th class="px-4 py-3 text-right">Value</th>
+                                    <th class="px-4 py-3 text-right">Mortgage</th>
+                                    <th class="px-4 py-3 text-right">Taxes/Ins.</th>
+                                    <th class="px-4 py-3 w-10"></th>
+                                </tr>
+                            </thead>
+                            <tbody id="housing-list" class="divide-y divide-slate-100"></tbody>
+                        </table>
+                        <div class="p-4">
+                            <button onclick="addRow('housing-list', 'housing')" class="w-full text-center py-3 bg-indigo-50 text-indigo-600 font-bold rounded-lg hover:bg-indigo-100"><i class="fas fa-plus mr-2"></i> Add Property</button>
+                        </div>
+                    </div>
+
+                    <!-- Other Assets -->
+                    <div class="bg-white rounded-2xl shadow-md">
+                        <div class="p-6 border-b border-slate-100">
+                            <h3 class="text-lg font-bold">Other Assets</h3>
+                            <p class="text-sm text-slate-500">Vehicles, collectibles, and other valuable possessions.</p>
+                        </div>
+                        <table class="w-full text-left text-sm">
+                            <thead class="bg-slate-50 text-slate-500 uppercase text-xs font-bold">
+                                <tr>
+                                    <th class="px-4 py-3">Asset</th>
+                                    <th class="px-4 py-3 text-right">Value</th>
+                                    <th class="px-4 py-3 text-right">Loan Balance</th>
+                                    <th class="px-4 py-3 w-10"></th>
+                                </tr>
+                            </thead>
+                            <tbody id="other-assets-list" class="divide-y divide-slate-100"></tbody>
+                        </table>
+                        <div class="p-4">
+                            <button onclick="addRow('other-assets-list', 'other')" class="w-full text-center py-3 bg-indigo-50 text-indigo-600 font-bold rounded-lg hover:bg-indigo-100"><i class="fas fa-plus mr-2"></i> Add Asset</button>
+                        </div>
+                    </div>
                 </div>
-                <div id="income-list" class="space-y-4"></div>
             </section>
 
-            <section id="tab-budget" class="tab-content hidden space-y-8">
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
-                    <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm text-center">
-                        <p class="text-[10px] font-bold text-slate-400 uppercase">Monthly Total</p>
-                        <p id="budget-sum-monthly" class="text-xl font-black text-slate-800">$0</p>
+            <section id="tab-debts" class="tab-content hidden">
+                <div class="bg-white rounded-2xl shadow-md">
+                    <div class="p-6 border-b border-slate-100">
+                        <h3 class="text-lg font-bold">Consumer Debt</h3>
+                        <p class="text-sm text-slate-500">Credit cards, auto loans, student loans, etc.</p>
                     </div>
-                    <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm text-center">
-                        <p class="text-[10px] font-bold text-slate-400 uppercase">Annual Total</p>
-                        <p id="budget-sum-annual" class="text-xl font-black text-slate-800">$0</p>
-                    </div>
-                    <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm text-center">
-                        <p class="text-[10px] font-bold text-slate-400 uppercase">Monthly Surplus</p>
-                        <p id="budget-sum-remaining" class="text-xl font-black text-emerald-600">$0</p>
-                    </div>
-                </div>
-                <div class="flex justify-between items-center mb-4">
-                    <h3 class="font-black text-slate-800 uppercase text-xs">Monthly Expenses</h3>
-                    <button onclick="addRow('budget-rows', 'budget-item')" class="text-[10px] bg-indigo-600 text-white font-black px-3 py-1.5 rounded-lg">+ ADD EXPENSE</button>
-                </div>
-                <div class="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
                     <table class="w-full text-left text-sm">
-                        <thead class="bg-slate-50 text-slate-400 uppercase text-[9px] font-bold">
-                            <tr><th class="px-4 py-3">Category</th><th class="px-4 py-3 text-right">Amount</th><th class="px-4 py-3 text-right">Sunset Year</th><th class="px-4 py-3"></th></tr>
+                        <thead class="bg-slate-50 text-slate-500 uppercase text-xs font-bold">
+                            <tr>
+                                <th class="px-4 py-3">Debt Name</th>
+                                <th class="px-4 py-3 text-right">Balance</th>
+                                <th class="px-4 py-3 w-10"></th>
+                            </tr>
                         </thead>
-                        <tbody id="budget-rows"></tbody>
+                        <tbody id="debt-rows" class="divide-y divide-slate-100"></tbody>
                     </table>
-                </div>
-            </section>
-
-            <section id="tab-assumptions" class="tab-content hidden space-y-8">
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
-                    <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-6">
-                        <h3 class="font-black text-slate-800 uppercase text-xs mb-4 border-b pb-2">Growth Rates</h3>
-                        <div class="space-y-4">
-                            <div>
-                                <label class="text-[10px] font-bold text-slate-400 uppercase flex justify-between">Stocks: <span id="val-stockGrowth">7%</span></label>
-                                <input type="range" id="input-stockGrowth" data-bind="stockGrowth" oninput="window.autoSave()" min="0" max="15" value="7" class="w-full h-2 bg-slate-100 rounded-lg appearance-none cursor-pointer accent-indigo-600">
-                            </div>
-                            <div>
-                                <label class="text-[10px] font-bold text-slate-400 uppercase flex justify-between">Real Estate: <span id="val-reAppreciation">3%</span></label>
-                                <input type="range" id="input-reAppreciation" data-bind="reAppreciation" oninput="window.autoSave()" min="0" max="10" value="3" class="w-full h-2 bg-slate-100 rounded-lg appearance-none cursor-pointer accent-emerald-600">
-                            </div>
-                            <div>
-                                <label class="text-[10px] font-bold text-slate-400 uppercase flex justify-between">Inflation: <span id="val-inflation">3%</span></label>
-                                <input type="range" id="input-inflation" data-bind="inflation" oninput="window.autoSave()" min="0" max="10" value="3" class="w-full h-2 bg-slate-100 rounded-lg appearance-none cursor-pointer accent-red-600">
-                            </div>
-                        </div>
-                    </div>
-                    <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-6">
-                        <h3 class="font-black text-slate-800 uppercase text-xs mb-4 border-b pb-2">Retirement Settings</h3>
-                        <div class="space-y-4">
-                            <div class="grid grid-cols-2 gap-4">
-                                <div>
-                                    <label class="text-[10px] font-bold text-slate-400 uppercase">Retire Age</label>
-                                    <input type="number" data-bind="retAge" oninput="window.autoSave()" value="55" class="w-full bg-slate-50 p-2 rounded-lg font-bold border-none outline-none">
-                                </div>
-                                <div>
-                                    <label class="text-[10px] font-bold text-slate-400 uppercase">Early Draw %</label>
-                                    <input type="number" data-bind="drawEarly" oninput="window.autoSave()" value="4" class="w-full bg-slate-50 p-2 rounded-lg font-bold border-none outline-none">
-                                </div>
-                            </div>
-                        </div>
+                    <div class="p-4">
+                        <button onclick="addRow('debt-rows', 'debt')" class="w-full text-center py-3 bg-red-50 text-red-600 font-bold rounded-lg hover:bg-red-100"><i class="fas fa-plus mr-2"></i> Add Debt</button>
                     </div>
                 </div>
             </section>
 
-            <section id="tab-growth" class="tab-content hidden space-y-8">
-                <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm h-[400px]">
-                    <canvas id="growthChart"></canvas>
+            <section id="tab-income" class="tab-content hidden">
+                <div class="bg-white rounded-2xl shadow-md">
+                    <div class="p-6 border-b border-slate-100">
+                        <h3 class="text-lg font-bold">Income Sources</h3>
+                        <p class="text-sm text-slate-500">W2, 1099, and other cash flow sources.</p>
+                    </div>
+                    <div id="income-list" class="p-6 space-y-4"></div>
+                    <div class="p-4">
+                        <button onclick="addRow('income-list', 'income')" class="w-full text-center py-3 bg-indigo-50 text-indigo-600 font-bold rounded-lg hover:bg-indigo-100"><i class="fas fa-plus mr-2"></i> Add Income</button>
+                    </div>
                 </div>
-                <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+            </section>
+
+            <section id="tab-budget" class="tab-content hidden">
+                <div class="space-y-8">
+                    <!-- Monthly Savings -->
+                    <div class="bg-white rounded-2xl shadow-md">
+                        <div class="p-6 border-b border-slate-100">
+                            <h3 class="text-lg font-bold">Savings Contributions</h3>
+                            <p class="text-sm text-slate-500">Monthly contributions to investment accounts.</p>
+                        </div>
+                        <table class="w-full text-left text-sm">
+                            <thead class="bg-slate-50 text-slate-500 uppercase text-xs font-bold">
+                                <tr>
+                                    <th class="px-4 py-3">Contribution</th>
+                                    <th class="px-4 py-3">Account Type</th>
+                                    <th class="px-4 py-3 text-right">Amount</th>
+                                    <th class="px-4 py-3 w-10"></th>
+                                </tr>
+                            </thead>
+                            <tbody id="savings-list" class="divide-y divide-slate-100"></tbody>
+                        </table>
+                        <div class="p-4">
+                            <button onclick="addRow('savings-list', 'savings-item')" class="w-full text-center py-3 bg-emerald-50 text-emerald-600 font-bold rounded-lg hover:bg-emerald-100"><i class="fas fa-plus mr-2"></i> Add Contribution</button>
+                        </div>
+                    </div>
+
+                    <!-- Recurring Expenses -->
+                    <div class="bg-white rounded-2xl shadow-md">
+                        <div class="p-6 border-b border-slate-100">
+                            <h3 class="text-lg font-bold">Recurring Expenses</h3>
+                            <p class="text-sm text-slate-500">Estimated monthly spending on essentials and discretionary items.</p>
+                        </div>
+                        <table class="w-full text-left text-sm">
+                            <thead class="bg-slate-50 text-slate-500 uppercase text-xs font-bold">
+                                <tr>
+                                    <th class="px-4 py-3">Expense</th>
+                                    <th class="px-4 py-3 text-right">Amount</th>
+                                    <th class="px-4 py-3 text-center">Debt Payoff Year</th>
+                                    <th class="px-4 py-3 w-10"></th>
+                                </tr>
+                            </thead>
+                            <tbody id="budget-rows" class="divide-y divide-slate-100"></tbody>
+                        </table>
+                        <div class="p-4">
+                            <button onclick="addRow('budget-rows', 'budget-item')" class="w-full text-center py-3 bg-red-50 text-red-600 font-bold rounded-lg hover:bg-red-100"><i class="fas fa-plus mr-2"></i> Add Expense</button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+
+            <section id="tab-assumptions" class="tab-content hidden">
+                <div class="bg-white rounded-2xl shadow-md p-6">
+                    <h3 class="text-lg font-bold mb-4">Financial Assumptions</h3>
+                    <div class="space-y-6">
+                        <div class="flex items-center justify-between">
+                            <label class="font-bold">Retirement Age</label>
+                            <div class="flex items-center gap-2">
+                                <input id="user-birth-year" type="number" value="1986" class="w-24 text-right font-bold outline-none bg-transparent">
+                                <span id="current-age-display" class="text-sm text-slate-500">(Age 38)</span>
+                            </div>
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <label for="input-stockGrowth" class="font-bold">Annual Stock Growth</label>
+                            <div class="flex items-center gap-2">
+                                <input id="input-stockGrowth" type="range" min="0" max="15" step="0.5" value="7" class="w-48 h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer">
+                                <span id="val-stockGrowth" class="font-bold text-indigo-600">7%</span>
+                            </div>
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <label for="input-reAppreciation" class="font-bold">Real Estate Appreciation</label>
+                            <div class="flex items-center gap-2">
+                                <input id="input-reAppreciation" type="range" min="0" max="10" step="0.5" value="3" class="w-48 h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer">
+                                <span id="val-reAppreciation" class="font-bold text-indigo-600">3%</span>
+                            </div>
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <label for="input-inflation" class="font-bold">Annual Inflation</label>
+                            <div class="flex items-center gap-2">
+                                <input id="input-inflation" type="range" min="0" max="10" step="0.5" value="3" class="w-48 h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer">
+                                <span id="val-inflation" class="font-bold text-indigo-600">3%</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <section id="tab-projection" class="tab-content hidden">
+                <div class="bg-white rounded-2xl shadow-md overflow-hidden">
                     <table class="w-full text-left text-sm">
-                        <thead class="bg-slate-50 text-slate-400 uppercase text-[10px] font-bold">
+                        <thead class="bg-slate-50 text-slate-500 uppercase text-xs font-bold">
                             <tr id="projection-header">
-                                <th class="px-4 py-4">Age</th><th class="px-4 py-4 text-right">Portfolio</th><th class="px-4 py-4 text-right">Real Estate</th><th class="px-4 py-4 text-right">Other</th><th class="px-4 py-4 text-right text-red-500">Debt</th><th class="px-4 py-4 text-right font-black">Net Worth</th><th class="px-4 py-4 text-right text-emerald-600">Today's $</th>
+                                <th class="px-6 py-4">Age</th>
+                                <th class="px-6 py-4 text-right">Portfolio</th>
+                                <th class="px-6 py-4 text-right">Real Estate</th>
+                                <th class="px-6 py-4 text-right">Other Assets</th>
+                                <th class="px-6 py-4 text-right text-red-500">Debt</th>
+                                <th class="px-6 py-4 text-right font-black">Net Worth</th>
+                                <th class="px-6 py-4 text-right text-emerald-600">Today's $</th>
                             </tr>
                         </thead>
                         <tbody id="projection-table-body" class="divide-y divide-slate-100"></tbody>
@@ -215,6 +289,7 @@
             </section>
         </main>
     </div>
+
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
     <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-auth.js"></script>
     <script src="firebase-config.js"></script>

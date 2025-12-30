@@ -1,38 +1,38 @@
-# Investment Calculator Blueprint
+# Project Blueprint
 
-## 1. Overview
+## Overview
 
-A simple web application that calculates investment growth based on user inputs. The application will feature real-time calculations and automatically save the user's data to a Firestore database.
+This project is a comprehensive Investment and Retirement Calculator designed to help users project their financial future. It allows users to input their assets, debts, income, and expenses, and then projects their net worth over time based on a set of assumptions. The application is built with vanilla JavaScript and Firebase for data persistence.
 
-## 2. Features
+## Implemented Features
 
-*   **Input Fields:**
-    *   Birth Year
-    *   Initial Investment
-    *   Monthly Contribution
-    *   Retirement Age
-    *   Investment Growth Rate
-    *   Inflation Rate
-*   **Calculations:**
-    *   Future value of investments at retirement.
-    *   A chart to visualize the growth over time.
-*   **Data Persistence:**
-    *   User data will be automatically saved to Firestore as it's entered.
-    *   Data will be loaded from Firestore when the page loads.
+*   **Authentication:** Users can log in with their Google account to save and load their financial data.
+*   **Data Input:** Users can input a wide range of financial data, including:
+    *   Investments (taxable, pre-tax, post-tax)
+    *   Real Estate
+    *   Other Assets
+    *   Consumer Debts
+    *   Income Sources
+    *   Monthly Expenses
+*   **Assumptions:** Users can configure assumptions for stock growth, real estate appreciation, and inflation.
+*   **Projection:** The application projects the user's net worth over time and displays the results in a table and a line chart.
+*   **Data Persistence:** All data is automatically saved to Firestore when the user makes changes.
 
-## 3. Design and Styling
+## Current Task: UI/UX Overhaul
 
-*   **Layout:** A clean, modern, single-page layout.
-*   **Styling:** We'll use Tailwind CSS for a professional and responsive design.
-*   **Charts:** We'll use a JavaScript charting library (like Chart.js) to visualize the investment growth.
+The UI/UX of the application has been overhauled with a new design that includes a sidebar for navigation, a dashboard with a summary of the user's financial data, and an asset allocation chart.
 
-## 4. Plan for Current Request: Build the Investment Calculator with Auto-Save
+### Implemented Changes
 
-1.  **Create the Blueprint:** Create a `blueprint.md` file to document the project plan.
-2.  **Set Up the Route:** Create a new route in `routes/web.php` to handle the calculator page.
-3.  **Create the Controller:** Generate a new controller to manage the calculator's logic.
-4.  **Create the View:** Create a new Blade view file for the calculator's user interface.
-5.  **Build the UI:** Add the HTML for the input fields and the chart display area in the Blade view.
-6.  **Add JavaScript for Calculations:** Write the JavaScript code in `resources/js/app.js` to perform the investment calculations.
-7.  **Implement Auto-Saving:** Add the necessary JavaScript to automatically save the form data to your Firestore database whenever a user types in an input field.
-8.  **Implement Data Loading:** Add JavaScript to load the saved data from Firestore when the page loads.
+*   **Redesigned the main layout:** The application now has a modern and intuitive layout with a sidebar for navigation and a main content area for the different sections of the application.
+*   **Improved the visual design:** The color palette, typography, and other visual elements have been updated to create a more professional and polished look.
+*   **Enhanced the user experience:** The application is more interactive and user-friendly with a tabbed interface that makes it easy to navigate between the different sections.
+*   **Added more visualizations:** An asset allocation chart has been added to the dashboard to give users a visual representation of their investments.
+*   **Populated the "Assets" and "Debts" tabs:** These tabs now contain input fields for investments, real estate, other assets, and consumer debt.
+*   **Populated the "Income," "Budget," and "Assumptions" tabs:** These tabs now contain input fields for income sources, savings contributions, recurring expenses, and financial assumptions.
+*   **Wired up all input fields:** All the input fields are now correctly wired up to the data model, and the data is saved to Firestore when the user makes changes.
+
+### Next Steps: Deployment
+
+*   **Run build command:** Execute `npm run build` to compile frontend assets for deployment.
+*   **Deploy to Firebase Hosting:** Deploy the `public` directory to Firebase Hosting.

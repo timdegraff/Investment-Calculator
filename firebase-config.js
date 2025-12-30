@@ -1,13 +1,9 @@
-
-// Your web app's Firebase configuration
-const firebaseConfig = {
-  apiKey: "YOUR_API_KEY",
-  authDomain: "YOUR_AUTH_DOMAIN",
-  projectId: "YOUR_PROJECT_ID",
-  storageBucket: "YOUR_STORAGE_BUCKET",
-  messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
-  appId: "YOUR_APP_ID"
+export const firebaseConfig = {
+  apiKey: "AIzaSyAqvvl6O3-2TLK4-j6ei1WU5SuaMY3HnO4",
+  authDomain: "investment-calculator-931f2.firebaseapp.com",
+  projectId: "investment-calculator-931f2",
+  storageBucket: "investment-calculator-931f2.firebasestorage.app",
+  messagingSenderId: "943895110805",
+  appId: "1:943895110805:web:ba6e1e6177ae31d7af279c",
+  measurementId: "G-F0CRPKLS7G"
 };
-
-// Initialize Firebase
-firebase.initializeApp(firebaseConfig);

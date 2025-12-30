@@ -1,66 +1,87 @@
 const engine = {
-    // 1. High-Precision Formatting
-    formatCompact: (val) => {
-        if (val === undefined || isNaN(val)) return "$0";
-        const abs = Math.round(Math.abs(val));
-        const sign = val < 0 ? "-" : "";
-        if (abs >= 1000000) return sign + "$" + (abs / 1000000).toFixed(2) + "M";
-        if (abs >= 1000) return sign + "$" + (abs / 1000).toFixed(1) + "K";
-        return sign + "$" + abs;
-    },
-
-    // 2. 2026 MFJ Tax Logic (with 4-child tax credit)
-    calculateTaxes: (grossTaxable) => {
-        const standardDeduction = 30000;
-        const taxable = Math.max(0, grossTaxable - standardDeduction);
-        let tax = 0;
-        // 2026 Estimated MFJ Brackets
-        if (taxable <= 23200) tax = taxable * 0.10;
-        else if (taxable <= 94300) tax = 2320 + (taxable - 23200) * 0.12;
-        else if (taxable <= 201050) tax = 10852 + (taxable - 94300) * 0.22;
-        else tax = 34337 + (taxable - 201050) * 0.24;
-        
-        // Subtract $2,000 per child (Evan, Colin, Emma, Hannah)
-        return Math.max(0, tax - 8000); 
-    },
-
-    // 3. Core Projection Logic (Asset Growth & Drawdowns)
+    // 1. Core Projection Logic (Asset Growth & Drawdowns)
     runProjection: (data) => {
         const startAge = new Date().getFullYear() - (data.birthYear || 1986);
-        const retAge = data.retAge || 55;
-        const stockG = 1 + (data.stockGrowth / 100);
-        const reG = 1 + (data.reAppreciation / 100);
-        const inflG = 1 + (data.inflation / 100);
+        const stockG = 1 + (data.assumptions.stockGrowth / 100);
+        const reG = 1 + (data.assumptions.reAppreciation / 100);
 
-        let cStock = data.investments.reduce((a, b) => a + Number(b.balance || 0), 0);
+        let cStock = data.investments.reduce((a, b) => a + Number(b.value || 0), 0);
         let cRE = data.realEstate.reduce((a, b) => a + Number(b.value || 0), 0);
-        let cDebt = (data.realEstate.reduce((a, b) => a + Number(b.mortgage || 0), 0)) +
+        let cOther = data.otherAssets.reduce((a, b) => a + Number(b.value || 0), 0);
+        let cDebt = (data.realEstate.reduce((a, b) => a + Number(b.debt || 0), 0)) +
+                    (data.otherAssets.reduce((a, b) => a + Number(b.debt || 0), 0)) +
                     (data.debts.reduce((a, b) => a + Number(b.balance || 0), 0));
 
         const results = [];
         for (let age = startAge; age <= 100; age++) {
             if (age > startAge) {
-                const isRetired = age >= retAge;
                 cStock *= stockG;
                 cRE *= reG;
-                
-                if (!isRetired) {
-                    // Complex 401k Logic: Base vs Bonus contributions
-                    data.income.forEach(inc => {
-                        const base = Number(inc.amount);
-                        const total = base * (1 + (Number(inc.bonusPct) / 100));
-                        const personal = inc.contribIncBonus ? (total * (inc.contribution/100)) : (base * (inc.contribution/100));
-                        const match = inc.matchIncBonus ? (total * (inc.match/100)) : (base * (inc.match/100));
-                        cStock += (personal + match);
-                    });
-                } else {
-                    const drawRate = age < 55 ? (data.drawEarly / 100) : (data.drawLate / 100);
-                    cStock -= (cStock * drawRate);
-                }
+
+                data.income.forEach(inc => {
+                    const base = Number(inc.amount);
+                    const total = base * (1 + (Number(inc.bonusPct) / 100));
+                    const personal = inc.contribIncBonus ? (total * (inc.contribution/100)) : (base * (inc.contribution/100));
+                    const match = inc.matchIncBonus ? (total * (inc.match/100)) : (base * (inc.match/100));
+                    cStock += (personal + match);
+                });
                 cDebt *= 0.94; // Estimated debt payoff curve
             }
-            results.push({ age, nw: (cStock + cRE) - cDebt });
+            results.push({ 
+                age, 
+                portfolio: cStock, 
+                realEstate: cRE, 
+                otherAssets: cOther,
+                debt: cDebt,
+                netWorth: (cStock + cRE + cOther) - cDebt 
+            });
         }
-        return results;
+        engine.displayProjection(results, data.assumptions.inflation);
+    },
+
+    // 2. Display Projection Data
+    displayProjection: (results, inflation) => {
+        const body = document.getElementById('projection-table-body');
+        const summaryNetWorth = document.getElementById('sum-networth');
+        const summaryAssets = document.getElementById('sum-assets');
+        const summaryLiabilities = document.getElementById('sum-liabilities');
+        const summaryIncome = document.getElementById('sum-income');
+        
+        if (!body) return;
+        body.innerHTML = '';
+        
+        results.forEach(row => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = templates.projectionRow(row, inflation);
+            body.appendChild(tr);
+        });
+        
+        // Update dashboard summaries
+        const firstRow = results[0];
+        if (firstRow) {
+            const totalAssets = firstRow.portfolio + firstRow.realEstate + firstRow.otherAssets;
+            summaryNetWorth.textContent = math.toCurrency(firstRow.netWorth);
+            summaryAssets.textContent = math.toCurrency(totalAssets);
+            summaryLiabilities.textContent = math.toCurrency(firstRow.debt);
+        }
+    },
+
+    // 3. Update Age Display
+    updateAgeDisplay: () => {
+        const birthYear = document.getElementById('user-birth-year').value;
+        const currentAge = new Date().getFullYear() - birthYear;
+        document.getElementById('current-age-display').textContent = `(Age ${currentAge})`;
+    },
+
+    // 4. Get Table Data
+    getTableData: (selector, fields) => {
+        return Array.from(document.querySelectorAll(selector)).map(row => {
+            const inputs = row.querySelectorAll('input, select');
+            const rowData = {};
+            fields.forEach((field, i) => {
+                rowData[field] = inputs[i]?.type === 'checkbox' ? inputs[i].checked : inputs[i]?.value;
+            });
+            return rowData;
+        });
     }
 };
