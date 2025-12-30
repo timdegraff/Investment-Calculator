@@ -1,0 +1,47 @@
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+import { firebaseConfig } from './firebase-config.js';
+
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+const provider = new GoogleAuthProvider();
+
+window.loginWithGoogle = async () => {
+    try { await signInWithPopup(auth, provider); } 
+    catch (e) { console.error("Login Error:", e); }
+};
+
+window.logoutUser = () => signOut(auth);
+
+window.saveUserData = async (data) => {
+    const user = auth.currentUser;
+    if (!user) return;
+    try {
+        await setDoc(doc(db, "users", user.uid), { financialData: data }, { merge: true });
+        console.log("✅ Data auto-saved to Firebase");
+    } catch (e) {
+        console.error("❌ Save Error:", e);
+    }
+};
+
+onAuthStateChanged(auth, async (user) => {
+    const loginScreen = document.getElementById('login-screen');
+    const appContainer = document.getElementById('app-container');
+    
+    if (user) {
+        loginScreen?.classList.add('hidden');
+        appContainer?.classList.remove('hidden');
+        
+        const docSnap = await getDoc(doc(db, "users", user.uid));
+        if (docSnap.exists() && window.loadUserDataIntoUI) {
+        window.loadUserDataIntoUI(docSnap.data().financialData);
+        }
+    } else {
+        loginScreen?.classList.remove('hidden');
+        appContainer?.classList.add('hidden');
+    }
+});
+window.auth = auth;
+window.db = db;
