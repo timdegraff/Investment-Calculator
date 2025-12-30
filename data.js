@@ -15,8 +15,9 @@ const templates = {
         <td class="px-4 py-3 text-right"><input type="number" oninput="window.autoSave()" placeholder="0" class="w-full text-right font-bold text-slate-500 outline-none bg-transparent text-sm"></td>
         <td class="px-4 py-2 text-right"><button onclick="this.closest('tr').remove(); window.autoSave()" class="text-slate-200 hover:text-red-500"><i class="fas fa-times text-xs"></i></button></td>`,
     other: () => `
-        <td class="px-4 py-3"><input type="text" oninput="window.autoSave()" placeholder="Asset" class="bg-transparent outline-none w-full text-sm"></td>
+        <td class="px-4 py-3"><input type="text" oninput="window.autoSave()" placeholder="Asset" class="bg-transparent outline-none w-full text-sm font-bold"></td>
         <td class="px-4 py-3 text-right"><input type="number" oninput="window.autoSave()" placeholder="0" class="w-full text-right font-bold outline-none bg-transparent text-sm"></td>
+        <td class="px-4 py-3 text-right"><input type="number" oninput="window.autoSave()" placeholder="0" class="w-full text-right font-bold text-red-500 outline-none bg-transparent text-sm"></td>
         <td class="px-4 py-2 text-right"><button onclick="this.closest('tr').remove(); window.autoSave()" class="text-slate-200 hover:text-red-500"><i class="fas fa-times text-xs"></i></button></td>`,
     debt: () => `
         <td class="px-4 py-3"><input type="text" oninput="window.autoSave()" placeholder="Debt Name" class="bg-transparent outline-none w-full text-sm font-bold text-slate-700"></td>
@@ -63,6 +64,7 @@ const engine = {
                        (data.realEstate?.reduce((a, b) => a + Number(b.value || 0), 0) || 0) +
                        (data.otherAssets?.reduce((a, b) => a + Number(b.value || 0), 0) || 0);
         const liabilities = (data.realEstate?.reduce((a, b) => a + Number(b.mortgage || 0), 0) || 0) +
+                            (data.otherAssets?.reduce((a, b) => a + Number(b.debt || 0), 0) || 0) +
                             (data.debts?.reduce((a, b) => a + Number(b.balance || 0), 0) || 0);
         
         const currentAge = new Date().getFullYear() - (data.birthYear || 1986);
@@ -76,7 +78,6 @@ const engine = {
         data.investments?.forEach(inv => {
             const val = Number(inv.balance || 0);
             const taxClass = inv.class;
-            
             if (taxClass === 'Crypto') futurePortfolio += val * Math.pow(cryptoGrowth, yearsToRetire);
             else if (taxClass === 'Metals') futurePortfolio += val * Math.pow(metalsGrowth, yearsToRetire);
             else futurePortfolio += val * Math.pow(stockGrowth, yearsToRetire);
@@ -86,9 +87,20 @@ const engine = {
         const annualDraw = futurePortfolio * drawRate;
         const annualSS = Number(data.ssAmount || 0) * 12;
 
+        let grossTotal = 0, total401k = 0;
+        data.income?.forEach(inc => {
+            const base = Number(inc.amount || 0), bonus = base * (Number(inc.bonusPct || 0) / 100);
+            grossTotal += (base + bonus);
+            total401k += (base + bonus) * ((Number(inc.contribution || 0) + Number(inc.match || 0)) / 100);
+        });
+
+        const monthlySavings = data.savings?.reduce((a, b) => a + Number(b.amount || 0), 0) || 0;
+
         document.getElementById('sum-assets').innerText = engine.formatCompact(assets);
         document.getElementById('sum-liabilities').innerText = engine.formatCompact(liabilities);
         document.getElementById('sum-networth').innerText = engine.formatCompact(assets - liabilities);
+        document.getElementById('sum-income').innerText = engine.formatCompact(grossTotal);
+        document.getElementById('sum-savings').innerText = engine.formatCompact(total401k + (monthlySavings * 12));
         document.getElementById('sum-ret-income').innerText = engine.formatCompact(annualDraw + annualSS);
     }
 };
@@ -123,7 +135,7 @@ function fillRow(row, type, data) {
         const inputs = row.querySelectorAll('input');
         if (inputs[0]) inputs[0].value = data.name || data.address || '';
         if (inputs[1]) inputs[1].value = data.balance || data.value || data.amount || 0;
-        if (inputs[2]) inputs[2].value = data.mortgage || data.endYear || 0;
+        if (inputs[2]) inputs[2].value = data.mortgage || data.debt || data.endYear || 0;
         if (inputs[3]) inputs[3].value = data.tax || 0;
         const select = row.querySelector('select');
         if (select && data.class) select.value = data.class;
@@ -162,7 +174,8 @@ window.autoSave = () => {
         })),
         otherAssets: Array.from(document.querySelectorAll('#other-assets-list tr')).map(r => ({
             name: r.cells[0]?.querySelector('input')?.value || '',
-            value: r.cells[1]?.querySelector('input')?.value || 0
+            value: r.cells[1]?.querySelector('input')?.value || 0,
+            debt: r.cells[2]?.querySelector('input')?.value || 0
         })),
         debts: Array.from(document.querySelectorAll('#debt-rows tr')).map(r => ({
             name: r.cells[0]?.querySelector('input')?.value || '',
