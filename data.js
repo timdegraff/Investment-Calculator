@@ -10,13 +10,27 @@ const engine = {
         return sign + "$" + abs;
     },
 
+    // ADVANCED TAX LOGIC RESTORED
+    calculateTaxes: (grossTaxable) => {
+        const standardDeduction = 30000;
+        const taxable = Math.max(0, grossTaxable - standardDeduction);
+        let tax = 0;
+        if (taxable <= 23200) tax = taxable * 0.10;
+        else if (taxable <= 94300) tax = 2320 + (taxable - 23200) * 0.12;
+        else if (taxable <= 201050) tax = 10852 + (taxable - 94300) * 0.22;
+        else tax = 34337 + (taxable - 201050) * 0.24;
+        
+        return Math.max(0, tax - 8000); // $2000 x 4 kids
+    },
+
     getTableData: (selector, props) => {
         return Array.from(document.querySelectorAll(selector)).map(row => {
             const inputs = row.querySelectorAll('input, select');
             const obj = {};
             props.forEach((prop, i) => {
                 if (!inputs[i]) return;
-                const val = inputs[i].value;
+                // Handle checkboxes for 401k logic
+                const val = inputs[i].type === 'checkbox' ? inputs[i].checked : inputs[i].value;
                 obj[prop] = (inputs[i].type === 'number' || inputs[i].type === 'range') ? Number(val) : val;
             });
             return obj;
@@ -59,8 +73,15 @@ const engine = {
                 
                 if (!isRetired) {
                     data.income.forEach(inc => {
-                        const totalSal = Number(inc.amount) * (1 + (Number(inc.bonusPct) / 100));
-                        cStock += totalSal * ((Number(inc.contribution) + Number(inc.match)) / 100);
+                        const base = Number(inc.amount);
+                        const bonus = base * (Number(inc.bonusPct) / 100);
+                        const total = base + bonus;
+                        
+                        // RESTORED: Bonus-dependent 401k logic
+                        const personal401k = inc.contribIncBonus ? (total * (inc.contribution/100)) : (base * (inc.contribution/100));
+                        const companyMatch = inc.matchIncBonus ? (total * (inc.match/100)) : (base * (inc.match/100));
+                        
+                        cStock += (personal401k + companyMatch);
                     });
                     data.savings.forEach(s => {
                         if (s.class === 'Metals') cMetals += s.amount;
@@ -72,7 +93,7 @@ const engine = {
                     cStock -= (cStock * rate);
                 }
                 if (age >= ssAge) cStock += (ssMonthly * 12);
-                cDebt *= 0.92; // Simple amortized debt reduction
+                cDebt *= 0.92;
             }
 
             const totalInv = cStock + cMetals + cCrypto;
@@ -124,14 +145,21 @@ const engine = {
                      (data.otherAssets?.reduce((a, b) => a + Number(b.debt || 0), 0) || 0) +
                      (data.debts?.reduce((a, b) => a + Number(b.balance || 0), 0) || 0);
 
-        let annualGross = 0, totalSavings = 0;
+        let annualGross = 0, total401k = 0, taxableIncome = 0;
         data.income?.forEach(inc => {
-            const total = Number(inc.amount) * (1 + (Number(inc.bonusPct) / 100));
+            const base = Number(inc.amount);
+            const total = base * (1 + (Number(inc.bonusPct) / 100));
             annualGross += total;
-            totalSavings += total * ((Number(inc.contribution) + Number(inc.match)) / 100);
+            
+            const personal401k = inc.contribIncBonus ? (total * (inc.contribution/100)) : (base * (inc.contribution/100));
+            const companyMatch = inc.matchIncBonus ? (total * (inc.match/100)) : (base * (inc.match/100));
+            total401k += (personal401k + companyMatch);
+
+            const isNonTaxable = inc.nonTaxYear && Number(inc.nonTaxYear) >= new Date().getFullYear();
+            if (!isNonTaxable) taxableIncome += (total - personal401k);
         });
 
-        const budgetMonthly = data.budget?.reduce((a, b) => a + Number(b.amount || 0), 0) || 0;
+        const fedTax = engine.calculateTaxes(taxableIncome);
         const set = (id, val) => { if(document.getElementById(id)) document.getElementById(id).innerText = val; };
         
         set('sum-assets', engine.formatCompact(assets));
@@ -142,9 +170,13 @@ const engine = {
         const currentDrawRate = (new Date().getFullYear() - data.birthYear) < 55 ? (data.drawEarly / 100) : (data.drawLate / 100);
         set('sum-ret-income', engine.formatCompact(assets * currentDrawRate));
         
+        const budgetMonthly = data.budget?.reduce((a, b) => a + Number(b.amount || 0), 0) || 0;
         set('budget-sum-monthly', '$' + budgetMonthly.toLocaleString());
         set('budget-sum-annual', '$' + (budgetMonthly * 12).toLocaleString());
-        set('budget-sum-remaining', '$' + Math.round(((annualGross * 0.75) / 12) - budgetMonthly).toLocaleString());
+        
+        // Accurate Cashflow Surplus calculation
+        const monthlyNet = (annualGross - fedTax - (total401k - (data.income[0]?.match * data.income[0]?.amount / 100 || 0))) / 12;
+        set('budget-sum-remaining', '$' + Math.round(monthlyNet - budgetMonthly).toLocaleString());
 
         engine.runProjection(data);
     }
@@ -167,7 +199,9 @@ window.autoSave = () => {
         nonTaxYear: d.querySelectorAll('input[type=number]')[2]?.value || 0,
         increase: d.querySelectorAll('input[type=range]')[0]?.value || 0,
         contribution: d.querySelectorAll('input[type=range]')[1]?.value || 0,
-        match: d.querySelectorAll('input[type=range]')[2]?.value || 0
+        contribIncBonus: d.querySelectorAll('input[type=checkbox]')[0]?.checked,
+        match: d.querySelectorAll('input[type=range]')[2]?.value || 0,
+        matchIncBonus: d.querySelectorAll('input[type=checkbox]')[1]?.checked
     }));
 
     window.currentData = data;
