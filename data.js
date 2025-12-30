@@ -1,14 +1,14 @@
 let growthChart = null;
 
 window.syncFromCloud = async function() {
-    // 1. Get the current logged-in user from Firebase Auth
     const user = firebase.auth().currentUser;
     if (!user || typeof db === 'undefined') return;
-
+    
     try {
-        // 2. Use the dynamic user.uid instead of a hardcoded string
+        // Systemic fix: uses the UID from the login
         const dataDoc = await db.collection("users").doc(user.uid).get();
         if (dataDoc.exists) {
+            console.log("Data loaded for:", user.uid);
             window.loadUserDataIntoUI(dataDoc.data());
         }
     } catch (e) {
