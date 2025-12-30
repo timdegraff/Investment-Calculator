@@ -2,14 +2,17 @@ let growthChart = null;
 
 window.syncFromCloud = async function() {
     const user = window.auth ? window.auth.currentUser : null;
-    if (!user || !window.db) return;
+    if (!user || !window.db) {
+        console.warn("Auth or DB not initialized yet.");
+        return;
+    }
     
     try {
-        // Import the necessary Firestore functions dynamically for this scope
         const { getDoc, doc } = await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js");
         const docSnap = await getDoc(doc(window.db, "users", user.uid));
         
         if (docSnap.exists()) {
+            // Note: Your auth.js saves data under the 'financialData' key
             const cloudData = docSnap.data().financialData;
             if (cloudData) {
                 window.loadUserDataIntoUI(cloudData);
