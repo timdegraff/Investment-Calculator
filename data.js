@@ -1,6 +1,5 @@
 let growthChart = null;
 
-// --- UI TEMPLATES ---
 const templates = {
     investment: () => `
         <td class="px-4 py-3"><input type="text" oninput="window.autoSave()" placeholder="Account" class="bg-transparent outline-none w-full text-sm"></td>
@@ -75,17 +74,15 @@ const engine = {
         const reG = 1 + (data.reAppreciation / 100);
         const inflG = 1 + (data.inflation / 100);
 
-        // --- FIX: Update Summary Header for Ret. Income ---
         const currentDrawRate = startAge < 55 ? (data.drawEarly / 100) : (data.drawLate / 100);
         document.getElementById('sum-ret-income').innerText = engine.formatCompact(cInv * currentDrawRate);
 
-        // ... rest of the loop logic as provided in previous full data.js response
-    
         const tableBody = document.getElementById('projection-table-body');
         if (tableBody) tableBody.innerHTML = '';
+        
+        const labels = [], invData = [], reData = [], otherData = [], debtData = [], nwData = [];
 
         for (let age = startAge; age <= 100; age++) {
-            // Apply growth ONLY after the first year (age > startAge)
             if (age > startAge) {
                 const isRetired = age >= retAge;
                 cInv *= stockG;
@@ -100,7 +97,7 @@ const engine = {
                     const rate = age < 55 ? (data.drawEarly / 100) : (data.drawLate / 100);
                     cInv -= (cInv * rate);
                 }
-                cDebt *= 0.92; // 8% principal paydown assumption
+                cDebt *= 0.92;
             }
 
             const netWorth = (cInv + cRE + cOther) - cDebt;
@@ -153,7 +150,7 @@ const engine = {
                         mode: 'index',
                         intersect: false,
                         callbacks: {
-                            label: (ctx) => ctx.datasetIndex === 0 ? `Net Worth: ${engine.formatCompact(nw[ctx.dataIndex])}` : null
+                            label: (ctx) => `Net Worth: ${engine.formatCompact(nw[ctx.dataIndex])}`
                         }
                     },
                     legend: { position: 'bottom', labels: { boxWidth: 10, font: { size: 10, weight: 'bold' } } }
@@ -300,10 +297,10 @@ window.loadUserDataIntoUI = (data) => {
         window.currentData = data;
         document.getElementById('user-birth-year').value = data.birthYear || 1986;
         document.getElementById('input-inflation').value = data.inflation || 3;
-        document.getElementById('input-stock').value = data.stockGrowth || 8;
-        document.getElementById('input-re').value = data.reAppreciation || 3;
+        document.getElementById('input-stock').value = data.stockGrowth || 10;
+        document.getElementById('input-re').value = data.reAppreciation || 4;
         document.getElementById('input-ret-age').value = data.retAge || 55;
-        document.getElementById('input-draw-early').value = data.drawEarly || 4;
+        document.getElementById('input-draw-early').value = data.drawEarly || 7;
         document.getElementById('input-draw-late').value = data.drawLate || 5;
 
         const mapping = [['investment-rows', 'investment', data.investments], ['housing-list', 'housing', data.realEstate], ['other-assets-list', 'other', data.otherAssets], ['debt-rows', 'debt', data.debts], ['income-list', 'income', data.income], ['savings-rows', 'savings-item', data.savings]];
