@@ -1,172 +1,107 @@
 /**
- * CORE.JS - UI Management & Utility Functions
- * Handles Tab navigation, Dynamic row creation, and Data Exports.
+ * CORE.JS - UI Management & Core Application Logic
+ * Handles Tab navigation, UI updates, and acts as a controller between other modules.
  */
 
-// 1. Tab Navigation logic
+// 1. Tab Navigation
 window.showTab = (tabId) => {
-    // Hide all tab content sections
     document.querySelectorAll('.tab-content').forEach(tab => tab.classList.add('hidden'));
-    
-    // Deactivate all tab buttons
     document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
-    
-    // Show the selected tab content
-    const selectedTab = document.getElementById(`tab-${tabId}`);
-    if (selectedTab) {
-        selectedTab.classList.remove('hidden');
-    }
-    
-    // Activate the selected tab button
-    const selectedButton = document.getElementById(`btn-${tabId}`);
-    if (selectedButton) {
-        selectedButton.classList.add('active');
-    }
-    
-    // Auto-refresh projection if moving to the projection tab
+    document.getElementById(`tab-${tabId}`).classList.remove('hidden');
+    document.getElementById(`btn-${tabId}`).classList.add('active');
+
+    // Refresh projection if switching to that tab
     if (tabId === 'projection' && window.currentData) {
         engine.runProjection(window.currentData);
     }
 };
 
-// 2. Asset Allocation Chart
-window.renderAssetAllocationChart = (investmentData) => {
-    const ctx = document.getElementById('asset-allocation-chart')?.getContext('2d');
-    if (!ctx) return;
+// 2. Dynamic Summary Updates
+window.updateSummaries = (data) => {
+    if (!data) return;
 
-    const assetClasses = investmentData.reduce((acc, asset) => {
-        const aClass = asset.class || 'Other';
-        acc[aClass] = (acc[aClass] || 0) + (parseFloat(asset.value) || 0);
-        return acc;
-    }, {});
+    const summaries = engine.calculateSummaries(data);
 
-    const labels = Object.keys(assetClasses);
-    const data = Object.values(assetClasses);
+    // Sidebar and Assets/Debts Tab
+    document.getElementById('sidebar-networth').textContent = formatCurrency(summaries.netWorth);
+    document.getElementById('sum-assets').textContent = formatCurrency(summaries.totalAssets);
+    document.getElementById('sum-liabilities').textContent = formatCurrency(summaries.totalLiabilities);
 
-    const backgroundColors = [
-        '#4f46e5', // Indigo
-        '#10b981', // Emerald
-        '#3b82f6', // Blue
-        '#f97316', // Orange
-        '#ec4899', // Pink
-        '#8b5cf6', // Violet
-        '#6b7280', // Gray
-    ];
+    // Income Tab
+    document.getElementById('sum-income').textContent = formatCurrency(summaries.grossIncome2026);
 
-    if (window.assetAllocationChart instanceof Chart) {
-        window.assetAllocationChart.destroy();
-    }
+    // Savings Tab
+    document.getElementById('sum-total-savings').textContent = formatCurrency(summaries.totalAnnualSavings, 0);
+    document.getElementById('val-401k-personal').textContent = formatCurrency(summaries.workplaceSavings.personal, 0);
+    document.getElementById('val-401k-match').textContent = formatCurrency(summaries.workplaceSavings.match, 0);
 
-    window.assetAllocationChart = new Chart(ctx, {
-        type: 'doughnut',
-        data: {
-            labels: labels,
-            datasets: [{
-                label: 'Asset Allocation',
-                data: data,
-                backgroundColor: backgroundColors,
-                borderColor: '#ffffff',
-                borderWidth: 2
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                legend: {
-                    position: 'bottom',
-                },
-                tooltip: {
-                    callbacks: {
-                        label: function(context) {
-                            let label = context.label || '';
-                            if (label) {
-                                label += ': ';
-                            }
-                            if (context.parsed !== null) {
-                                label += new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(context.parsed);
-                            }
-                            return label;
-                        }
-                    }
-                }
-            }
-        }
-    });
+    // Budget Tab
+    document.getElementById('budget-sum-monthly').textContent = formatCurrency(summaries.totalMonthlyExpenses, 0);
+    document.getElementById('budget-cashflow').textContent = formatCurrency(summaries.estimatedMonthlyCashflow, 0);
+    
+    // Run projection automatically
+    engine.runProjection(data);
 };
-
 
 // 3. Dynamic Row Management
 window.addRow = (containerId, type, data = null) => {
     const container = document.getElementById(containerId);
     if (!container) return;
 
-    const isIncome = type === 'income';
-    const element = document.createElement(isIncome ? 'div' : 'tr');
-    
-    if (!isIncome) element.className = "border-t border-slate-100";
+    const isCard = type === 'income';
+    const element = document.createElement(isCard ? 'div' : 'tr');
     
     element.innerHTML = templates[type]();
     container.appendChild(element);
 
-    if (data) fillRow(element, type, data);
+    // Attach event listeners for dynamic inputs
+    element.querySelectorAll('input, select').forEach(input => {
+        input.addEventListener('input', window.autoSave);
+    });
+
+    // Special handling for range sliders to update their display value
+    element.querySelectorAll('input[type="range"]').forEach(slider => {
+        const display = slider.previousElementSibling?.querySelector('span');
+        if(display) {
+            slider.addEventListener('input', () => display.textContent = slider.value + '%');
+        }
+    });
+
+    if (data) fillRow(element, data);
     
     return element;
 };
 
-function fillRow(row, type, data) {
-    const inputs = row.querySelectorAll('input, select');
-    
-    if (type === 'income') {
-        inputs[0].value = data.name || '';
-        inputs[1].value = data.amount || 0;
-        inputs[2].value = data.bonusPct || 0;
-        inputs[3].value = data.nonTaxYear || 0;
-        
-        const ranges = row.querySelectorAll('input[type=range]');
-        ranges[0].value = data.increase || 0;
-        ranges[1].value = data.contribution || 0;
-        ranges[2].value = data.match || 0;
-        
-        ranges.forEach(r => {
-            if (r.previousElementSibling && r.previousElementSibling.lastElementChild) {
-                r.previousElementSibling.lastElementChild.innerText = r.value + '%';
+function fillRow(row, data) {
+    Object.keys(data).forEach(key => {
+        const input = row.querySelector(`[data-id="${key}"]`);
+        if (input) {
+            if (input.type === 'checkbox') {
+                input.checked = data[key];
+            } else {
+                input.value = data[key];
             }
-        });
-
-        const checks = row.querySelectorAll('input[type=checkbox]');
-        if (checks[0]) checks[0].checked = data.contribIncBonus;
-        if (checks[1]) checks[1].checked = data.matchIncBonus;
-        
-    } else {
-        const values = Object.values(data);
-        inputs.forEach((input, i) => {
-            if (values[i] !== undefined) {
-                if (input.type === 'checkbox') input.checked = values[i];
-                else input.value = values[i];
+            // Also trigger display update for range sliders when filling rows
+            if (input.type === 'range') {
+                const display = input.previousElementSibling?.querySelector('span');
+                if (display) display.textContent = input.value + '%';
             }
-        });
-    }
+        }
+    });
 }
 
-// 4. Global Utilities
-window.exportCSV = () => {
-    const rows = Array.from(document.querySelectorAll('#projection-table-body tr'));
-    const headerEl = document.querySelectorAll('#projection-header th');
-    const headers = Array.from(headerEl).map(th => th.innerText).join(",");
-    
-    let csv = "data:text/csv;charset=utf-8," + headers + "\n";
-    
-    rows.forEach(tr => {
-        csv += Array.from(tr.cells)
-            .map(td => td.innerText.replace(/[\$,]/g, ''))
-            .join(",") + "\n";
-    });
+// 4. Utility
+function formatCurrency(value, fractionDigits = 2) {
+    return new Intl.NumberFormat('en-US', {
+        style: 'currency',
+        currency: 'USD',
+        minimumFractionDigits: fractionDigits,
+        maximumFractionDigits: fractionDigits,
+    }).format(value || 0);
+}
 
-    const link = document.createElement("a");
-    link.setAttribute("href", encodeURI(csv));
-    link.setAttribute("download", `Wealth_Projection_${new Date().getFullYear()}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-};
+// Initial setup on DOM ready
+document.addEventListener('DOMContentLoaded', () => {
+    // Set the initial active tab
+    showTab('assets-debts');
+});
