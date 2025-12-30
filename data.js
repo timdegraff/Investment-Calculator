@@ -17,26 +17,7 @@ window.autoSave = debounce(() => {
     const user = window.auth ? window.auth.currentUser : null;
     if (!user) return;
 
-    // Collect data from the UI
-    const data = {
-        lastUpdated: new Date().toISOString(),
-        assumptions: {
-            birthYear: document.getElementById('user-birth-year')?.value || "1986",
-            retAge: document.getElementById('input-retAge')?.value || "55",
-            stockGrowth: document.getElementById('input-stockGrowth')?.value || "7",
-            reAppreciation: document.getElementById('input-reAppreciation')?.value || "3",
-            inflation: document.getElementById('input-inflation')?.value || "3",
-            drawEarly: document.getElementById('input-drawEarly')?.value || "4",
-        },
-        investments: getTableData('investment-rows', ['name', 'class', 'value']),
-        realEstate: getTableData('housing-list', ['name', 'value', 'debt']),
-        otherAssets: getTableData('other-assets-list', ['name', 'value', 'debt']),
-        debts: getTableData('debt-rows', ['name', 'balance']),
-        income: getCardData('income-list'),
-        manualSavings: getTableData('savings-list', ['name', 'type', 'amount']),
-        expenses: getTableData('budget-rows', ['name', 'amount'])
-    };
-
+    const data = gatherData();
     window.currentData = data; // Keep a global reference
 
     if (window.saveUserData) {
@@ -44,12 +25,34 @@ window.autoSave = debounce(() => {
         console.log("Auto-saving data...", data);
     }
 
-    // Always update summaries and projection on data change
     window.updateSummaries(data);
-}, 500); // 500ms delay for debouncing
+}, 500);
 
 
-// Function to load user data into the UI
+function gatherData() {
+    const data = { lastUpdated: new Date().toISOString() };
+
+    // 1. Gather Assumptions
+    data.assumptions = {};
+    for (const key in assumptions.sliders) {
+        const input = document.getElementById(`input-${key}`);
+        if (input) {
+            data.assumptions[key] = parseFloat(input.value);
+        }
+    }
+
+    // 2. Gather Table and Card Data
+    data.investments = getTableData('investment-rows', ['name', 'class', 'value']);
+    data.realEstate = getTableData('housing-list', ['name', 'value', 'debt']);
+    data.otherAssets = getTableData('other-assets-list', ['name', 'value', 'debt']);
+    data.debts = getTableData('debt-rows', ['name', 'balance']);
+    data.income = getCardData('income-list');
+    data.manualSavings = getTableData('savings-list', ['name', 'class', 'monthly', 'annual']);
+    data.expenses = getTableData('budget-rows', ['name', 'monthly', 'annual']);
+
+    return data;
+}
+
 window.loadUserDataIntoUI = (data) => {
     if (!data) {
         console.log("No data found, loading defaults for new user.");
@@ -58,14 +61,7 @@ window.loadUserDataIntoUI = (data) => {
     window.currentData = data;
 
     // 1. Load Assumptions
-    if (data.assumptions) {
-        for (const [key, value] of Object.entries(data.assumptions)) {
-            const input = document.getElementById(key === 'birthYear' ? 'user-birth-year' : `input-${key}`);
-            const display = document.getElementById(`val-${key}`);
-            if (input) input.value = value;
-            if (display) display.textContent = value + '%';
-        }
-    }
+    assumptions.load(data.assumptions);
 
     // 2. Load Tables
     const tables = {
@@ -94,7 +90,7 @@ window.loadUserDataIntoUI = (data) => {
 
 function getNewUserDefaultData() {
     return {
-        assumptions: { birthYear: "1990", retAge: "65", stockGrowth: "8", reAppreciation: "3", inflation: "2.5", drawEarly: "4" },
+        assumptions: assumptions.defaults,
         investments: [],
         realEstate: [],
         otherAssets: [],
@@ -102,36 +98,33 @@ function getNewUserDefaultData() {
         income: [],
         manualSavings: [],
         expenses: [
-            { id: `budget_${Date.now()}_1`, name: "Mortgage / Rent", amount: "1500" },
-            { id: `budget_${Date.now()}_2`, name: "Car Payment", amount: "500" },
-            { id: `budget_${Date.now()}_3`, name: "Utilities", amount: "300" },
+            { name: "Mortgage / Rent", monthly: "1500", annual: "18000" },
+            { name: "Car Payment", monthly: "500", annual: "6000" },
+            { name: "Utilities", monthly: "300", annual: "3600" },
         ]
     };
 }
 
-// Helper to get data from a simple table structure
 function getTableData(containerId, fields) {
     const rows = document.getElementById(containerId)?.querySelectorAll('tr');
     if (!rows) return [];
     return Array.from(rows).map(row => {
-        const data = { id: row.id };
-        const inputs = row.querySelectorAll('input, select');
-        inputs.forEach((input, index) => {
-            const fieldName = fields[index];
-            if (fieldName) {
-                data[fieldName] = input.type === 'checkbox' ? input.checked : input.value;
+        const data = {};
+        fields.forEach(field => {
+            const input = row.querySelector(`[data-id="${field}"]`);
+            if (input) {
+                 data[field] = input.type === 'checkbox' ? input.checked : input.value;
             }
         });
         return data;
     });
 }
 
-// Helper to get data from the more complex income cards
 function getCardData(containerId) {
     const cards = document.getElementById(containerId)?.querySelectorAll('.income-card');
     if (!cards) return [];
     return Array.from(cards).map(card => {
-        const data = { id: card.id };
+        const data = {};
         card.querySelectorAll('input, select').forEach(input => {
             const id = input.dataset.id;
             if (id) {

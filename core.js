@@ -10,7 +10,6 @@ window.showTab = (tabId) => {
     document.getElementById(`tab-${tabId}`).classList.remove('hidden');
     document.getElementById(`btn-${tabId}`).classList.add('active');
 
-    // Refresh projection if switching to that tab
     if (tabId === 'projection' && window.currentData) {
         engine.runProjection(window.currentData);
     }
@@ -22,28 +21,29 @@ window.updateSummaries = (data) => {
 
     const summaries = engine.calculateSummaries(data);
 
-    // Sidebar and Assets/Debts Tab
-    document.getElementById('sidebar-networth').textContent = formatCurrency(summaries.netWorth);
-    document.getElementById('sum-assets').textContent = formatCurrency(summaries.totalAssets);
-    document.getElementById('sum-liabilities').textContent = formatCurrency(summaries.totalLiabilities);
+    // Sidebar & Assets Tab
+    document.getElementById('sidebar-networth').textContent = math.toCurrency(summaries.netWorth);
+    document.getElementById('sum-assets').textContent = math.toCurrency(summaries.totalAssets);
+    document.getElementById('sum-liabilities').textContent = math.toCurrency(summaries.totalLiabilities);
 
     // Income Tab
-    document.getElementById('sum-income').textContent = formatCurrency(summaries.grossIncome2026);
+    document.getElementById('sum-income').textContent = math.toCurrency(summaries.grossIncome2026);
 
     // Savings Tab
-    document.getElementById('sum-total-savings').textContent = formatCurrency(summaries.totalAnnualSavings, 0);
-    document.getElementById('val-401k-personal').textContent = formatCurrency(summaries.workplaceSavings.personal, 0);
-    document.getElementById('val-401k-match').textContent = formatCurrency(summaries.workplaceSavings.match, 0);
+    document.getElementById('sum-total-savings').textContent = math.toCurrency(summaries.totalAnnualSavings);
+    document.getElementById('val-401k-personal').textContent = math.toCurrency(summaries.workplaceSavings.personal);
+    document.getElementById('val-401k-match').textContent = math.toCurrency(summaries.workplaceSavings.match);
 
     // Budget Tab
-    document.getElementById('budget-sum-monthly').textContent = formatCurrency(summaries.totalMonthlyExpenses, 0);
-    document.getElementById('budget-cashflow').textContent = formatCurrency(summaries.estimatedMonthlyCashflow, 0);
-    
-    // Run projection automatically
+    document.getElementById('budget-sum-monthly').textContent = math.toCurrency(summaries.totalMonthlyExpenses);
+    document.getElementById('budget-sum-annual').textContent = `${math.toCurrency(summaries.totalAnnualExpenses)} / year`;
+    document.getElementById('budget-cashflow-monthly').textContent = math.toCurrency(summaries.estimatedMonthlyCashflow, true);
+    document.getElementById('budget-cashflow-annual').textContent = `${math.toCurrency(summaries.estimatedAnnualCashflow, true)} / year`;
+
     engine.runProjection(data);
 };
 
-// 3. Dynamic Row Management
+// 3. Dynamic Row & Input Management
 window.addRow = (containerId, type, data = null) => {
     const container = document.getElementById(containerId);
     if (!container) return;
@@ -54,12 +54,18 @@ window.addRow = (containerId, type, data = null) => {
     element.innerHTML = templates[type]();
     container.appendChild(element);
 
-    // Attach event listeners for dynamic inputs
+    attachInputListeners(element);
+
+    if (data) fillRow(element, data);
+    
+    return element;
+};
+
+function attachInputListeners(element) {
     element.querySelectorAll('input, select').forEach(input => {
         input.addEventListener('input', window.autoSave);
     });
 
-    // Special handling for range sliders to update their display value
     element.querySelectorAll('input[type="range"]').forEach(slider => {
         const display = slider.previousElementSibling?.querySelector('span');
         if(display) {
@@ -67,10 +73,21 @@ window.addRow = (containerId, type, data = null) => {
         }
     });
 
-    if (data) fillRow(element, data);
-    
-    return element;
-};
+    // Monthly/Annual field synchronization
+    const monthlyInput = element.querySelector('[data-id="monthly"]');
+    const annualInput = element.querySelector('[data-id="annual"]');
+
+    if (monthlyInput && annualInput) {
+        monthlyInput.addEventListener('input', () => {
+            const monthlyValue = parseFloat(monthlyInput.value) || 0;
+            annualInput.value = Math.round(monthlyValue * 12);
+        });
+        annualInput.addEventListener('input', () => {
+            const annualValue = parseFloat(annualInput.value) || 0;
+            monthlyInput.value = Math.round(annualValue / 12);
+        });
+    }
+}
 
 function fillRow(row, data) {
     Object.keys(data).forEach(key => {
@@ -81,7 +98,6 @@ function fillRow(row, data) {
             } else {
                 input.value = data[key];
             }
-            // Also trigger display update for range sliders when filling rows
             if (input.type === 'range') {
                 const display = input.previousElementSibling?.querySelector('span');
                 if (display) display.textContent = input.value + '%';
@@ -90,18 +106,7 @@ function fillRow(row, data) {
     });
 }
 
-// 4. Utility
-function formatCurrency(value, fractionDigits = 2) {
-    return new Intl.NumberFormat('en-US', {
-        style: 'currency',
-        currency: 'USD',
-        minimumFractionDigits: fractionDigits,
-        maximumFractionDigits: fractionDigits,
-    }).format(value || 0);
-}
-
-// Initial setup on DOM ready
+// Initial setup
 document.addEventListener('DOMContentLoaded', () => {
-    // Set the initial active tab
     showTab('assets-debts');
 });

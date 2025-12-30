@@ -8,6 +8,8 @@ const templates = {
                 <option>Taxable</option>
                 <option>Pre-Tax (401k/IRA)</option>
                 <option>Post-Tax (Roth)</option>
+                <option>HSA</option>
+                <option>529 Plan</option>
                 <option>Cash</option>
                 <option>Bitcoin</option>
                 <option>Metals</option>
@@ -52,20 +54,25 @@ const templates = {
     "savings-item": () => `
         <td class="px-4 py-3"><input data-id="name" type="text" placeholder="e.g., Roth IRA" class="bg-transparent outline-none w-full text-sm font-bold"></td>
         <td class="px-4 py-3">
-            <select data-id="type" class="bg-transparent outline-none w-full text-xs text-slate-500">
+            <select data-id="class" class="bg-transparent outline-none w-full text-xs text-slate-500">
+                <option>Taxable</option>
+                <option>Pre-Tax (401k/IRA)</option>
+                <option>Post-Tax (Roth)</option>
                 <option>HSA</option>
                 <option>529 Plan</option>
-                <option>Taxable Brokerage</option>
-                <option>Crypto</option>
-                <option>Other</option>
+                <option>Cash</option>
+                <option>Bitcoin</option>
+                <option>Metals</option>
             </select>
         </td>
-        <td class="px-4 py-3 text-right"><div class="flex items-center"><span class="text-slate-400 text-sm mr-1">$</span><input data-id="amount" type="number" placeholder="0" class="w-full text-right font-bold text-emerald-600 outline-none bg-transparent text-sm"></div></td>
+        <td class="px-4 py-3 text-right"><div class="flex items-center"><span class="text-slate-400 text-sm mr-1">$</span><input data-id="monthly" type="number" placeholder="0" class="w-full text-right font-bold text-emerald-600 outline-none bg-transparent text-sm"></div></td>
+        <td class="px-4 py-3 text-right"><div class="flex items-center"><span class="text-slate-400 text-sm mr-1">$</span><input data-id="annual" type="number" placeholder="0" class="w-full text-right font-bold text-emerald-600 outline-none bg-transparent text-sm"></div></td>
         <td class="px-4 py-2 text-center"><button onclick="this.closest('tr').remove(); window.autoSave()" class="text-slate-300 hover:text-red-500 text-xs w-6 h-6"><i class="fas fa-times"></i></button></td>`,
     
     "budget-item": () => `
         <td class="px-4 py-3"><input data-id="name" type="text" placeholder="e.g., Groceries" class="bg-transparent outline-none w-full text-sm"></td>
-        <td class="px-4 py-3 text-right"><div class="flex items-center"><span class="text-slate-400 text-sm mr-1">$</span><input data-id="amount" type="number" placeholder="0" class="w-full text-right font-bold text-red-400 outline-none bg-transparent text-sm"></div></td>
+        <td class="px-4 py-3 text-right"><div class="flex items-center"><span class="text-slate-400 text-sm mr-1">$</span><input data-id="monthly" type="number" placeholder="0" class="w-full text-right font-bold text-red-400 outline-none bg-transparent text-sm"></div></td>
+        <td class="px-4 py-3 text-right"><div class="flex items-center"><span class="text-slate-400 text-sm mr-1">$</span><input data-id="annual" type="number" placeholder="0" class="w-full text-right font-bold text-red-400 outline-none bg-transparent text-sm"></div></td>
         <td class="px-4 py-2 text-center"><button onclick="this.closest('tr').remove(); window.autoSave()" class="text-slate-300 hover:text-red-500 text-xs w-6 h-6"><i class="fas fa-times"></i></button></td>`,
 
     projectionRow: (row, assumptions) => {

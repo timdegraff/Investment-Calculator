@@ -1,11 +1,9 @@
 const engine = {
+    chart: null, // To hold the chart instance
 
-    /**
-     * 1. Central Summary Calculator
-     * Takes the entire data object and returns all calculated summary metrics.
-     */
     calculateSummaries: (data) => {
         const summaries = {};
+        const a = data.assumptions || assumptions.defaults;
 
         // --- Assets & Liabilities ---
         const totalInvestments = data.investments?.reduce((a, b) => a + Number(b.value || 0), 0) || 0;
@@ -17,97 +15,166 @@ const engine = {
         const otherAssetDebt = data.otherAssets?.reduce((a, b) => a + Number(b.debt || 0), 0) || 0;
         const standaloneDebt = data.debts?.reduce((a, b) => a + Number(b.balance || 0), 0) || 0;
         summaries.totalLiabilities = realEstateDebt + otherAssetDebt + standaloneDebt;
-
         summaries.netWorth = summaries.totalAssets - summaries.totalLiabilities;
 
         // --- Income & Savings ---
         let currentAnnualGross = 0;
-        let projected2026Gross = 0;
         let totalPersonal401k = 0;
         let totalMatch401k = 0;
-        const yearsTo2026 = 2026 - new Date().getFullYear();
+        const salaryGrowth = 1 + (a.salaryGrowth / 100);
 
         data.income?.forEach(inc => {
             const base = Number(inc.amount) || 0;
-            const bonus = base * (Number(inc.bonusPct) / 100);
-            const increaseRate = 1 + (Number(inc.increase) / 100);
-            
-            currentAnnualGross += base + bonus;
-            projected2026Gross += (base * Math.pow(increaseRate, yearsTo2026)) + bonus; // Simplified bonus projection
+            currentAnnualGross += base;
 
-            const personalContribTotal = inc.contribIncBonus ? (base + bonus) : base;
-            totalPersonal401k += personalContribTotal * (Number(inc.contribution) / 100);
-
-            const matchContribTotal = inc.matchIncBonus ? (base + bonus) : base;
-            totalMatch401k += matchContribTotal * (Number(inc.match) / 100);
+            totalPersonal401k += base * (Number(inc.contribution) / 100);
+            totalMatch401k += base * (Number(inc.match) / 100);
         });
 
-        summaries.grossIncome2026 = projected2026Gross;
+        summaries.grossIncome = currentAnnualGross;
         summaries.workplaceSavings = { personal: totalPersonal401k, match: totalMatch401k };
-
-        const manualSavings = data.manualSavings?.reduce((a, b) => a + Number(b.amount || 0), 0) || 0;
+        const manualSavings = data.manualSavings?.reduce((a, b) => a + Number(b.annual || 0), 0) || 0;
         summaries.totalAnnualSavings = totalPersonal401k + totalMatch401k + manualSavings;
         
         // --- Budget & Cashflow ---
-        summaries.totalMonthlyExpenses = data.expenses?.reduce((a, b) => a + Number(b.amount || 0), 0) || 0;
-        const annualTaxableIncome = currentAnnualGross - totalPersonal401k; // Simplified deduction
+        summaries.totalMonthlyExpenses = data.expenses?.reduce((a, b) => a + Number(b.monthly || 0), 0) || 0;
+        summaries.totalAnnualExpenses = summaries.totalMonthlyExpenses * 12;
+        const annualTaxableIncome = currentAnnualGross - totalPersonal401k;
         const estimatedAnnualTaxes = math.calculateProgressiveTax(annualTaxableIncome);
         const netAnnualIncome = currentAnnualGross - estimatedAnnualTaxes;
-        summaries.estimatedMonthlyCashflow = (netAnnualIncome / 12) - summaries.totalMonthlyExpenses - (manualSavings / 12);
+        summaries.estimatedAnnualCashflow = netAnnualIncome - summaries.totalAnnualExpenses - manualSavings;
+        summaries.estimatedMonthlyCashflow = summaries.estimatedAnnualCashflow / 12;
 
         return summaries;
     },
 
-    /**
-     * 2. Core Projection Logic (Asset Growth & Drawdowns)
-     */
     runProjection: (data) => {
         if (!data || !data.assumptions) return;
-
-        const { assumptions, investments, realEstate, otherAssets, income, manualSavings, debts } = data;
-        const startAge = new Date().getFullYear() - (assumptions.birthYear || 1986);
-        const stockG = 1 + (Number(assumptions.stockGrowth) / 100);
-        const reG = 1 + (Number(assumptions.reAppreciation) / 100);
+        const a = data.assumptions;
+        const startAge = new Date().getFullYear() - a.birthYear;
 
         const summaries = engine.calculateSummaries(data);
-        let cStock = investments?.reduce((a, b) => a + Number(b.value || 0), 0) || 0;
-        let cRE = realEstate?.reduce((a, b) => a + Number(b.value || 0), 0) || 0;
-        let cOther = otherAssets?.reduce((a, b) => a + Number(b.value || 0), 0) || 0;
-        let cDebt = summaries.totalLiabilities;
-
-        const annualSavings = summaries.totalAnnualSavings;
+        let portfolio = summaries.totalAssets - summaries.totalLiabilities - (data.realEstate?.reduce((s, h) => s + h.value, 0) || 0);
+        let realEstate = data.realEstate?.reduce((s, h) => s + h.value, 0) || 0;
 
         const results = [];
+        let currentGross = summaries.grossIncome;
+
         for (let age = startAge; age <= 100; age++) {
-            if (age > startAge) {
-                cStock = cStock * stockG + annualSavings; // Simplified: assumes all savings are invested
-                cRE *= reG;
-                cDebt *= 0.95; // Simplified 5% annual debt reduction
+            let annualSavings = 0;
+            let portfolioGrowth = 1 + (a.stockGrowth / 100);
+
+            if (age < a.retirementAge) {
+                annualSavings = summaries.totalAnnualSavings;
+                currentGross *= (1 + a.salaryGrowth / 100);
+            } else {
+                const drawRate = age < a.ssStartAge ? a.preSSDraw : a.postSSDraw;
+                const drawAmount = portfolio * (drawRate / 100);
+                annualSavings = -drawAmount;
+                if (age >= a.ssStartAge) {
+                    annualSavings += a.ssMonthly * 12;
+                }
             }
+            
+            portfolio = portfolio * portfolioGrowth + annualSavings;
+            realEstate *= (1 + a.housingGrowth / 100);
+            
             results.push({ 
                 age,
-                portfolio: cStock,
-                realEstate: cRE,
-                otherAssets: cOther,
-                debt: cDebt,
-                netWorth: (cStock + cRE + cOther) - cDebt
+                portfolio: Math.max(0, portfolio),
+                realEstate: Math.max(0, realEstate),
+                netWorth: Math.max(0, portfolio + realEstate)
             });
         }
-        engine.displayProjection(results, assumptions);
+        engine.displayProjection(results, a);
     },
 
-    /**
-     * 3. Display Projection Data in the Table
-     */
     displayProjection: (results, assumptions) => {
+        const ctx = document.getElementById('growthChart')?.getContext('2d');
+        if (!ctx) return;
+
+        const labels = results.map(r => r.age);
+        const portfolioData = results.map(r => r.portfolio);
+        const realEstateData = results.map(r => r.realEstate);
+
+        if (engine.chart) {
+            engine.chart.destroy();
+        }
+
+        engine.chart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [
+                    {
+                        label: 'Real Estate',
+                        data: realEstateData,
+                        backgroundColor: 'rgba(34, 197, 94, 0.2)', // Emerald-200
+                        borderColor: 'rgba(22, 163, 74, 1)',    // Emerald-600
+                        borderWidth: 2,
+                        fill: true,
+                        pointRadius: 0,
+                        tension: 0.4
+                    },
+                    {
+                        label: 'Portfolio',
+                        data: portfolioData,
+                        backgroundColor: 'rgba(99, 102, 241, 0.2)', // Indigo-200
+                        borderColor: 'rgba(79, 70, 229, 1)',   // Indigo-600
+                        borderWidth: 2,
+                        fill: true,
+                        pointRadius: 0,
+                        tension: 0.4
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { position: 'top', align: 'end' },
+                    tooltip: {
+                        mode: 'index',
+                        intersect: false,
+                        callbacks: { 
+                            label: (context) => `${context.dataset.label}: ${math.toCurrency(context.parsed.y)}`
+                        }
+                    }
+                },
+                scales: {
+                    x: {
+                        title: { display: true, text: 'Age' },
+                        grid: { display: false }
+                    },
+                    y: {
+                        stacked: true,
+                        title: { display: true, text: 'Net Worth' },
+                        ticks: { callback: (value) => math.toCurrency(value, false, 0) },
+                        border: { dash: [4, 4] }
+                    }
+                }
+            }
+        });
+
+        // Also update the table view
         const body = document.getElementById('projection-table-body');
         if (!body) return;
         body.innerHTML = '';
-        
-        results.forEach(row => {
+        const inflation = 1 + (assumptions.inflation / 100);
+
+        results.forEach((row, i) => {
             const tr = document.createElement('tr');
+            const todaysValue = row.netWorth / Math.pow(inflation, i);
             tr.className = "border-t border-slate-100";
-            tr.innerHTML = templates.projectionRow(row, assumptions);
+            tr.innerHTML = `
+                <td class="px-6 py-3 font-bold">${row.age}</td>
+                <td class="px-6 py-3 text-right">${math.toCurrency(row.portfolio)}</td>
+                <td class="px-6 py-3 text-right">${math.toCurrency(row.realEstate)}</td>
+                <td class="px-6 py-3 text-right">${math.toCurrency(0)}</td>
+                <td class="px-6 py-3 text-right text-red-500">${math.toCurrency(0)}</td>
+                <td class="px-6 py-3 text-right font-black">${math.toCurrency(row.netWorth)}</td>
+                <td class="px-6 py-3 text-right text-emerald-600 font-bold">${math.toCurrency(todaysValue)}</td>
+            `;
             body.appendChild(tr);
         });
     }
