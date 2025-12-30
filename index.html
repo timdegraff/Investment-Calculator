@@ -34,7 +34,7 @@
                     <div>
                         <h2 class="text-xl font-black text-slate-800 leading-none">Finance <span class="text-indigo-600">Engine</span></h2>
                         <div class="flex items-center gap-3 mt-3">
-                            <input type="number" id="user-birth-year" value="1986" oninput="window.calculateUserAge()" class="w-16 font-bold text-slate-700 border-b border-slate-200 outline-none text-sm">
+                            <input type="number" id="user-birth-year" value="1986" oninput="window.calculateUserAge()" class="w-16 font-bold text-indigo-600 border-b border-slate-200 outline-none text-sm bg-transparent">
                             <span id="display-age" class="text-xs font-bold text-slate-400 bg-slate-100 px-2 py-1 rounded">-- YRS OLD</span>
                         </div>
                     </div>
@@ -98,7 +98,7 @@
                     <div class="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
                         <table class="w-full text-left text-sm">
                             <thead class="bg-slate-50 text-slate-400 uppercase text-[9px] font-bold">
-                                <tr><th class="px-4 py-3 w-[35%]">Property Address</th><th class="px-4 py-3 text-right">Value</th><th class="px-4 py-3 text-right">Mortgage</th><th class="px-4 py-3 text-right">Tax (Yr)</th><th class="px-4 py-3"></th></tr>
+                                <tr><th class="px-4 py-3 w-[35%]">Property Address</th><th class="px-4 py-3 text-right">Value</th><th class="px-4 py-3 text-right text-red-500">Mortgage</th><th class="px-4 py-3 text-right">Tax (Yr)</th><th class="px-4 py-3"></th></tr>
                             </thead>
                             <tbody id="housing-list"></tbody>
                         </table>
@@ -145,7 +145,6 @@
             <section id="tab-savings" class="tab-content hidden">
                 <div class="mb-4">
                     <h3 class="font-black text-slate-800 uppercase text-xs">Monthly Automated Savings</h3>
-                    <p class="text-[10px] text-slate-400 italic">Note: 401k is calculated from income. Do not add it here.</p>
                 </div>
                 <div class="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
                     <table class="w-full text-left text-sm">
@@ -168,8 +167,7 @@
                         <thead class="bg-slate-50 text-slate-400 uppercase text-[9px] font-bold">
                             <tr>
                                 <th class="px-4 py-3">Expense Item</th>
-                                <th class="px-4 py-3 text-right">Monthly Amt</th>
-                                <th class="px-4 py-3 text-center">Inc %</th>
+                                <th class="px-4 py-3 text-right text-indigo-600">Monthly Amt</th>
                                 <th class="px-4 py-3 text-center">End Year</th>
                                 <th class="px-4 py-3"></th>
                             </tr>
@@ -193,15 +191,15 @@
                         </div>
                         <div class="flex flex-col gap-2">
                             <div class="flex justify-between text-sm font-bold"><span>Real Estate Growth</span><span class="text-indigo-600" id="val-re">3%</span></div>
-                            <input type="range" id="input-re" min="0" max="10" step="0.1" value="3" oninput="document.getElementById('val-re').innerText = this.value + '%'; window.autoSave()" class="w-full">
+                            <input type="range" id="input-re" min="0" max="15" step="0.1" value="3" oninput="document.getElementById('val-re').innerText = this.value + '%'; window.autoSave()" class="w-full">
                         </div>
                         <div class="flex flex-col gap-2">
-                            <div class="flex justify-between text-sm font-bold"><span>Metals Growth</span><span class="text-indigo-600" id="val-metals">2%</span></div>
-                            <input type="range" id="input-metals" min="-5" max="15" step="0.1" value="2" oninput="document.getElementById('val-metals').innerText = this.value + '%'; window.autoSave()" class="w-full">
+                            <div class="flex justify-between text-sm font-bold"><span>Metals Growth</span><span class="text-indigo-600" id="val-metals">3%</span></div>
+                            <input type="range" id="input-metals" min="0" max="15" step="0.1" value="3" oninput="document.getElementById('val-metals').innerText = this.value + '%'; window.autoSave()" class="w-full">
                         </div>
                         <div class="flex flex-col gap-2">
                             <div class="flex justify-between text-sm font-bold"><span>Crypto Growth</span><span class="text-indigo-600" id="val-crypto">10%</span></div>
-                            <input type="range" id="input-crypto" min="-20" max="100" step="1" value="10" oninput="document.getElementById('val-crypto').innerText = this.value + '%'; window.autoSave()" class="w-full">
+                            <input type="range" id="input-crypto" min="0" max="50" step="1" value="10" oninput="document.getElementById('val-crypto').innerText = this.value + '%'; window.autoSave()" class="w-full">
                         </div>
                     </div>
 
@@ -210,25 +208,25 @@
                         <div class="grid grid-cols-2 gap-4">
                             <div class="flex flex-col">
                                 <label class="text-[10px] font-bold text-slate-400 uppercase">Retirement Age</label>
-                                <input type="number" id="input-ret-age" value="62" oninput="window.autoSave()" class="border-b-2 border-slate-100 font-bold text-lg outline-none focus:border-indigo-600">
+                                <input type="number" id="input-ret-age" value="55" oninput="window.autoSave()" class="border-b-2 border-slate-100 font-bold text-lg text-indigo-600 outline-none focus:border-indigo-600 bg-transparent">
                             </div>
                             <div class="flex flex-col">
                                 <label class="text-[10px] font-bold text-slate-400 uppercase">SS Start Age</label>
-                                <input type="number" id="input-ss-age" value="67" oninput="window.autoSave()" class="border-b-2 border-slate-100 font-bold text-lg outline-none focus:border-indigo-600">
+                                <input type="number" id="input-ss-age" value="67" oninput="window.autoSave()" class="border-b-2 border-slate-100 font-bold text-lg text-indigo-600 outline-none focus:border-indigo-600 bg-transparent">
                             </div>
                         </div>
                         <div class="flex flex-col">
                             <label class="text-[10px] font-bold text-slate-400 uppercase">Monthly SS (Today's $)</label>
-                            <input type="number" id="input-ss-amount" value="3000" oninput="window.autoSave()" class="border-b-2 border-slate-100 font-bold text-lg outline-none focus:border-indigo-600">
+                            <input type="number" id="input-ss-amount" value="3000" oninput="window.autoSave()" class="border-b-2 border-slate-100 font-bold text-lg text-indigo-600 outline-none focus:border-indigo-600 bg-transparent">
                         </div>
                         <div class="grid grid-cols-2 gap-4">
                             <div class="flex flex-col">
                                 <label class="text-[10px] font-bold text-slate-400 uppercase">Draw Rate (< 55)</label>
-                                <div class="flex items-center gap-2"><input type="number" id="input-draw-early" value="4" oninput="window.autoSave()" class="w-12 font-bold text-lg outline-none border-b-2 border-slate-100 focus:border-indigo-600"><span>%</span></div>
+                                <div class="flex items-center gap-2"><input type="number" id="input-draw-early" value="4" oninput="window.autoSave()" class="w-12 font-bold text-lg text-indigo-600 outline-none border-b-2 border-slate-100 focus:border-indigo-600 bg-transparent"><span>%</span></div>
                             </div>
                             <div class="flex flex-col">
                                 <label class="text-[10px] font-bold text-slate-400 uppercase">Draw Rate (55+)</label>
-                                <div class="flex items-center gap-2"><input type="number" id="input-draw-late" value="5" oninput="window.autoSave()" class="w-12 font-bold text-lg outline-none border-b-2 border-slate-100 focus:border-indigo-600"><span>%</span></div>
+                                <div class="flex items-center gap-2"><input type="number" id="input-draw-late" value="5" oninput="window.autoSave()" class="w-12 font-bold text-lg text-indigo-600 outline-none border-b-2 border-slate-100 focus:border-indigo-600 bg-transparent"><span>%</span></div>
                             </div>
                         </div>
                     </div>
