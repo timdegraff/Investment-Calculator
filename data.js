@@ -47,18 +47,19 @@ const templates = {
     "budget-item": () => `
         <td class="px-4 py-3"><input type="text" oninput="window.autoSave()" placeholder="Expense" class="bg-transparent outline-none w-full text-sm"></td>
         <td class="px-4 py-3 text-right"><input type="number" oninput="window.autoSave()" placeholder="0" class="w-full text-right font-bold text-red-500 outline-none bg-transparent text-sm"></td>
+        <td class="px-4 py-3"><input type="number" oninput="window.autoSave()" placeholder="0" class="w-full text-center outline-none bg-transparent text-sm"></td>
+        <td class="px-4 py-3"><input type="number" oninput="window.autoSave()" placeholder="N/A" class="w-full text-center outline-none bg-transparent text-sm"></td>
         <td class="px-4 py-2 text-right"><button onclick="this.closest('tr').remove(); window.autoSave()" class="text-slate-200 hover:text-red-500"><i class="fas fa-times text-xs"></i></button></td>`
 };
 
-// --- MATH ENGINE ---
 const engine = {
     formatCompact: (val) => {
         if (!val || isNaN(val)) return "$0";
-        const abs = Math.abs(val);
+        const abs = Math.round(Math.abs(val));
         const sign = val < 0 ? "-" : "";
-        if (abs >= 1000000) return sign + "$" + (abs / 1000000).toFixed(2).replace(/\.00$/, "") + "M";
-        if (abs >= 1000) return sign + "$" + (abs / 1000).toPrecision(3).replace(/\.0$/, "") + "K";
-        return sign + "$" + Math.round(abs);
+        if (abs >= 1000000) return sign + "$" + (abs / 1000000).toFixed(2) + "M";
+        if (abs >= 1000) return sign + "$" + (abs / 1000).toFixed(1) + "K";
+        return sign + "$" + abs;
     },
     updateSummary: (data) => {
         const assets = (data.investments?.reduce((a, b) => a + Number(b.balance || 0), 0) || 0) +
@@ -69,21 +70,34 @@ const engine = {
         
         const currentAge = new Date().getFullYear() - (data.birthYear || 1986);
         const yearsToRetire = Math.max(0, (data.retAge || 62) - currentAge);
-        const stockGrowth = 1 + (Number(data.stockGrowth || 8) / 100);
-        const drawRate = (data.retAge < 55) ? (Number(data.drawEarly || 4) / 100) : (Number(data.drawLate || 5) / 100);
-
-        // Future Projection
-        const currentInvestments = data.investments?.reduce((a, b) => a + Number(b.balance || 0), 0) || 0;
-        const futurePortfolio = currentInvestments * Math.pow(stockGrowth, yearsToRetire);
-        const annualDraw = futurePortfolio * drawRate;
-        const monthlySS = Number(data.ssAmount || 0); // SS in today's dollars for simplicity
         
+        const stockGrowth = 1 + (Number(data.stockGrowth || 8) / 100);
+        const metalsGrowth = 1 + (Number(data.metalsGrowth || 2) / 100);
+        const cryptoGrowth = 1 + (Number(data.cryptoGrowth || 10) / 100);
+
+        let futurePortfolio = 0;
+        data.investments?.forEach(inv => {
+            const val = Number(inv.balance || 0);
+            const lower = inv.name.toLowerCase();
+            if (lower.includes('crypto') || lower.includes('btc') || lower.includes('eth')) {
+                futurePortfolio += val * Math.pow(cryptoGrowth, yearsToRetire);
+            } else if (lower.includes('gold') || lower.includes('silver') || lower.includes('metal')) {
+                futurePortfolio += val * Math.pow(metalsGrowth, yearsToRetire);
+            } else {
+                futurePortfolio += val * Math.pow(stockGrowth, yearsToRetire);
+            }
+        });
+
+        const drawRate = (data.retAge < 55) ? (Number(data.drawEarly || 4) / 100) : (Number(data.drawLate || 5) / 100);
+        const annualDraw = futurePortfolio * drawRate;
+        const annualSS = Number(data.ssAmount || 0) * 12;
+
         let grossTotal = 0, total401k = 0;
         data.income?.forEach(inc => {
-            const base = Number(inc.amount || 0), bonus = base * (Number(inc.bonusPct || 0) / 100), total = base + bonus;
-            grossTotal += total;
-            const p401k = inc.contribIncludeBonus ? (total * (inc.contribution/100)) : (base * (inc.contribution/100));
-            const cMatch = inc.matchIncludeBonus ? (total * (inc.match/100)) : (base * (inc.match/100));
+            const base = Number(inc.amount || 0), bonus = base * (Number(inc.bonusPct || 0) / 100);
+            grossTotal += (base + bonus);
+            const p401k = inc.contribIncludeBonus ? ((base+bonus) * (inc.contribution/100)) : (base * (inc.contribution/100));
+            const cMatch = inc.matchIncludeBonus ? ((base+bonus) * (inc.match/100)) : (base * (inc.match/100));
             total401k += p401k + cMatch;
         });
 
@@ -95,11 +109,10 @@ const engine = {
         document.getElementById('sum-networth').innerText = engine.formatCompact(assets - liabilities);
         document.getElementById('sum-income').innerText = engine.formatCompact(grossTotal);
         document.getElementById('sum-savings').innerText = engine.formatCompact(annualSavings);
-        document.getElementById('sum-ret-income').innerText = engine.formatCompact((annualDraw / 12) + monthlySS) + "/mo";
+        document.getElementById('sum-ret-income').innerText = engine.formatCompact(annualDraw + annualSS);
     }
 };
 
-// --- GLOBAL ACTIONS ---
 window.showTab = (tabId) => {
     document.querySelectorAll('.tab-content').forEach(tab => tab.classList.add('hidden'));
     document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active', 'border-indigo-600', 'text-indigo-600'));
@@ -126,20 +139,14 @@ function fillRow(row, type, data) {
         const ranges = row.querySelectorAll('input[type=range]');
         ranges[0].value = data.increase || 0; ranges[1].value = data.contribution || 0; ranges[2].value = data.match || 0;
         ranges.forEach(r => r.previousElementSibling.lastElementChild.innerText = r.value + '%');
-        const checks = row.querySelectorAll('input[type=checkbox]');
-        if(checks[0]) checks[0].checked = data.contribIncludeBonus ?? true;
-        if(checks[1]) checks[1].checked = data.matchIncludeBonus ?? true;
     } else {
         const inputs = row.querySelectorAll('input');
         if (inputs[0]) inputs[0].value = data.name || data.address || '';
         if (inputs[1]) inputs[1].value = data.balance || data.value || data.amount || 0;
-        if (inputs[2]) inputs[2].value = data.mortgage || data.basis || 0;
-        if (inputs[3]) inputs[3].value = data.tax || 0;
+        if (inputs[2]) inputs[2].value = data.mortgage || data.basis || data.inc || 0;
+        if (inputs[3]) inputs[3].value = data.tax || data.endYear || 0;
         const select = row.querySelector('select');
-        if (select && data.class) {
-            select.value = data.class;
-            if (data.class === "Post-Tax (Roth)") window.toggleCostBasis(select);
-        }
+        if (select && data.class) select.value = data.class;
     }
 }
 
@@ -149,29 +156,23 @@ window.calculateUserAge = () => {
     window.autoSave();
 };
 
-window.toggleCostBasis = (el) => {
-    const container = el.closest('tr').querySelector('.cost-basis-container');
-    if (container) el.value === "Post-Tax (Roth)" ? container.classList.remove('hidden') : container.classList.add('hidden');
-};
-
 window.autoSave = () => {
     const data = {
         birthYear: document.getElementById('user-birth-year').value,
-        // Assumptions
         inflation: document.getElementById('input-inflation').value,
         stockGrowth: document.getElementById('input-stock').value,
         reAppreciation: document.getElementById('input-re').value,
+        metalsGrowth: document.getElementById('input-metals').value,
+        cryptoGrowth: document.getElementById('input-crypto').value,
         retAge: document.getElementById('input-ret-age').value,
         ssAge: document.getElementById('input-ss-age').value,
         ssAmount: document.getElementById('input-ss-amount').value,
         drawEarly: document.getElementById('input-draw-early').value,
         drawLate: document.getElementById('input-draw-late').value,
-        // Lists
         investments: Array.from(document.querySelectorAll('#investment-rows tr')).map(r => ({
             name: r.cells[0]?.querySelector('input')?.value || '',
             class: r.cells[1]?.querySelector('select')?.value || '',
-            balance: r.cells[2]?.querySelector('input[type=number]')?.value || 0,
-            basis: r.querySelector('.cost-basis-container input')?.value || 0
+            balance: r.cells[2]?.querySelector('input[type=number]')?.value || 0
         })),
         realEstate: Array.from(document.querySelectorAll('#housing-list tr')).map(r => ({
             address: r.cells[0]?.querySelector('input')?.value || '',
@@ -191,12 +192,9 @@ window.autoSave = () => {
             name: d.querySelector('input[placeholder="Source Name"]')?.value || '',
             amount: d.querySelectorAll('input[type=number]')[0]?.value || 0,
             bonusPct: d.querySelectorAll('input[type=number]')[1]?.value || 0,
-            nonTaxableUntil: d.querySelectorAll('input[type=number]')[2]?.value || 0,
             increase: d.querySelectorAll('input[type=range]')[0]?.value || 0,
             contribution: d.querySelectorAll('input[type=range]')[1]?.value || 0,
-            contribIncludeBonus: d.querySelectorAll('input[type=checkbox]')[0]?.checked || false,
-            match: d.querySelectorAll('input[type=range]')[2]?.value || 0,
-            matchIncludeBonus: d.querySelectorAll('input[type=checkbox]')[1]?.checked || false
+            match: d.querySelectorAll('input[type=range]')[2]?.value || 0
         })),
         savings: Array.from(document.querySelectorAll('#savings-rows tr')).map(r => ({
             name: r.cells[0]?.querySelector('input')?.value || '',
@@ -205,7 +203,9 @@ window.autoSave = () => {
         })),
         budget: Array.from(document.querySelectorAll('#budget-rows tr')).map(r => ({
             name: r.cells[0]?.querySelector('input')?.value || '',
-            amount: r.cells[1]?.querySelector('input')?.value || 0
+            amount: r.cells[1]?.querySelector('input')?.value || 0,
+            inc: r.cells[2]?.querySelector('input')?.value || 0,
+            endYear: r.cells[3]?.querySelector('input')?.value || 0
         }))
     };
     engine.updateSummary(data);
@@ -213,54 +213,43 @@ window.autoSave = () => {
 };
 
 window.loadUserDataIntoUI = (data) => {
-    if (!data) {
-        window.addRow('income-list', 'income', { name: 'Primary Salary', amount: 0, increase: 0 });
-        window.addRow('savings-rows', 'savings-item', { name: 'Roth', class: 'Roth', amount: 0 });
-        window.addRow('savings-rows', 'savings-item', { name: 'HSA', class: 'HSA', amount: 0 });
-        window.addRow('savings-rows', 'savings-item', { name: '529', class: '529 Plan', amount: 0 });
-        window.addRow('savings-rows', 'savings-item', { name: 'Other Savings', class: 'Taxable (Brokerage)', amount: 0 });
-        window.addRow('budget-rows', 'budget-item', { name: 'Mortgage', amount: 1500 });
-        window.addRow('budget-rows', 'budget-item', { name: 'Car', amount: 500 });
-        window.addRow('budget-rows', 'budget-item', { name: 'Food', amount: 500 });
-        return;
+    if (!data || !data.income) {
+        window.addRow('income-list', 'income', { name: 'Primary Salary', amount: 0 });
+    }
+    if (!data || !data.savings || data.savings.length === 0) {
+        const s = [['Roth', 'Post-Tax (Roth)'], ['HSA', 'HSA'], ['529', '529 Plan'], ['Other Savings', 'Taxable (Brokerage)']];
+        s.forEach(x => window.addRow('savings-rows', 'savings-item', { name: x[0], class: x[1], amount: 0 }));
+    }
+    if (!data || !data.budget || data.budget.length === 0) {
+        [['Mortgage', 1500], ['Car', 500], ['Food', 500]].forEach(x => window.addRow('budget-rows', 'budget-item', { name: x[0], amount: x[1] }));
     }
     
-    document.getElementById('user-birth-year').value = data.birthYear || 1986;
-    
-    // Load Assumptions
-    const setVal = (id, val, suffix='') => {
-        const el = document.getElementById(id);
-        if (el) {
-            el.value = val;
-            const display = document.getElementById('val-' + id.split('-')[1]);
-            if (display) display.innerText = val + suffix;
-        }
-    };
-    setVal('input-inflation', data.inflation || 3, '%');
-    setVal('input-stock', data.stockGrowth || 8, '%');
-    setVal('input-re', data.reAppreciation || 3, '%');
-    if(data.retAge) document.getElementById('input-ret-age').value = data.retAge;
-    if(data.ssAge) document.getElementById('input-ss-age').value = data.ssAge;
-    if(data.ssAmount) document.getElementById('input-ss-amount').value = data.ssAmount;
-    if(data.drawEarly) document.getElementById('input-draw-early').value = data.drawEarly;
-    if(data.drawLate) document.getElementById('input-draw-late').value = data.drawLate;
-    
-    const mapping = [
-        { id: 'investment-rows', type: 'investment', list: data.investments },
-        { id: 'housing-list', type: 'housing', list: data.realEstate },
-        { id: 'other-assets-list', type: 'other', list: data.otherAssets },
-        { id: 'debt-rows', type: 'debt', list: data.debts },
-        { id: 'income-list', type: 'income', list: data.income },
-        { id: 'savings-rows', type: 'savings-item', list: data.savings },
-        { id: 'budget-rows', type: 'budget-item', list: data.budget }
-    ];
-
-    mapping.forEach(m => {
-        const container = document.getElementById(m.id);
-        if (!container) return;
-        container.innerHTML = '';
-        m.list?.forEach(item => window.addRow(m.id, m.type, item));
-    });
-    engine.updateSummary(data);
+    if (data) {
+        document.getElementById('user-birth-year').value = data.birthYear || 1986;
+        const setVal = (id, val, suffix='') => {
+            const el = document.getElementById(id);
+            if (el) { el.value = val; const d = document.getElementById('val-' + id.split('-')[1]); if (d) d.innerText = val + suffix; }
+        };
+        setVal('input-inflation', data.inflation || 3, '%');
+        setVal('input-stock', data.stockGrowth || 8, '%');
+        setVal('input-re', data.reAppreciation || 3, '%');
+        setVal('input-metals', data.metalsGrowth || 2, '%');
+        setVal('input-crypto', data.cryptoGrowth || 10, '%');
+        
+        const mapping = [
+            ['investment-rows', 'investment', data.investments],
+            ['housing-list', 'housing', data.realEstate],
+            ['other-assets-list', 'other', data.otherAssets],
+            ['debt-rows', 'debt', data.debts],
+            ['income-list', 'income', data.income],
+            ['savings-rows', 'savings-item', data.savings],
+            ['budget-rows', 'budget-item', data.budget]
+        ];
+        mapping.forEach(m => {
+            const c = document.getElementById(m[0]);
+            if (c && m[2] && m[2].length > 0) { c.innerHTML = ''; m[2].forEach(item => window.addRow(m[0], m[1], item)); }
+        });
+    }
+    engine.updateSummary(data || {});
     window.calculateUserAge();
 };
