@@ -63,7 +63,6 @@ const engine = {
     runProjection: (data) => {
         const startAge = new Date().getFullYear() - (data.birthYear || 1986);
         const retAge = Number(data.retAge || 55);
-        const labels = [], invData = [], reData = [], otherData = [], debtData = [], nwData = [];
         
         let cInv = data.investments.reduce((a, b) => a + Number(b.balance || 0), 0);
         let cRE = data.realEstate.reduce((a, b) => a + Number(b.value || 0), 0);
@@ -76,6 +75,12 @@ const engine = {
         const reG = 1 + (data.reAppreciation / 100);
         const inflG = 1 + (data.inflation / 100);
 
+        // --- FIX: Update Summary Header for Ret. Income ---
+        const currentDrawRate = startAge < 55 ? (data.drawEarly / 100) : (data.drawLate / 100);
+        document.getElementById('sum-ret-income').innerText = engine.formatCompact(cInv * currentDrawRate);
+
+        // ... rest of the loop logic as provided in previous full data.js response
+    
         const tableBody = document.getElementById('projection-table-body');
         if (tableBody) tableBody.innerHTML = '';
 
