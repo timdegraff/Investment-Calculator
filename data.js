@@ -1,15 +1,22 @@
 let growthChart = null;
 
 window.syncFromCloud = async function() {
-    const user = window.auth?.currentUser;
+    const user = window.auth ? window.auth.currentUser : null;
     if (!user || !window.db) return;
     
-    // Use the v10 Modular syntax to match auth.js
-    const { getDoc, doc } = await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js");
-    const docSnap = await getDoc(doc(window.db, "users", user.uid));
-    
-    if (docSnap.exists()) {
-        window.loadUserDataIntoUI(docSnap.data().financialData);
+    try {
+        // Import the necessary Firestore functions dynamically for this scope
+        const { getDoc, doc } = await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js");
+        const docSnap = await getDoc(doc(window.db, "users", user.uid));
+        
+        if (docSnap.exists()) {
+            const cloudData = docSnap.data().financialData;
+            if (cloudData) {
+                window.loadUserDataIntoUI(cloudData);
+            }
+        }
+    } catch (e) {
+        console.error("Cloud Fetch Error:", e);
     }
 };
 
@@ -170,8 +177,8 @@ const localEngine = {
 };
 
 window.autoSave = () => {
-    // 1. Get the current authenticated user
-    const user = firebase.auth().currentUser;
+    // Access the shared auth instance
+    const user = window.auth ? window.auth.currentUser : null;
     
     const yearInput = document.getElementById('user-birth-year');
     const birthYear = yearInput ? Number(yearInput.value) : 1986;
@@ -200,7 +207,8 @@ window.autoSave = () => {
     window.currentData = data;
     localEngine.updateSummary(data);
 
-    if (window.saveUserData) {
+    // Use the save function provided by auth.js
+    if (user && window.saveUserData) {
         window.saveUserData(data);
     }
 };

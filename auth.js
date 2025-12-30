@@ -52,3 +52,5 @@ onAuthStateChanged(auth, async (user) => {
         appContainer?.classList.add('hidden');
     }
 });
+window.auth = auth;
+window.db = db;
