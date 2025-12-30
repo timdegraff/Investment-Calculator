@@ -1,8 +1,8 @@
 import './bootstrap';
 import Chart from 'chart.js/auto';
-import { initializeApp } from "firebase/app";
-import { getFirestore, doc, setDoc, getDoc } from "firebase/firestore";
-import { firebaseConfig } from '../../firebase-config.js';
+import { initializeApp } from "https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js";
+import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/8.10.0/firebase-firestore.js";
+import { firebaseConfig } from '../firebase-config.js';
 
 document.addEventListener('DOMContentLoaded', async function () {
     // Firebase initialization
@@ -10,14 +10,15 @@ document.addEventListener('DOMContentLoaded', async function () {
     const db = getFirestore(firebaseApp);
     const calculatorDataRef = doc(db, "calculator", "data");
 
-    const birthYearInput = document.getElementById('birthYear');
-    const initialInvestmentInput = document.getElementById('initialInvestment');
-    const monthlyContributionInput = document.getElementById('monthlyContribution');
-    const retirementAgeInput = document.getElementById('retirementAge');
-    const investmentGrowthRateInput = document.getElementById('investmentGrowthRate');
-    const inflationRateInput = document.getElementById('inflationRate');
+    const birthYearInput = document.getElementById('user-birth-year'); // Corrected ID
+    const retirementAgeInput = document.getElementById('input-retAge'); // Corrected ID
+    const stockGrowthRateInput = document.getElementById('input-stockGrowth');
+    const reAppreciationInput = document.getElementById('input-reAppreciation');
+    const inflationRateInput = document.getElementById('input-inflation');
+    const drawEarlyInput = document.getElementById('input-drawEarly');
 
-    const investmentChartCanvas = document.getElementById('investmentChart');
+
+    const investmentChartCanvas = document.getElementById('growthChart'); // Corrected ID
     let investmentChart;
 
     // Load data from Firestore
@@ -27,11 +28,18 @@ document.addEventListener('DOMContentLoaded', async function () {
             if (docSnap.exists()) {
                 const data = docSnap.data();
                 birthYearInput.value = data.birthYear || '';
-                initialInvestmentInput.value = data.initialInvestment || '';
-                monthlyContributionInput.value = data.monthlyContribution || '';
-                retirementAgeInput.value = data.retirementAge || '';
-                investmentGrowthRateInput.value = data.investmentGrowthRate || '';
+                retirementAgeInput.value = data.retAge || '';
+                stockGrowthRateInput.value = data.stockGrowth || '';
+                reAppreciationInput.value = data.reAppreciation || '';
                 inflationRateInput.value = data.inflationRate || '';
+                drawEarlyInput.value = data.drawEarly || '';
+
+                // Update slider displays
+                document.getElementById('val-stockGrowth').innerText = stockGrowthRateInput.value + '%';
+                document.getElementById('val-reAppreciation').innerText = reAppreciationInput.value + '%';
+                document.getElementById('val-inflation').innerText = inflationRateInput.value + '%';
+                document.getElementById('val-drawEarly').innerText = drawEarlyInput.value + '%';
+                
                 calculateAndDisplayResults();
             } else {
                 console.log("No such document!");
@@ -44,10 +52,10 @@ document.addEventListener('DOMContentLoaded', async function () {
 
     function calculateAndDisplayResults() {
         const birthYear = parseInt(birthYearInput.value) || new Date().getFullYear();
-        const initialInvestment = parseFloat(initialInvestmentInput.value) || 0;
-        const monthlyContribution = parseFloat(monthlyContributionInput.value) || 0;
+        const initialInvestment = 0; // These will come from other tabs now
+        const monthlyContribution = 0; // These will come from other tabs now
         const retirementAge = parseInt(retirementAgeInput.value) || 65;
-        const investmentGrowthRate = parseFloat(investmentGrowthRateInput.value) || 7;
+        const investmentGrowthRate = parseFloat(stockGrowthRateInput.value) || 7;
         const inflationRate = parseFloat(inflationRateInput.value) || 3;
 
         const currentAge = new Date().getFullYear() - birthYear;
@@ -101,11 +109,11 @@ document.addEventListener('DOMContentLoaded', async function () {
         debounceTimer = setTimeout(async () => {
             const data = {
                 birthYear: birthYearInput.value,
-                initialInvestment: initialInvestmentInput.value,
-                monthlyContribution: monthlyContributionInput.value,
-                retirementAge: retirementAgeInput.value,
-                investmentGrowthRate: investmentGrowthRateInput.value,
-                inflationRate: inflationRateInput.value,
+                retAge: retirementAgeInput.value,
+                stockGrowth: stockGrowthRateInput.value,
+                reAppreciation: reAppreciationInput.value,
+                inflation: inflationRateInput.value,
+                drawEarly: drawEarlyInput.value
             };
             try {
                 await setDoc(calculatorDataRef, data, { merge: true });
@@ -117,7 +125,7 @@ document.addEventListener('DOMContentLoaded', async function () {
         calculateAndDisplayResults();
     }
 
-    [birthYearInput, initialInvestmentInput, monthlyContributionInput, retirementAgeInput, investmentGrowthRateInput, inflationRateInput].forEach(input => {
+    [birthYearInput, retirementAgeInput, stockGrowthRateInput, reAppreciationInput, inflationRateInput, drawEarlyInput].forEach(input => {
         input.addEventListener('input', autoSave);
     });
 
