@@ -23,9 +23,15 @@ const engine = {
         let totalMatch401k = 0;
         data.income?.forEach(inc => {
             const base = Number(inc.amount) || 0;
-            currentAnnualGross += base;
-            totalPersonal401k += base * (Number(inc.contribution) / 100);
-            totalMatch401k += base * (Number(inc.match) / 100);
+            const bonus = base * (Number(inc.bonusPct || 0) / 100);
+            const totalComp = base + bonus;
+            currentAnnualGross += totalComp;
+
+            const contribBase = inc.contribIncBonus ? totalComp : base;
+            const matchBase = inc.matchIncBonus ? totalComp : base;
+
+            totalPersonal401k += contribBase * (Number(inc.contribution || 0) / 100);
+            totalMatch401k += matchBase * (Number(inc.match || 0) / 100);
         });
 
         summaries.grossIncome = currentAnnualGross;
