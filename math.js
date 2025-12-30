@@ -1,6 +1,6 @@
 /**
  * MATH.JS - Core Calculation Engine
- * Updated for 2026 MFJ Sunsetting Logic & $2,200 CTC
+ * Updated for 2026 MFJ Sunsetting Logic, $2,200 CTC, and Dynamic Age
  */
 
 const engine = {
@@ -11,14 +11,13 @@ const engine = {
         return totalAssets - totalDebt;
     },
 
-    // 2. 2026 Federal Child Tax Credit (CTC) - Updated to $2,200
+    // 2. 2026 Federal Child Tax Credit (CTC)
     calculateCTC: (agi, childrenCount = 4) => {
         const config = TAX_CONSTANTS.CTC;
-        const maxPerChild = 2200; 
+        const maxPerChild = config.MAX_PER_CHILD || 2200; 
         const threshold = config.PHASE_OUT_START_MFJ;
         let totalCredit = childrenCount * maxPerChild;
         
-        // Phase-out: $50 reduction per $1,000 over threshold
         if (agi > threshold) {
             const excess = Math.ceil((agi - threshold) / 1000);
             totalCredit = Math.max(0, totalCredit - (excess * 50));
@@ -40,7 +39,6 @@ const engine = {
             } else break;
         }
         
-        // Apply the $2,200 per child credit to the final bill
         const totalCredit = engine.calculateCTC(grossTaxable, 4);
         return Math.max(0, tax - totalCredit);
     },
@@ -74,11 +72,33 @@ const engine = {
     calculate401kContribution: (base, bonusPct, contribPct, matchPct, includeBonus) => {
         const bonus = base * (bonusPct / 100);
         const totalIncome = base + bonus;
-        
         const effectiveBasis = includeBonus ? totalIncome : base;
-        const personal = effectiveBasis * (contribPct / 100);
-        const employer = effectiveBasis * (matchPct / 100);
         
-        return personal + employer;
+        return (effectiveBasis * (contribPct / 100)) + (effectiveBasis * (matchPct / 100));
+    },
+
+    // 7. Dynamic Age Update
+    updateAgeDisplay: () => {
+        const birthYearInput = document.getElementById('user-birth-year');
+        const displayAge = document.getElementById('display-age');
+        if (!birthYearInput || !displayAge) return;
+
+        const birthYear = parseInt(birthYearInput.value);
+        const currentYear = new Date().getFullYear();
+
+        if (birthYear && birthYear > 1900 && birthYear <= currentYear) {
+            displayAge.innerText = `${currentYear - birthYear} YRS OLD`;
+        } else {
+            displayAge.innerText = `-- YRS OLD`;
+        }
     }
 };
+
+// Event Listeners for Initialization
+document.addEventListener('DOMContentLoaded', () => {
+    const birthYearInput = document.getElementById('user-birth-year');
+    if (birthYearInput) {
+        birthYearInput.addEventListener('input', engine.updateAgeDisplay);
+        engine.updateAgeDisplay(); // Run once on load
+    }
+});
