@@ -210,17 +210,40 @@
     <script src="core.js"></script>
     <script src="data.js"></script>
     <script>
-        window.onload = async () => {
-            await window.syncFromCloud();
-            
-            const yearInput = document.getElementById('user-birth-year');
-            if (!yearInput.value) {
-                yearInput.value = "1986";
-                window.addRow('investment-rows', 'investment');
-                window.addRow('housing-list', 'housing');
-                window.addRow('income-list', 'income');
-                window.autoSave();
-            }
+        window.onload = () => {
+            // This observer is systemic: it waits for the login token before fetching
+            firebase.auth().onAuthStateChanged(async (user) => {
+                if (user) {
+                    console.log("Authenticated User:", user.uid);
+                    // Now that we have a UID, we can pull the correct document
+                    await window.syncFromCloud();
+                    
+                    // If the user is new and has no data yet, add default rows
+                    setTimeout(() => {
+                        if (!window.currentData) {
+                            console.log("No cloud data found for this user, loading defaults.");
+                            window.addRow('investment-rows', 'investment');
+                            window.addRow('housing-list', 'housing');
+                            window.addRow('income-list', 'income');
+                        }
+                    }, 1000); 
+                } else {
+                    console.log("No user logged in. Showing empty state.");
+                    // Reset UI for guest
+                    const yearInput = document.getElementById('user-birth-year');
+                    if (yearInput) yearInput.value = "1986";
+                    
+                    // Add blank rows for the guest to play with
+                    if (window.addRow) {
+                        document.getElementById('investment-rows').innerHTML = '';
+                        document.getElementById('housing-list').innerHTML = '';
+                        document.getElementById('income-list').innerHTML = '';
+                        window.addRow('investment-rows', 'investment');
+                        window.addRow('housing-list', 'housing');
+                        window.addRow('income-list', 'income');
+                    }
+                }
+            });
         };
     </script>
 </body>

@@ -1,16 +1,13 @@
 let growthChart = null;
 
-// CLOUD SYNC LOGIC
 window.syncFromCloud = async function() {
-    if (typeof db === 'undefined') return;
+    // 1. Get the current logged-in user from Firebase Auth
+    const user = firebase.auth().currentUser;
+    if (!user || typeof db === 'undefined') return;
+
     try {
-        const metaDoc = await db.collection("metadata").doc("user_profile").get();
-        if (metaDoc.exists) {
-            const bYear = metaDoc.data().birthYear;
-            const el = document.getElementById('user-birth-year');
-            if(el) el.value = bYear;
-        }
-        const dataDoc = await db.collection("users").doc("current_profile").get();
+        // 2. Use the dynamic user.uid instead of a hardcoded string
+        const dataDoc = await db.collection("users").doc(user.uid).get();
         if (dataDoc.exists) {
             window.loadUserDataIntoUI(dataDoc.data());
         }
@@ -176,9 +173,13 @@ const localEngine = {
 };
 
 window.autoSave = () => {
+    // 1. Get the current authenticated user
+    const user = firebase.auth().currentUser;
+    
     const yearInput = document.getElementById('user-birth-year');
     const birthYear = yearInput ? Number(yearInput.value) : 1986;
     const data = { birthYear: birthYear };
+    
     document.querySelectorAll('[data-bind]').forEach(el => data[el.getAttribute('data-bind')] = Number(el.value));
 
     data.investments = localEngine.getTableData('#investment-rows tr', ['name', 'class', 'balance', 'basis']);
@@ -202,9 +203,12 @@ window.autoSave = () => {
     window.currentData = data;
     localEngine.updateSummary(data);
 
-    if (typeof db !== 'undefined') {
-        db.collection("metadata").doc("user_profile").set({ birthYear }, { merge: true });
-        db.collection("users").doc("current_profile").set(data, { merge: true });
+    // 2. Systemic Save Logic: Use user.uid for the document ID
+    if (user && typeof db !== 'undefined') {
+        // Save birthYear to a metadata sub-collection for that specific user
+        db.collection("users").doc(user.uid).collection("metadata").doc("profile").set({ birthYear }, { merge: true });
+        // Save main financial data to the user's primary document
+        db.collection("users").doc(user.uid).set(data, { merge: true });
     }
 };
 
