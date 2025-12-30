@@ -1,6 +1,6 @@
 /**
  * MATH.JS - Core Calculation Engine
- * Updated for 2026 MFJ Sunsetting Logic, $2,200 CTC, and Dynamic Age
+ * Updated for 2026 MFJ Sunsetting Logic, $2,200 CTC, and Firestore Sync
  */
 
 const engine = {
@@ -73,21 +73,27 @@ const engine = {
         const bonus = base * (bonusPct / 100);
         const totalIncome = base + bonus;
         const effectiveBasis = includeBonus ? totalIncome : base;
-        
         return (effectiveBasis * (contribPct / 100)) + (effectiveBasis * (matchPct / 100));
     },
 
-    // 7. Dynamic Age Update
-    updateAgeDisplay: () => {
+    // 7. Dynamic Age Update & Firestore Persistence
+    updateAgeDisplay: async (saveToCloud = false) => {
         const birthYearInput = document.getElementById('user-birth-year');
         const displayAge = document.getElementById('display-age');
         if (!birthYearInput || !displayAge) return;
 
         const birthYear = parseInt(birthYearInput.value);
-        const currentYear = new Date().getFullYear();
+        const targetYear = 2026; // Calculation Target
 
-        if (birthYear && birthYear > 1900 && birthYear <= currentYear) {
-            displayAge.innerText = `${currentYear - birthYear} YRS OLD`;
+        if (birthYear && birthYear > 1900 && birthYear <= targetYear) {
+            displayAge.innerText = `${targetYear - birthYear} YRS OLD (IN 2026)`;
+            
+            // Save to Firestore metadata document if triggered by user input
+            if (saveToCloud && typeof db !== 'undefined') {
+                try {
+                    await db.collection("metadata").doc("user_profile").set({ birthYear }, { merge: true });
+                } catch (e) { console.error("Error saving age:", e); }
+            }
         } else {
             displayAge.innerText = `-- YRS OLD`;
         }
@@ -98,7 +104,10 @@ const engine = {
 document.addEventListener('DOMContentLoaded', () => {
     const birthYearInput = document.getElementById('user-birth-year');
     if (birthYearInput) {
-        birthYearInput.addEventListener('input', engine.updateAgeDisplay);
-        engine.updateAgeDisplay(); // Run once on load
+        // Prepopulate with 1986 (Age 40 in 2026)
+        birthYearInput.value = "1986"; 
+        
+        birthYearInput.addEventListener('input', () => engine.updateAgeDisplay(true));
+        engine.updateAgeDisplay(); 
     }
 });

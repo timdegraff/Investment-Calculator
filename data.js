@@ -1,5 +1,26 @@
 let growthChart = null;
 
+// CLOUD SYNC LOGIC
+window.syncFromCloud = async () => {
+    if (typeof db === 'undefined') return;
+    
+    try {
+        // 1. Fetch Birth Year from Metadata
+        const metaDoc = await db.collection("metadata").doc("user_profile").get();
+        if (metaDoc.exists) {
+            document.getElementById('user-birth-year').value = metaDoc.data().birthYear;
+        }
+
+        // 2. Fetch Financial Data
+        const dataDoc = await db.collection("users").doc("current_profile").get();
+        if (dataDoc.exists) {
+            window.loadUserDataIntoUI(dataDoc.data());
+        }
+    } catch (e) {
+        console.error("Cloud Fetch Error:", e);
+    }
+};
+
 const engine = {
     formatCompact: (val) => {
         if (val === undefined || isNaN(val)) return "$0";
@@ -10,26 +31,12 @@ const engine = {
         return sign + "$" + abs;
     },
 
-    // ADVANCED TAX LOGIC RESTORED
-    calculateTaxes: (grossTaxable) => {
-        const standardDeduction = 30000;
-        const taxable = Math.max(0, grossTaxable - standardDeduction);
-        let tax = 0;
-        if (taxable <= 23200) tax = taxable * 0.10;
-        else if (taxable <= 94300) tax = 2320 + (taxable - 23200) * 0.12;
-        else if (taxable <= 201050) tax = 10852 + (taxable - 94300) * 0.22;
-        else tax = 34337 + (taxable - 201050) * 0.24;
-        
-        return Math.max(0, tax - 8000); // $2000 x 4 kids
-    },
-
     getTableData: (selector, props) => {
         return Array.from(document.querySelectorAll(selector)).map(row => {
             const inputs = row.querySelectorAll('input, select');
             const obj = {};
             props.forEach((prop, i) => {
                 if (!inputs[i]) return;
-                // Handle checkboxes for 401k logic
                 const val = inputs[i].type === 'checkbox' ? inputs[i].checked : inputs[i].value;
                 obj[prop] = (inputs[i].type === 'number' || inputs[i].type === 'range') ? Number(val) : val;
             });
@@ -76,11 +83,8 @@ const engine = {
                         const base = Number(inc.amount);
                         const bonus = base * (Number(inc.bonusPct) / 100);
                         const total = base + bonus;
-                        
-                        // RESTORED: Bonus-dependent 401k logic
                         const personal401k = inc.contribIncBonus ? (total * (inc.contribution/100)) : (base * (inc.contribution/100));
                         const companyMatch = inc.matchIncBonus ? (total * (inc.match/100)) : (base * (inc.match/100));
-                        
                         cStock += (personal401k + companyMatch);
                     });
                     data.savings.forEach(s => {
@@ -150,16 +154,15 @@ const engine = {
             const base = Number(inc.amount);
             const total = base * (1 + (Number(inc.bonusPct) / 100));
             annualGross += total;
-            
             const personal401k = inc.contribIncBonus ? (total * (inc.contribution/100)) : (base * (inc.contribution/100));
             const companyMatch = inc.matchIncBonus ? (total * (inc.match/100)) : (base * (inc.match/100));
             total401k += (personal401k + companyMatch);
-
             const isNonTaxable = inc.nonTaxYear && Number(inc.nonTaxYear) >= new Date().getFullYear();
             if (!isNonTaxable) taxableIncome += (total - personal401k);
         });
 
-        const fedTax = engine.calculateTaxes(taxableIncome);
+        // Use the centralized engine from math.js for accurate taxes
+        const fedTax = window.engine ? window.engine.calculateFederalTax(taxableIncome) : 0;
         const set = (id, val) => { if(document.getElementById(id)) document.getElementById(id).innerText = val; };
         
         set('sum-assets', engine.formatCompact(assets));
@@ -174,7 +177,6 @@ const engine = {
         set('budget-sum-monthly', '$' + budgetMonthly.toLocaleString());
         set('budget-sum-annual', '$' + (budgetMonthly * 12).toLocaleString());
         
-        // Accurate Cashflow Surplus calculation
         const monthlyNet = (annualGross - fedTax - (total401k - (data.income[0]?.match * data.income[0]?.amount / 100 || 0))) / 12;
         set('budget-sum-remaining', '$' + Math.round(monthlyNet - budgetMonthly).toLocaleString());
 
@@ -183,7 +185,8 @@ const engine = {
 };
 
 window.autoSave = () => {
-    const data = { birthYear: Number(document.getElementById('user-birth-year').value) };
+    const birthYear = Number(document.getElementById('user-birth-year').value);
+    const data = { birthYear: birthYear };
     document.querySelectorAll('[data-bind]').forEach(el => data[el.getAttribute('data-bind')] = Number(el.value));
 
     data.investments = engine.getTableData('#investment-rows tr', ['name', 'class', 'balance', 'basis']);
@@ -206,13 +209,22 @@ window.autoSave = () => {
 
     window.currentData = data;
     engine.updateSummary(data);
-    if (window.saveUserData) window.saveUserData(data);
+
+    // PERSIST TO CLOUD
+    if (typeof db !== 'undefined') {
+        db.collection("metadata").doc("user_profile").set({ birthYear }, { merge: true });
+        db.collection("users").doc("current_profile").set(data, { merge: true });
+    }
 };
 
 window.loadUserDataIntoUI = (data) => {
     if (!data) return;
     window.currentData = data;
     document.getElementById('user-birth-year').value = data.birthYear || 1986;
+    
+    // Update Age display if logic exists in core.js
+    if (window.engine && window.engine.updateAgeDisplay) window.engine.updateAgeDisplay();
+
     document.querySelectorAll('[data-bind]').forEach(el => {
         const val = data[el.getAttribute('data-bind')];
         if (val !== undefined) {
