@@ -245,5 +245,3 @@ window.loadUserDataIntoUI = (data) => {
     });
     localEngine.updateSummary(data);
 };
-window.auth = auth;
-window.db = db;
