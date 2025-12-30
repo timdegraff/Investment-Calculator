@@ -50,9 +50,7 @@ The user has requested specific changes to the layout and functionality:
 6.  **Projection Tab:**
     *   Keep existing functionality.
 
-### Next Steps
+## Learnings & Style Guide
 
-*   Update `index.html` to reflect the new tab structure and layout.
-*   Update `data.js` to handle prepopulation and saving of the new structure.
-*   Update `engine.js` to calculate the new summary metrics (Cashflow, Gross Income).
-*   Update `templates.js` if necessary to ensure fields are visible.
+*   **ES Modules:** The `export` keyword can only be used in scripts loaded with `type="module"`. Using `export` in a standard script (`<script src="...">`) will cause a `SyntaxError: Unexpected token 'export'`. For simple global configurations like `firebase-config.js`, it's best to avoid `export` and assign the configuration to a global `const` to prevent this issue.
+*   **Git Workflow:** When requested to push files, use the single command: `git add . && git commit -m "pushed updates" && git push`.

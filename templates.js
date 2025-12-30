@@ -84,7 +84,7 @@ const templates = {
         const format = (value) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(value);
 
         return `
-            <td class="px-6 py-4 font-bold text-slate-700">${row..age}</td>
+            <td class="px-6 py-4 font-bold text-slate-700">${row.age}</td>
             <td class="px-6 py-4 text-right">${format(row.portfolio)}</td>
             <td class="px-6 py-4 text-right">${format(row.realEstate)}</td>
             <td class="px-6 py-4 text-right">${format(row.otherAssets)}</td>
