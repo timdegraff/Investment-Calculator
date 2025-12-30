@@ -10,9 +10,9 @@ const templates = {
         </td>
         <td class="px-4 py-2 text-right"><button onclick="this.closest('tr').remove(); window.autoSave()" class="text-slate-200 hover:text-red-500"><i class="fas fa-times text-xs"></i></button></td>`,
     housing: () => `
-        <td class="px-4 py-3"><input type="text" oninput="window.autoSave()" placeholder="Property" class="bg-transparent outline-none w-full text-sm font-bold"></td>
+        <td class="px-4 py-3"><input type="text" oninput="window.autoSave()" placeholder="Address" class="bg-transparent outline-none w-full text-sm font-bold"></td>
         <td class="px-4 py-3 text-right"><input type="number" oninput="window.autoSave()" placeholder="0" class="w-full text-right font-bold outline-none bg-transparent text-sm"></td>
-        <td class="px-4 py-3 text-right"><input type="number" oninput="window.autoSave()" placeholder="0" class="w-full text-right font-bold text-red-400 outline-none bg-transparent text-sm"></td>
+        <td class="px-4 py-3 text-right"><input type="number" oninput="window.autoSave()" placeholder="0" class="w-full text-right font-bold text-red-500 outline-none bg-transparent text-sm"></td>
         <td class="px-4 py-3 text-right"><input type="number" oninput="window.autoSave()" placeholder="0" class="w-full text-right font-bold text-slate-500 outline-none bg-transparent text-sm"></td>
         <td class="px-4 py-2 text-right"><button onclick="this.closest('tr').remove(); window.autoSave()" class="text-slate-200 hover:text-red-500"><i class="fas fa-times text-xs"></i></button></td>`,
     other: () => `
@@ -20,7 +20,7 @@ const templates = {
         <td class="px-4 py-3 text-right"><input type="number" oninput="window.autoSave()" placeholder="0" class="w-full text-right font-bold outline-none bg-transparent text-sm"></td>
         <td class="px-4 py-2 text-right"><button onclick="this.closest('tr').remove(); window.autoSave()" class="text-slate-200 hover:text-red-500"><i class="fas fa-times text-xs"></i></button></td>`,
     debt: () => `
-        <td class="px-4 py-3"><input type="text" oninput="window.autoSave()" placeholder="Debt Name" class="bg-transparent outline-none w-full text-sm font-bold text-red-400"></td>
+        <td class="px-4 py-3"><input type="text" oninput="window.autoSave()" placeholder="Debt Name" class="bg-transparent outline-none w-full text-sm font-bold text-slate-700"></td>
         <td class="px-4 py-3 text-right"><input type="number" oninput="window.autoSave()" placeholder="0" class="w-full text-right font-bold text-red-500 outline-none bg-transparent text-sm"></td>
         <td class="px-4 py-2 text-right"><button onclick="this.closest('tr').remove(); window.autoSave()" class="text-slate-200 hover:text-red-500"><i class="fas fa-times text-xs"></i></button></td>`,
     income: () => `
@@ -33,9 +33,9 @@ const templates = {
                 <div class="flex flex-col"><label class="text-[8px] font-bold text-slate-400 uppercase">Non-Taxable Until</label><input type="number" oninput="window.autoSave()" placeholder="Year" class="w-20 bg-white border border-slate-200 p-1 rounded text-xs text-center"></div>
             </div>
             <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div class="flex flex-col"><div class="flex justify-between text-[9px] font-bold text-slate-500 mb-1 uppercase"><span>Annual Increase</span><span class="text-indigo-600">3.5%</span></div><input type="range" min="0" max="10" step="0.1" value="3.5" oninput="this.previousElementSibling.lastElementChild.innerText = this.value + '%'; window.autoSave()" class="w-full"></div>
-                <div class="flex flex-col gap-1"><div class="flex justify-between text-[9px] font-bold text-slate-500 uppercase"><span>401k Personal</span><span class="text-indigo-600">0%</span></div><input type="range" min="0" max="30" step="1" oninput="this.previousElementSibling.lastElementChild.innerText = this.value + '%'; window.autoSave()" class="w-full"><label class="text-[9px] flex gap-1 items-center"><input type="checkbox" onchange="window.autoSave()" checked> Include Bonus</label></div>
-                <div class="flex flex-col gap-1"><div class="flex justify-between text-[9px] font-bold text-slate-500 uppercase"><span>401k Company</span><span class="text-indigo-600">0%</span></div><input type="range" min="0" max="20" step="0.5" oninput="this.previousElementSibling.lastElementChild.innerText = this.value + '%'; window.autoSave()" class="w-full"><label class="text-[9px] flex gap-1 items-center"><input type="checkbox" onchange="window.autoSave()" checked> Include Bonus</label></div>
+                <div class="flex flex-col"><div class="flex justify-between text-[9px] font-bold text-slate-500 mb-1 uppercase"><span>Annual Increase</span><span class="text-indigo-600">0%</span></div><input type="range" min="0" max="10" step="0.1" value="0" oninput="this.previousElementSibling.lastElementChild.innerText = this.value + '%'; window.autoSave()" class="w-full"></div>
+                <div class="flex flex-col gap-1"><div class="flex justify-between text-[9px] font-bold text-slate-500 uppercase"><span>401k Personal</span><span class="text-indigo-600">0%</span></div><input type="range" min="0" max="30" step="1" value="0" oninput="this.previousElementSibling.lastElementChild.innerText = this.value + '%'; window.autoSave()" class="w-full"><label class="text-[9px] flex gap-1 items-center"><input type="checkbox" onchange="window.autoSave()" checked> Include Bonus</label></div>
+                <div class="flex flex-col gap-1"><div class="flex justify-between text-[9px] font-bold text-slate-500 uppercase"><span>401k Company Match</span><span class="text-indigo-600">0%</span></div><input type="range" min="0" max="20" step="0.5" value="0" oninput="this.previousElementSibling.lastElementChild.innerText = this.value + '%'; window.autoSave()" class="w-full"><label class="text-[9px] flex gap-1 items-center"><input type="checkbox" onchange="window.autoSave()" checked> Include Bonus</label></div>
             </div>
         </div>`,
     "savings-item": () => `
@@ -46,7 +46,7 @@ const templates = {
         <td class="px-4 py-2 text-right"><button onclick="this.closest('tr').remove(); window.autoSave()" class="text-slate-200 hover:text-red-500"><i class="fas fa-times text-xs"></i></button></td>`,
     "budget-item": () => `
         <td class="px-4 py-3"><input type="text" oninput="window.autoSave()" placeholder="Expense" class="bg-transparent outline-none w-full text-sm"></td>
-        <td class="px-4 py-3 text-right"><input type="number" oninput="window.autoSave()" placeholder="0" class="w-full text-right font-bold text-red-400 outline-none bg-transparent text-sm"></td>
+        <td class="px-4 py-3 text-right"><input type="number" oninput="window.autoSave()" placeholder="0" class="w-full text-right font-bold text-red-500 outline-none bg-transparent text-sm"></td>
         <td class="px-4 py-2 text-right"><button onclick="this.closest('tr').remove(); window.autoSave()" class="text-slate-200 hover:text-red-500"><i class="fas fa-times text-xs"></i></button></td>`
 };
 
@@ -57,17 +57,8 @@ const engine = {
         const abs = Math.abs(val);
         const sign = val < 0 ? "-" : "";
         if (abs >= 1000000) return sign + "$" + (abs / 1000000).toFixed(2).replace(/\.00$/, "") + "M";
-        if (abs >= 1000) return sign + "$" + (abs / 1000).toPrecision(3) + "K";
-        return sign + "$" + abs.toFixed(0);
-    },
-    calculateTaxes: (grossTaxable) => {
-        const taxable = Math.max(0, grossTaxable - 30000);
-        let tax = 0;
-        if (taxable <= 23200) tax = taxable * 0.10;
-        else if (taxable <= 94300) tax = 2320 + (taxable - 23200) * 0.12;
-        else if (taxable <= 201050) tax = 10852 + (taxable - 94300) * 0.22;
-        else tax = 34337 + (taxable - 201050) * 0.24;
-        return Math.max(0, tax - 8000);
+        if (abs >= 1000) return sign + "$" + (abs / 1000).toPrecision(3).replace(/\.0$/, "") + "K";
+        return sign + "$" + Math.round(abs);
     },
     updateSummary: (data) => {
         const assets = (data.investments?.reduce((a, b) => a + Number(b.balance || 0), 0) || 0) +
@@ -75,16 +66,19 @@ const engine = {
                        (data.otherAssets?.reduce((a, b) => a + Number(b.value || 0), 0) || 0);
         const liabilities = (data.realEstate?.reduce((a, b) => a + Number(b.mortgage || 0), 0) || 0) +
                             (data.debts?.reduce((a, b) => a + Number(b.balance || 0), 0) || 0);
-        let grossTotal = 0, taxableIncome = 0, total401k = 0;
+        
+        let grossTotal = 0, total401k = 0;
         data.income?.forEach(inc => {
             const base = Number(inc.amount || 0), bonus = base * (Number(inc.bonusPct || 0) / 100), total = base + bonus;
             grossTotal += total;
-            if (!(inc.nonTaxableUntil && Number(inc.nonTaxableUntil) >= 2026)) taxableIncome += total;
             const p401k = inc.contribIncludeBonus ? (total * (inc.contribution/100)) : (base * (inc.contribution/100));
             const cMatch = inc.matchIncludeBonus ? (total * (inc.match/100)) : (base * (inc.match/100));
-            total401k += p401k + cMatch; taxableIncome -= p401k;
+            total401k += p401k + cMatch;
         });
-        const annualSavings = total401k + ((data.savings?.reduce((a, b) => a + Number(b.amount || 0), 0) || 0) * 12);
+
+        const monthlySavings = data.savings?.reduce((a, b) => a + Number(b.amount || 0), 0) || 0;
+        const annualSavings = total401k + (monthlySavings * 12);
+        
         document.getElementById('sum-assets').innerText = engine.formatCompact(assets);
         document.getElementById('sum-liabilities').innerText = engine.formatCompact(liabilities);
         document.getElementById('sum-networth').innerText = engine.formatCompact(assets - liabilities);
@@ -101,13 +95,34 @@ window.showTab = (tabId) => {
     document.getElementById(`btn-${tabId}`)?.classList.add('active', 'border-indigo-600', 'text-indigo-600');
 };
 
-window.addRow = (containerId, type) => {
+window.addRow = (containerId, type, data = null) => {
     const container = document.getElementById(containerId);
     const row = document.createElement(type === 'income' ? 'div' : 'tr');
     if (type !== 'income') row.className = "border-t border-slate-100";
     row.innerHTML = templates[type]();
     container.appendChild(row);
+    if (data) fillRow(row, type, data);
+    return row;
 };
+
+function fillRow(row, type, data) {
+    if (type === 'income') {
+        row.querySelector('input[placeholder="Source Name"]').value = data.name || '';
+        const nums = row.querySelectorAll('input[type=number]');
+        nums[0].value = data.amount; nums[1].value = data.bonusPct; nums[2].value = data.nonTaxableUntil;
+        const ranges = row.querySelectorAll('input[type=range]');
+        ranges[0].value = data.increase; ranges[1].value = data.contribution; ranges[2].value = data.match;
+        ranges.forEach(r => r.previousElementSibling.lastElementChild.innerText = r.value + '%');
+    } else {
+        const inputs = row.querySelectorAll('input');
+        if (inputs[0]) inputs[0].value = data.name || '';
+        if (inputs[1]) inputs[1].value = data.balance || data.value || data.amount || '';
+        if (inputs[2]) inputs[2].value = data.mortgage || '';
+        if (inputs[3]) inputs[3].value = data.tax || '';
+        const select = row.querySelector('select');
+        if (select && data.class) select.value = data.class;
+    }
+}
 
 window.calculateUserAge = () => {
     const val = document.getElementById('user-birth-year').value;
@@ -124,44 +139,43 @@ window.autoSave = () => {
     const data = {
         birthYear: document.getElementById('user-birth-year').value,
         investments: Array.from(document.querySelectorAll('#investment-rows tr')).map(r => ({
-            name: r.cells[0].querySelector('input').value,
-            class: r.cells[1].querySelector('select').value,
-            balance: r.cells[2].querySelector('input[type=number]').value,
-            basis: r.querySelector('.cost-basis-container input')?.value
+            name: r.cells[0]?.querySelector('input')?.value || '',
+            class: r.cells[1]?.querySelector('select')?.value || '',
+            balance: r.cells[2]?.querySelector('input[type=number]')?.value || 0
         })),
         realEstate: Array.from(document.querySelectorAll('#housing-list tr')).map(r => ({
-            name: r.cells[0].querySelector('input').value,
-            value: r.cells[1].querySelector('input').value,
-            mortgage: r.cells[2].querySelector('input').value,
-            tax: r.cells[3].querySelector('input').value
+            name: r.cells[0]?.querySelector('input')?.value || '',
+            value: r.cells[1]?.querySelector('input')?.value || 0,
+            mortgage: r.cells[2]?.querySelector('input')?.value || 0,
+            tax: r.cells[3]?.querySelector('input')?.value || 0
         })),
         otherAssets: Array.from(document.querySelectorAll('#other-assets-list tr')).map(r => ({
-            name: r.cells[0].querySelector('input').value,
-            value: r.cells[1].querySelector('input').value
+            name: r.cells[0]?.querySelector('input')?.value || '',
+            value: r.cells[1]?.querySelector('input')?.value || 0
         })),
         debts: Array.from(document.querySelectorAll('#debt-rows tr')).map(r => ({
-            name: r.cells[0].querySelector('input').value,
-            balance: r.cells[1].querySelector('input').value
+            name: r.cells[0]?.querySelector('input')?.value || '',
+            balance: r.cells[1]?.querySelector('input')?.value || 0
         })),
         income: Array.from(document.querySelectorAll('#income-list > div')).map(d => ({
-            name: d.querySelector('input[placeholder="Source Name"]').value,
-            amount: d.querySelectorAll('input[type=number]')[0].value,
-            bonusPct: d.querySelectorAll('input[type=number]')[1].value,
-            nonTaxableUntil: d.querySelectorAll('input[type=number]')[2].value,
-            increase: d.querySelectorAll('input[type=range]')[0].value,
-            contribution: d.querySelectorAll('input[type=range]')[1].value,
-            contribIncludeBonus: d.querySelectorAll('input[type=checkbox]')[0].checked,
-            match: d.querySelectorAll('input[type=range]')[2].value,
-            matchIncludeBonus: d.querySelectorAll('input[type=checkbox]')[1].checked
+            name: d.querySelector('input[placeholder="Source Name"]')?.value || '',
+            amount: d.querySelectorAll('input[type=number]')[0]?.value || 0,
+            bonusPct: d.querySelectorAll('input[type=number]')[1]?.value || 0,
+            nonTaxableUntil: d.querySelectorAll('input[type=number]')[2]?.value || 0,
+            increase: d.querySelectorAll('input[type=range]')[0]?.value || 0,
+            contribution: d.querySelectorAll('input[type=range]')[1]?.value || 0,
+            contribIncludeBonus: d.querySelectorAll('input[type=checkbox]')[0]?.checked || false,
+            match: d.querySelectorAll('input[type=range]')[2]?.value || 0,
+            matchIncludeBonus: d.querySelectorAll('input[type=checkbox]')[1]?.checked || false
         })),
         savings: Array.from(document.querySelectorAll('#savings-rows tr')).map(r => ({
-            name: r.cells[0].querySelector('input').value,
-            class: r.cells[1].querySelector('select').value,
-            amount: r.cells[2].querySelector('input').value
+            name: r.cells[0]?.querySelector('input')?.value || '',
+            class: r.cells[1]?.querySelector('select')?.value || '',
+            amount: r.cells[2]?.querySelector('input')?.value || 0
         })),
         budget: Array.from(document.querySelectorAll('#budget-rows tr')).map(r => ({
-            name: r.cells[0].querySelector('input').value,
-            amount: r.cells[1].querySelector('input').value
+            name: r.cells[0]?.querySelector('input')?.value || '',
+            amount: r.cells[1]?.querySelector('input')?.value || 0
         }))
     };
     engine.updateSummary(data);
@@ -169,7 +183,19 @@ window.autoSave = () => {
 };
 
 window.loadUserDataIntoUI = (data) => {
-    if (!data) return;
+    if (!data) {
+        // PREPOPULATE DEFAULTS
+        window.addRow('income-list', 'income', { name: 'Primary Salary', amount: 0, increase: 0 });
+        window.addRow('savings-rows', 'savings-item', { name: 'Roth', class: 'Roth', amount: 0 });
+        window.addRow('savings-rows', 'savings-item', { name: 'HSA', class: 'HSA', amount: 0 });
+        window.addRow('savings-rows', 'savings-item', { name: '529', class: '529 Plan', amount: 0 });
+        window.addRow('savings-rows', 'savings-item', { name: 'Other Savings', class: 'Taxable (Brokerage)', amount: 0 });
+        window.addRow('budget-rows', 'budget-item', { name: 'Mortgage', amount: 1500 });
+        window.addRow('budget-rows', 'budget-item', { name: 'Car', amount: 500 });
+        window.addRow('budget-rows', 'budget-item', { name: 'Food', amount: 500 });
+        return;
+    }
+    
     document.getElementById('user-birth-year').value = data.birthYear || 1990;
     
     const mapping = [
@@ -186,27 +212,7 @@ window.loadUserDataIntoUI = (data) => {
         const container = document.getElementById(m.id);
         if (!container) return;
         container.innerHTML = '';
-        m.list?.forEach(item => {
-            window.addRow(m.id, m.type);
-            const row = container.lastElementChild;
-            if (m.type === 'income') {
-                row.querySelector('input[placeholder="Source Name"]').value = item.name || '';
-                const nums = row.querySelectorAll('input[type=number]');
-                nums[0].value = item.amount; nums[1].value = item.bonusPct; nums[2].value = item.nonTaxableUntil;
-                const ranges = row.querySelectorAll('input[type=range]');
-                ranges[0].value = item.increase; ranges[1].value = item.contribution; ranges[2].value = item.match;
-                ranges.forEach(r => r.previousElementSibling.lastElementChild.innerText = r.value + '%');
-                const checks = row.querySelectorAll('input[type=checkbox]');
-                checks[0].checked = item.contribIncludeBonus; checks[1].checked = item.matchIncludeBonus;
-            } else {
-                const inputs = row.querySelectorAll('input');
-                const values = Object.values(item);
-                values.forEach((val, i) => { if(inputs[i]) inputs[i].value = val; });
-                const select = row.querySelector('select');
-                if (select && item.class) select.value = item.class;
-                if (item.class === "Post-Tax (Roth)") window.toggleCostBasis(select);
-            }
-        });
+        m.list?.forEach(item => window.addRow(m.id, m.type, item));
     });
     engine.updateSummary(data);
     window.calculateUserAge();

@@ -21,9 +21,7 @@
     <div id="login-screen" class="min-h-screen flex items-center justify-center bg-slate-50">
         <div class="bg-white p-8 rounded-2xl shadow-xl border border-slate-200 text-center max-w-sm w-full">
             <h1 class="text-2xl font-black text-slate-800 mb-2">Finance <span class="text-indigo-600">Engine</span></h1>
-            <p class="text-slate-500 text-sm mb-6">Secure Sign-in Required</p>
             <button type="button" onclick="loginWithGoogle()" class="w-full flex items-center justify-center gap-3 bg-white border border-slate-300 py-3 px-4 rounded-xl font-bold text-slate-700 hover:bg-slate-50 transition shadow-sm">
-                <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/layout/google.svg" width="18">
                 Sign in with Google
             </button>
         </div>
@@ -68,33 +66,6 @@
             </div>
         </header>
 
-        <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-8">
-            <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
-                <p class="text-[10px] font-bold text-slate-400 uppercase">Total Assets</p>
-                <p id="sum-assets" class="text-lg font-black text-slate-800">$0</p>
-            </div>
-            <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
-                <p class="text-[10px] font-bold text-slate-400 uppercase">Total Liabilities</p>
-                <p id="sum-liabilities" class="text-lg font-black text-red-500">$0</p>
-            </div>
-            <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
-                <p class="text-[10px] font-bold text-slate-400 uppercase">Net Worth</p>
-                <p id="sum-networth" class="text-lg font-black text-indigo-600">$0</p>
-            </div>
-            <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
-                <p class="text-[10px] font-bold text-slate-400 uppercase">2026 Gross Income</p>
-                <p id="sum-income" class="text-lg font-black text-slate-800">$0</p>
-            </div>
-            <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
-                <p class="text-[10px] font-bold text-slate-400 uppercase">Annual Savings</p>
-                <p id="sum-savings" class="text-lg font-black text-emerald-600">$0</p>
-            </div>
-            <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm bg-slate-50">
-                <p class="text-[10px] font-bold text-slate-400 uppercase">Retirement Income</p>
-                <p id="sum-ret-income" class="text-lg font-black text-slate-400">$0</p>
-            </div>
-        </div>
-
         <nav class="flex space-x-2 border-b border-slate-200 mb-8 overflow-x-auto no-scrollbar">
             <button onclick="showTab('balance')" id="btn-balance" class="tab-btn active px-4 py-3 text-sm font-bold border-b-2 border-indigo-600 text-indigo-600">Assets & Debts</button>
             <button onclick="showTab('income')" id="btn-income" class="tab-btn px-4 py-3 text-sm font-bold text-slate-500">Income</button>
@@ -119,7 +90,6 @@
                         </table>
                     </div>
                 </div>
-
                 <div>
                     <div class="flex justify-between items-center mb-4">
                         <h3 class="font-black text-slate-800 uppercase text-xs">Real Estate</h3>
@@ -128,13 +98,12 @@
                     <div class="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
                         <table class="w-full text-left text-sm">
                             <thead class="bg-slate-50 text-slate-400 uppercase text-[9px] font-bold">
-                                <tr><th class="px-4 py-3">Property</th><th class="px-4 py-3 text-right">Value</th><th class="px-4 py-3 text-right text-red-400">Mortgage</th><th class="px-4 py-3 text-right">Tax (Yr)</th><th class="px-4 py-3"></th></tr>
+                                <tr><th class="px-4 py-3 w-[35%]">Property</th><th class="px-4 py-3 text-right">Value</th><th class="px-4 py-3 text-right">Mortgage</th><th class="px-4 py-3 text-right">Tax (Yr)</th><th class="px-4 py-3"></th></tr>
                             </thead>
                             <tbody id="housing-list"></tbody>
                         </table>
                     </div>
                 </div>
-
                 <div>
                     <div class="flex justify-between items-center mb-4">
                         <h3 class="font-black text-slate-800 uppercase text-xs">Other Assets</h3>
@@ -149,7 +118,6 @@
                         </table>
                     </div>
                 </div>
-
                 <div>
                     <div class="flex justify-between items-center mb-4">
                         <h3 class="font-black text-slate-800 uppercase text-xs">Other Debts</h3>
@@ -175,9 +143,12 @@
             </section>
 
             <section id="tab-savings" class="tab-content hidden">
-                <div class="flex justify-between items-center mb-4">
-                    <h3 class="font-black text-slate-800 uppercase text-xs">Monthly Automated Savings</h3>
-                    <button onclick="addRow('savings-rows', 'savings-item')" class="text-[10px] bg-indigo-600 text-white font-black px-3 py-1.5 rounded-lg">+ ADD CONTRIBUTION</button>
+                <div class="mb-4">
+                    <div class="flex justify-between items-center mb-1">
+                        <h3 class="font-black text-slate-800 uppercase text-xs">Monthly Automated Savings</h3>
+                        <button onclick="addRow('savings-rows', 'savings-item')" class="text-[10px] bg-indigo-600 text-white font-black px-3 py-1.5 rounded-lg">+ ADD CONTRIBUTION</button>
+                    </div>
+                    <p class="text-[10px] text-slate-400 italic">Note: 401k is calculated automatically from Income tab. Do not add it here.</p>
                 </div>
                 <div class="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
                     <table class="w-full text-left text-sm">
@@ -201,13 +172,6 @@
                         </thead>
                         <tbody id="budget-rows"></tbody>
                     </table>
-                    <div class="bg-slate-50 p-4 border-t border-slate-200 flex justify-between items-center">
-                        <span class="text-xs font-bold text-slate-500 uppercase">Estimated Cashflow (Post-Tax & Savings)</span>
-                        <div class="text-right">
-                            <span id="cashflow-math" class="text-[10px] text-slate-400 block italic">Gross - Tax - Savings...</span>
-                            <span id="cashflow-value" class="text-lg font-black text-slate-800">$0</span>
-                        </div>
-                    </div>
                 </div>
             </section>
 
@@ -218,8 +182,6 @@
     </div>
 
     <script type="module" src="auth.js"></script>
-    <script type="module" src="templates.js"></script>
-    <script type="module" src="engine.js"></script>
     <script type="module" src="data.js"></script>
 </body>
 </html>
