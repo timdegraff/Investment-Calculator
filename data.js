@@ -1,17 +1,15 @@
 let growthChart = null;
 
 // CLOUD SYNC LOGIC
-window.syncFromCloud = async () => {
+window.syncFromCloud = async function() {
     if (typeof db === 'undefined') return;
-    
     try {
-        // 1. Fetch Birth Year from Metadata
         const metaDoc = await db.collection("metadata").doc("user_profile").get();
         if (metaDoc.exists) {
-            document.getElementById('user-birth-year').value = metaDoc.data().birthYear;
+            const bYear = metaDoc.data().birthYear;
+            const el = document.getElementById('user-birth-year');
+            if(el) el.value = bYear;
         }
-
-        // 2. Fetch Financial Data
         const dataDoc = await db.collection("users").doc("current_profile").get();
         if (dataDoc.exists) {
             window.loadUserDataIntoUI(dataDoc.data());
@@ -21,7 +19,7 @@ window.syncFromCloud = async () => {
     }
 };
 
-const engine = {
+const localEngine = {
     formatCompact: (val) => {
         if (val === undefined || isNaN(val)) return "$0";
         const abs = Math.round(Math.abs(val));
@@ -87,11 +85,6 @@ const engine = {
                         const companyMatch = inc.matchIncBonus ? (total * (inc.match/100)) : (base * (inc.match/100));
                         cStock += (personal401k + companyMatch);
                     });
-                    data.savings.forEach(s => {
-                        if (s.class === 'Metals') cMetals += s.amount;
-                        else if (s.class === 'Crypto') cCrypto += s.amount;
-                        else cStock += s.amount;
-                    });
                 } else {
                     const rate = age < 55 ? (data.drawEarly / 100) : (data.drawLate / 100);
                     cStock -= (cStock * rate);
@@ -110,16 +103,16 @@ const engine = {
             if (tableBody && (age % 5 === 0 || age === startAge || age === 100)) {
                 const tr = document.createElement('tr');
                 tr.innerHTML = `<td class="px-4 py-2 font-bold">${age}</td>
-                    <td class="px-4 py-2 text-right">${engine.formatCompact(totalInv)}</td>
-                    <td class="px-4 py-2 text-right">${engine.formatCompact(cRE)}</td>
-                    <td class="px-4 py-2 text-right">${engine.formatCompact(cOther)}</td>
-                    <td class="px-4 py-2 text-right text-red-500">${engine.formatCompact(cDebt)}</td>
-                    <td class="px-4 py-2 text-right font-black text-indigo-600">${engine.formatCompact(netWorth)}</td>
-                    <td class="px-4 py-2 text-right font-bold text-emerald-600">${engine.formatCompact(todaysValue)}</td>`;
+                    <td class="px-4 py-2 text-right">${localEngine.formatCompact(totalInv)}</td>
+                    <td class="px-4 py-2 text-right">${localEngine.formatCompact(cRE)}</td>
+                    <td class="px-4 py-2 text-right">${localEngine.formatCompact(cOther)}</td>
+                    <td class="px-4 py-2 text-right text-red-500">${localEngine.formatCompact(cDebt)}</td>
+                    <td class="px-4 py-2 text-right font-black text-indigo-600">${localEngine.formatCompact(netWorth)}</td>
+                    <td class="px-4 py-2 text-right font-bold text-emerald-600">${localEngine.formatCompact(todaysValue)}</td>`;
                 tableBody.appendChild(tr);
             }
         }
-        engine.renderChart(labels, invData, reData, otherData, debtData, nwData);
+        localEngine.renderChart(labels, invData, reData, otherData, debtData, nwData);
     },
 
     renderChart: (labels, inv, re, other, debt, nw) => {
@@ -136,7 +129,7 @@ const engine = {
             ]},
             options: { responsive: true, maintainAspectRatio: false, 
                 plugins: { tooltip: { mode: 'index', intersect: false }, legend: { position: 'bottom', labels: { boxWidth: 10 }}},
-                scales: { x: { grid: { display: false }}, y: { ticks: { callback: v => engine.formatCompact(v) }}}
+                scales: { x: { grid: { display: false }}, y: { ticks: { callback: v => localEngine.formatCompact(v) }}}
             }
         });
     },
@@ -155,46 +148,45 @@ const engine = {
             const total = base * (1 + (Number(inc.bonusPct) / 100));
             annualGross += total;
             const personal401k = inc.contribIncBonus ? (total * (inc.contribution/100)) : (base * (inc.contribution/100));
-            const companyMatch = inc.matchIncBonus ? (total * (inc.match/100)) : (base * (inc.match/100));
-            total401k += (personal401k + companyMatch);
+            total401k += personal401k;
             const isNonTaxable = inc.nonTaxYear && Number(inc.nonTaxYear) >= new Date().getFullYear();
             if (!isNonTaxable) taxableIncome += (total - personal401k);
         });
 
-        // Use the centralized engine from math.js for accurate taxes
         const fedTax = window.engine ? window.engine.calculateFederalTax(taxableIncome) : 0;
         const set = (id, val) => { if(document.getElementById(id)) document.getElementById(id).innerText = val; };
         
-        set('sum-assets', engine.formatCompact(assets));
-        set('sum-liabilities', engine.formatCompact(liab));
-        set('sum-networth', engine.formatCompact(assets - liab));
-        set('sum-income', engine.formatCompact(annualGross));
+        set('sum-assets', localEngine.formatCompact(assets));
+        set('sum-liabilities', localEngine.formatCompact(liab));
+        set('sum-networth', localEngine.formatCompact(assets - liab));
+        set('sum-income', localEngine.formatCompact(annualGross));
         
         const currentDrawRate = (new Date().getFullYear() - data.birthYear) < 55 ? (data.drawEarly / 100) : (data.drawLate / 100);
-        set('sum-ret-income', engine.formatCompact(assets * currentDrawRate));
+        set('sum-ret-income', localEngine.formatCompact(assets * currentDrawRate));
         
         const budgetMonthly = data.budget?.reduce((a, b) => a + Number(b.amount || 0), 0) || 0;
         set('budget-sum-monthly', '$' + budgetMonthly.toLocaleString());
         set('budget-sum-annual', '$' + (budgetMonthly * 12).toLocaleString());
         
-        const monthlyNet = (annualGross - fedTax - (total401k - (data.income[0]?.match * data.income[0]?.amount / 100 || 0))) / 12;
+        const monthlyNet = (annualGross - fedTax - total401k) / 12;
         set('budget-sum-remaining', '$' + Math.round(monthlyNet - budgetMonthly).toLocaleString());
 
-        engine.runProjection(data);
+        localEngine.runProjection(data);
     }
 };
 
 window.autoSave = () => {
-    const birthYear = Number(document.getElementById('user-birth-year').value);
+    const yearInput = document.getElementById('user-birth-year');
+    const birthYear = yearInput ? Number(yearInput.value) : 1986;
     const data = { birthYear: birthYear };
     document.querySelectorAll('[data-bind]').forEach(el => data[el.getAttribute('data-bind')] = Number(el.value));
 
-    data.investments = engine.getTableData('#investment-rows tr', ['name', 'class', 'balance', 'basis']);
-    data.realEstate = engine.getTableData('#housing-list tr', ['address', 'value', 'mortgage', 'rent']);
-    data.otherAssets = engine.getTableData('#other-assets-list tr', ['name', 'value', 'debt']);
-    data.debts = engine.getTableData('#debt-rows tr', ['name', 'balance']);
-    data.savings = engine.getTableData('#savings-rows tr', ['name', 'class', 'amount']);
-    data.budget = engine.getTableData('#budget-rows tr', ['name', 'amount', 'endYear']);
+    data.investments = localEngine.getTableData('#investment-rows tr', ['name', 'class', 'balance', 'basis']);
+    data.realEstate = localEngine.getTableData('#housing-list tr', ['address', 'value', 'mortgage', 'rent']);
+    data.otherAssets = localEngine.getTableData('#other-assets-list tr', ['name', 'value', 'debt']);
+    data.debts = localEngine.getTableData('#debt-rows tr', ['name', 'balance']);
+    data.savings = localEngine.getTableData('#savings-rows tr', ['name', 'class', 'amount']);
+    data.budget = localEngine.getTableData('#budget-rows tr', ['name', 'amount', 'endYear']);
     data.income = Array.from(document.querySelectorAll('#income-list > div')).map(d => ({
         name: d.querySelector('input[placeholder="Source Name"]')?.value || '',
         amount: d.querySelectorAll('input[type=number]')[0]?.value || 0,
@@ -208,9 +200,8 @@ window.autoSave = () => {
     }));
 
     window.currentData = data;
-    engine.updateSummary(data);
+    localEngine.updateSummary(data);
 
-    // PERSIST TO CLOUD
     if (typeof db !== 'undefined') {
         db.collection("metadata").doc("user_profile").set({ birthYear }, { merge: true });
         db.collection("users").doc("current_profile").set(data, { merge: true });
@@ -220,9 +211,9 @@ window.autoSave = () => {
 window.loadUserDataIntoUI = (data) => {
     if (!data) return;
     window.currentData = data;
-    document.getElementById('user-birth-year').value = data.birthYear || 1986;
+    const yearInput = document.getElementById('user-birth-year');
+    if(yearInput) yearInput.value = data.birthYear || 1986;
     
-    // Update Age display if logic exists in core.js
     if (window.engine && window.engine.updateAgeDisplay) window.engine.updateAgeDisplay();
 
     document.querySelectorAll('[data-bind]').forEach(el => {
@@ -247,5 +238,5 @@ window.loadUserDataIntoUI = (data) => {
         const c = document.getElementById(m[0]);
         if (c && m[2]) { c.innerHTML = ''; m[2].forEach(item => window.addRow(m[0], m[1], item)); }
     });
-    engine.updateSummary(data);
+    localEngine.updateSummary(data);
 };
