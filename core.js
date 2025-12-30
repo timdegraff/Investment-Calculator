@@ -27,7 +27,7 @@ window.updateSummaries = (data) => {
     document.getElementById('sum-liabilities').textContent = math.toCurrency(summaries.totalLiabilities);
 
     // Income Tab
-    document.getElementById('sum-income').textContent = math.toCurrency(summaries.grossIncome2026);
+    document.getElementById('sum-income').textContent = math.toCurrency(summaries.grossIncome);
 
     // Savings Tab
     document.getElementById('sum-total-savings').textContent = math.toCurrency(summaries.totalAnnualSavings);
@@ -79,12 +79,12 @@ function attachInputListeners(element) {
 
     if (monthlyInput && annualInput) {
         monthlyInput.addEventListener('input', () => {
-            const monthlyValue = parseFloat(monthlyInput.value) || 0;
-            annualInput.value = Math.round(monthlyValue * 12);
+            const monthlyValue = parseFloat(formatter.stripCommas(monthlyInput.value)) || 0;
+            annualInput.value = formatter.addCommas(Math.round(monthlyValue * 12));
         });
         annualInput.addEventListener('input', () => {
-            const annualValue = parseFloat(annualInput.value) || 0;
-            monthlyInput.value = Math.round(annualValue / 12);
+            const annualValue = parseFloat(formatter.stripCommas(annualInput.value)) || 0;
+            monthlyInput.value = formatter.addCommas(Math.round(annualValue / 12));
         });
     }
 }
@@ -95,6 +95,8 @@ function fillRow(row, data) {
         if (input) {
             if (input.type === 'checkbox') {
                 input.checked = data[key];
+            } else if (input.dataset.type === 'currency') {
+                input.value = formatter.addCommas(data[key]);
             } else {
                 input.value = data[key];
             }
@@ -105,6 +107,35 @@ function fillRow(row, data) {
         }
     });
 }
+
+// 4. Budget Sorting
+let budgetSortOrder = {
+    column: 'monthly',
+    ascending: false
+};
+
+window.sortBudget = (column) => {
+    if (budgetSortOrder.column === column) {
+        budgetSortOrder.ascending = !budgetSortOrder.ascending;
+    } else {
+        budgetSortOrder.column = column;
+        budgetSortOrder.ascending = false;
+    }
+
+    const rows = Array.from(document.getElementById('budget-rows').querySelectorAll('tr'));
+    
+    rows.sort((a, b) => {
+        const aValue = parseFloat(formatter.stripCommas(a.querySelector(`[data-id="${column}"]`).value)) || 0;
+        const bValue = parseFloat(formatter.stripCommas(b.querySelector(`[data-id="${column}"]`).value)) || 0;
+
+        return budgetSortOrder.ascending ? aValue - bValue : bValue - aValue;
+    });
+
+    const tbody = document.getElementById('budget-rows');
+    tbody.innerHTML = '';
+    rows.forEach(row => tbody.appendChild(row));
+};
+
 
 // Initial setup
 document.addEventListener('DOMContentLoaded', () => {

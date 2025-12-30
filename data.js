@@ -98,9 +98,9 @@ function getNewUserDefaultData() {
         income: [],
         manualSavings: [],
         expenses: [
-            { name: "Mortgage / Rent", monthly: "1500", annual: "18000" },
-            { name: "Car Payment", monthly: "500", annual: "6000" },
-            { name: "Utilities", monthly: "300", annual: "3600" },
+            { name: "Mortgage / Rent", monthly: "1,500", annual: "18,000" },
+            { name: "Car Payment", monthly: "500", annual: "6,000" },
+            { name: "Utilities", monthly: "300", annual: "3,600" },
         ]
     };
 }
@@ -113,7 +113,11 @@ function getTableData(containerId, fields) {
         fields.forEach(field => {
             const input = row.querySelector(`[data-id="${field}"]`);
             if (input) {
-                 data[field] = input.type === 'checkbox' ? input.checked : input.value;
+                if (input.dataset.type === 'currency') {
+                    data[field] = formatter.stripCommas(input.value);
+                } else {
+                    data[field] = input.type === 'checkbox' ? input.checked : input.value;
+                }
             }
         });
         return data;
@@ -128,7 +132,11 @@ function getCardData(containerId) {
         card.querySelectorAll('input, select').forEach(input => {
             const id = input.dataset.id;
             if (id) {
-                data[id] = input.type === 'checkbox' ? input.checked : input.value;
+                if (input.dataset.type === 'currency') {
+                    data[id] = formatter.stripCommas(input.value);
+                } else {
+                    data[id] = input.type === 'checkbox' ? input.checked : input.value;
+                }
             }
         });
         return data;

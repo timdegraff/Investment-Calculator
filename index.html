@@ -151,7 +151,7 @@
             <!-- Tab 2: Income -->
             <section id="tab-income" class="tab-content hidden max-w-5xl mx-auto">
                 <div class="mb-8">
-                    <p class="text-xs font-bold text-slate-400 uppercase">2026 Estimated Gross Income</p>
+                    <p class="text-xs font-bold text-slate-400 uppercase">Estimated Gross Income</p>
                     <p id="sum-income" class="text-3xl font-black text-slate-800">$0</p>
                 </div>
 
@@ -244,8 +244,9 @@
                         <thead class="bg-slate-50 text-slate-500 uppercase text-[10px] font-bold">
                             <tr>
                                 <th class="px-4 py-3">Category</th>
-                                <th class="px-4 py-3 text-right">Monthly</th>
-                                <th class="px-4 py-3 text-right">Annual</th>
+                                <th class="px-4 py-3 text-right">Monthly <button class="text-indigo-400" onclick="sortBudget('monthly')"><i class="fas fa-sort"></i></button></th>
+                                <th class="px-4 py-3 text-right">Annual <button class="text-indigo-400" onclick="sortBudget('annual')"><i class="fas fa-sort"></i></button></th>
+                                <th class="px-4 py-3 text-right">End Year</th>
                                 <th class="px-4 py-3 w-8"></th>
                             </tr>
                         </thead>
@@ -298,6 +299,7 @@
     <script src="assumptions.js"></script>
     <script src="core.js"></script>
     <script src="data.js"></script>
+    <script src="formatter.js"></script>
     <script type="module" src="auth.js"></script>
 
 </body>
