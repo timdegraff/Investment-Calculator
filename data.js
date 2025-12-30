@@ -52,7 +52,7 @@ const templates = {
 
 const engine = {
     formatCompact: (val) => {
-        if (!val || isNaN(val)) return "$0";
+        if (val === undefined || isNaN(val)) return "$0";
         const abs = Math.round(Math.abs(val));
         const sign = val < 0 ? "-" : "";
         if (abs >= 1000000) return sign + "$" + (abs / 1000000).toFixed(2) + "M";
@@ -65,52 +65,60 @@ const engine = {
         const retAge = Number(data.retAge || 55);
         const labels = [], invData = [], reData = [], otherData = [], debtData = [], nwData = [];
         
-        let currentInv = data.investments.reduce((a, b) => a + Number(b.balance || 0), 0);
-        let currentRE = data.realEstate.reduce((a, b) => a + Number(b.value || 0), 0);
-        let currentOther = data.otherAssets.reduce((a, b) => a + Number(b.value || 0), 0);
-        let currentDebt = (data.realEstate.reduce((a, b) => a + Number(b.mortgage || 0), 0)) +
-                          (data.otherAssets.reduce((a, b) => a + Number(b.debt || 0), 0)) +
-                          (data.debts.reduce((a, b) => a + Number(b.balance || 0), 0));
+        let cInv = data.investments.reduce((a, b) => a + Number(b.balance || 0), 0);
+        let cRE = data.realEstate.reduce((a, b) => a + Number(b.value || 0), 0);
+        let cOther = data.otherAssets.reduce((a, b) => a + Number(b.value || 0), 0);
+        let cDebt = (data.realEstate.reduce((a, b) => a + Number(b.mortgage || 0), 0)) +
+                    (data.otherAssets.reduce((a, b) => a + Number(b.debt || 0), 0)) +
+                    (data.debts.reduce((a, b) => a + Number(b.balance || 0), 0));
 
         const stockG = 1 + (data.stockGrowth / 100);
         const reG = 1 + (data.reAppreciation / 100);
+        const inflG = 1 + (data.inflation / 100);
 
         const tableBody = document.getElementById('projection-table-body');
         if (tableBody) tableBody.innerHTML = '';
 
         for (let age = startAge; age <= 100; age++) {
-            const isRetired = age >= retAge;
-            
-            currentInv *= stockG;
-            currentRE *= reG;
-            // Other assets flat per instructions
-
-            if (!isRetired) {
-                data.income.forEach(inc => {
-                    const totalSal = Number(inc.amount || 0) * (1 + (Number(inc.bonusPct || 0) / 100));
-                    const annualContribution = totalSal * ((Number(inc.contribution || 0) + Number(inc.match || 0)) / 100);
-                    currentInv += annualContribution;
-                });
-                data.savings.forEach(s => currentInv += Number(s.amount || 0));
-            } else {
-                const drawRate = age < 55 ? (data.drawEarly / 100) : (data.drawLate / 100);
-                currentInv -= (currentInv * drawRate);
+            // Apply growth ONLY after the first year (age > startAge)
+            if (age > startAge) {
+                const isRetired = age >= retAge;
+                cInv *= stockG;
+                cRE *= reG;
+                if (!isRetired) {
+                    data.income.forEach(inc => {
+                        const sal = Number(inc.amount || 0) * (1 + (Number(inc.bonusPct || 0) / 100));
+                        cInv += sal * ((Number(inc.contribution || 0) + Number(inc.match || 0)) / 100);
+                    });
+                    data.savings.forEach(s => cInv += Number(s.amount || 0));
+                } else {
+                    const rate = age < 55 ? (data.drawEarly / 100) : (data.drawLate / 100);
+                    cInv -= (cInv * rate);
+                }
+                cDebt *= 0.92; // 8% principal paydown assumption
             }
 
-            currentDebt *= 0.90; // Assume 10% principal paydown annually for simplicity
-
-            const netWorth = (currentInv + currentRE + currentOther) - currentDebt;
+            const netWorth = (cInv + cRE + cOther) - cDebt;
+            const todaysValue = netWorth / Math.pow(inflG, (age - startAge));
 
             labels.push(age);
-            invData.push(Math.round(currentInv));
-            reData.push(Math.round(currentRE));
-            otherData.push(Math.round(currentOther));
-            debtData.push(Math.round(-currentDebt));
+            invData.push(Math.round(cInv));
+            reData.push(Math.round(cRE));
+            otherData.push(Math.round(cOther));
+            debtData.push(Math.round(-cDebt));
             nwData.push(Math.round(netWorth));
 
             if (tableBody && (age % 5 === 0 || age === startAge || age === 100)) {
                 const tr = document.createElement('tr');
-                tr.innerHTML = `<td class="px-4 py-2 font-bold">${age}</td><td class="px-4 py-2 text-right">${engine.formatCompact(currentInv)}</td><td class="px-4 py-2 text-right">${engine.formatCompact(currentRE)}</td><td class="px-4 py-2 text-right">${engine.formatCompact(currentOther)}</td><td class="px-4 py-2 text-right text-red-500">${engine.formatCompact(currentDebt)}</td><td class="px-4 py-2 text-right font-black text-indigo-600">${engine.formatCompact(netWorth)}</td>`;
+                tr.innerHTML = `
+                    <td class="px-4 py-2 font-bold">${age}</td>
+                    ${cInv !== 0 ? `<td class="px-4 py-2 text-right">${engine.formatCompact(cInv)}</td>` : ''}
+                    ${cRE !== 0 ? `<td class="px-4 py-2 text-right">${engine.formatCompact(cRE)}</td>` : ''}
+                    ${cOther !== 0 ? `<td class="px-4 py-2 text-right">${engine.formatCompact(cOther)}</td>` : ''}
+                    ${cDebt !== 0 ? `<td class="px-4 py-2 text-right text-red-500">${engine.formatCompact(cDebt)}</td>` : ''}
+                    <td class="px-4 py-2 text-right font-black text-indigo-600">${engine.formatCompact(netWorth)}</td>
+                    <td class="px-4 py-2 text-right font-bold text-emerald-600">${engine.formatCompact(todaysValue)}</td>
+                `;
                 tableBody.appendChild(tr);
             }
         }
@@ -122,17 +130,16 @@ const engine = {
         if (!ctx) return;
         if (growthChart) growthChart.destroy();
         
+        const datasets = [];
+        const has = (arr) => arr.some(v => v !== 0);
+        if (has(inv)) datasets.push({ label: 'Investments', data: inv, fill: true, backgroundColor: 'rgba(79, 70, 229, 0.7)', borderColor: 'transparent', pointRadius: 0, stack: 'assets' });
+        if (has(re)) datasets.push({ label: 'Real Estate', data: re, fill: true, backgroundColor: 'rgba(16, 185, 129, 0.7)', borderColor: 'transparent', pointRadius: 0, stack: 'assets' });
+        if (has(other)) datasets.push({ label: 'Other Assets', data: other, fill: true, backgroundColor: 'rgba(245, 158, 11, 0.7)', borderColor: 'transparent', pointRadius: 0, stack: 'assets' });
+        if (has(debt)) datasets.push({ label: 'Debt', data: debt, fill: true, backgroundColor: 'rgba(239, 68, 68, 0.5)', borderColor: 'transparent', pointRadius: 0, stack: 'assets' });
+
         growthChart = new Chart(ctx, {
             type: 'line',
-            data: {
-                labels: labels,
-                datasets: [
-                    { label: 'Investments', data: inv, fill: true, backgroundColor: 'rgba(79, 70, 229, 0.7)', borderColor: 'transparent', pointRadius: 0, stack: 'assets' },
-                    { label: 'Real Estate', data: re, fill: true, backgroundColor: 'rgba(16, 185, 129, 0.7)', borderColor: 'transparent', pointRadius: 0, stack: 'assets' },
-                    { label: 'Other Assets', data: other, fill: true, backgroundColor: 'rgba(245, 158, 11, 0.7)', borderColor: 'transparent', pointRadius: 0, stack: 'assets' },
-                    { label: 'Debt', data: debt, fill: true, backgroundColor: 'rgba(239, 68, 68, 0.5)', borderColor: 'transparent', pointRadius: 0, stack: 'assets' }
-                ]
-            },
+            data: { labels: labels, datasets: datasets },
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
@@ -154,6 +161,19 @@ const engine = {
         });
     },
 
+    exportCSV: () => {
+        const rows = Array.from(document.querySelectorAll('#projection-table-body tr'));
+        const headers = Array.from(document.querySelectorAll('#projection-header th')).map(th => th.innerText).join(",");
+        let csv = "data:text/csv;charset=utf-8," + headers + "\n";
+        rows.forEach(tr => {
+            csv += Array.from(tr.cells).map(td => td.innerText.replace(/[\$,]/g, '')).join(",") + "\n";
+        });
+        const link = document.createElement("a");
+        link.href = encodeURI(csv);
+        link.download = "net_worth_projection.csv";
+        link.click();
+    },
+
     updateSummary: (data) => {
         const assets = (data.investments?.reduce((a, b) => a + Number(b.balance || 0), 0) || 0) +
                        (data.realEstate?.reduce((a, b) => a + Number(b.value || 0), 0) || 0) +
@@ -169,17 +189,17 @@ const engine = {
             total401k += (base + bonus) * ((Number(inc.contribution || 0) + Number(inc.match || 0)) / 100);
         });
 
-        const annualSavings = data.savings?.reduce((a, b) => a + Number(b.amount || 0), 0) || 0;
-
         document.getElementById('sum-assets').innerText = engine.formatCompact(assets);
         document.getElementById('sum-liabilities').innerText = engine.formatCompact(liabilities);
         document.getElementById('sum-networth').innerText = engine.formatCompact(assets - liabilities);
         document.getElementById('sum-income').innerText = engine.formatCompact(grossTotal);
-        document.getElementById('sum-savings').innerText = engine.formatCompact(total401k + annualSavings);
+        document.getElementById('sum-savings').innerText = engine.formatCompact(total401k + (data.savings?.reduce((a,b)=>a+Number(b.amount||0), 0) || 0));
         
         engine.runProjection(data);
     }
 };
+
+window.exportCSV = engine.exportCSV;
 
 window.showTab = (tabId) => {
     document.querySelectorAll('.tab-content').forEach(tab => tab.classList.add('hidden'));
@@ -213,7 +233,6 @@ function fillRow(row, type, data) {
         if (inputs[0]) inputs[0].value = data.name || data.address || '';
         if (inputs[1]) inputs[1].value = data.balance || data.value || data.amount || 0;
         if (inputs[2]) inputs[2].value = data.mortgage || data.debt || data.endYear || 0;
-        if (inputs[3]) inputs[3].value = data.tax || 0;
         const select = row.querySelector('select');
         if (select && data.class) select.value = data.class;
     }
@@ -232,7 +251,6 @@ window.autoSave = () => {
         stockGrowth: document.getElementById('input-stock').value,
         reAppreciation: document.getElementById('input-re').value,
         retAge: document.getElementById('input-ret-age').value,
-        ssAmount: document.getElementById('input-ss-amount').value,
         drawEarly: document.getElementById('input-draw-early').value,
         drawLate: document.getElementById('input-draw-late').value,
         investments: Array.from(document.querySelectorAll('#investment-rows tr')).map(r => ({
@@ -276,6 +294,13 @@ window.loadUserDataIntoUI = (data) => {
     if (data) {
         window.currentData = data;
         document.getElementById('user-birth-year').value = data.birthYear || 1986;
+        document.getElementById('input-inflation').value = data.inflation || 3;
+        document.getElementById('input-stock').value = data.stockGrowth || 8;
+        document.getElementById('input-re').value = data.reAppreciation || 3;
+        document.getElementById('input-ret-age').value = data.retAge || 55;
+        document.getElementById('input-draw-early').value = data.drawEarly || 4;
+        document.getElementById('input-draw-late').value = data.drawLate || 5;
+
         const mapping = [['investment-rows', 'investment', data.investments], ['housing-list', 'housing', data.realEstate], ['other-assets-list', 'other', data.otherAssets], ['debt-rows', 'debt', data.debts], ['income-list', 'income', data.income], ['savings-rows', 'savings-item', data.savings]];
         mapping.forEach(m => {
             const c = document.getElementById(m[0]);
