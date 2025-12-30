@@ -2,7 +2,15 @@ const templates = {
     investment: () => `
         <td class="px-4 py-3"><input type="text" oninput="window.autoSave()" placeholder="Account" class="bg-transparent outline-none w-full text-sm"></td>
         <td class="px-4 py-3"><select onchange="window.toggleCostBasis?.(this); window.autoSave()" class="bg-transparent outline-none text-xs text-slate-500">
-            <option>Taxable</option><option>Pre-Tax (401k/IRA)</option><option>Post-Tax (Roth)</option><option>529 Plan</option><option>Metals</option><option>Crypto</option><option>Cash/Physical</option></select></td>
+            <option>Taxable</option>
+            <option>Pre-Tax (401k/IRA)</option>
+            <option>Post-Tax (Roth)</option>
+            <option>HSA</option>
+            <option>529 Plan</option>
+            <option>Metals</option>
+            <option>Crypto</option>
+            <option>Cash/Physical</option>
+        </select></td>
         <td class="px-4 py-3 text-right">
             <input type="number" oninput="window.autoSave()" placeholder="0" class="w-full text-right font-bold outline-none bg-transparent text-sm">
             <div class="cost-basis-container hidden"><label class="text-[8px] font-bold text-indigo-400 uppercase block">Cost Basis</label><input type="number" oninput="window.autoSave()" placeholder="Basis" class="w-full text-right text-[10px] text-indigo-400 outline-none bg-transparent"></div>
@@ -46,7 +54,14 @@ const templates = {
     "savings-item": () => `
         <td class="px-4 py-3"><input type="text" oninput="window.autoSave()" placeholder="Contribution" class="bg-transparent outline-none w-full text-sm font-bold"></td>
         <td class="px-4 py-3"><select onchange="window.autoSave()" class="bg-transparent outline-none text-xs text-slate-500">
-            <option>Roth</option><option>Taxable (Brokerage)</option><option>HSA</option><option>529 Plan</option><option>Pre-Tax Contribution</option><option>Metals</option><option>Crypto</option></select></td>
+            <option>Post-Tax (Roth)</option>
+            <option>Taxable</option>
+            <option>HSA</option>
+            <option>529 Plan</option>
+            <option>Pre-Tax (401k/IRA)</option>
+            <option>Metals</option>
+            <option>Crypto</option>
+        </select></td>
         <td class="px-4 py-3 text-right"><input type="number" oninput="window.autoSave()" placeholder="0" class="w-full text-right font-bold text-emerald-600 outline-none bg-transparent text-sm"></td>
         <td class="px-4 py-2 text-right"><button onclick="this.closest('tr').remove(); window.autoSave()" class="text-slate-200 hover:text-red-500"><i class="fas fa-times text-xs"></i></button></td>`,
     
