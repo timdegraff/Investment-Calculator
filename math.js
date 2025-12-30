@@ -248,7 +248,7 @@ const engine = {
                 labels: projection.map(p => p.age),
                 datasets: [
                     {
-                        label: 'Net Worth (Today's $)',
+                        label: 'Net Worth (Today\'s $)',
                         data: projection.map(p => p.todaysValue),
                         borderColor: '#10b981', // emerald-600
                         backgroundColor: '#10b98120',
