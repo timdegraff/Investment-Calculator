@@ -1,87 +1,114 @@
 const engine = {
-    // 1. Core Projection Logic (Asset Growth & Drawdowns)
-    runProjection: (data) => {
-        const startAge = new Date().getFullYear() - (data.birthYear || 1986);
-        const stockG = 1 + (data.assumptions.stockGrowth / 100);
-        const reG = 1 + (data.assumptions.reAppreciation / 100);
 
-        let cStock = data.investments.reduce((a, b) => a + Number(b.value || 0), 0);
-        let cRE = data.realEstate.reduce((a, b) => a + Number(b.value || 0), 0);
-        let cOther = data.otherAssets.reduce((a, b) => a + Number(b.value || 0), 0);
-        let cDebt = (data.realEstate.reduce((a, b) => a + Number(b.debt || 0), 0)) +
-                    (data.otherAssets.reduce((a, b) => a + Number(b.debt || 0), 0)) +
-                    (data.debts.reduce((a, b) => a + Number(b.balance || 0), 0));
+    /**
+     * 1. Central Summary Calculator
+     * Takes the entire data object and returns all calculated summary metrics.
+     */
+    calculateSummaries: (data) => {
+        const summaries = {};
+
+        // --- Assets & Liabilities ---
+        const totalInvestments = data.investments?.reduce((a, b) => a + Number(b.value || 0), 0) || 0;
+        const totalRealEstate = data.realEstate?.reduce((a, b) => a + Number(b.value || 0), 0) || 0;
+        const totalOtherAssets = data.otherAssets?.reduce((a, b) => a + Number(b.value || 0), 0) || 0;
+        summaries.totalAssets = totalInvestments + totalRealEstate + totalOtherAssets;
+
+        const realEstateDebt = data.realEstate?.reduce((a, b) => a + Number(b.debt || 0), 0) || 0;
+        const otherAssetDebt = data.otherAssets?.reduce((a, b) => a + Number(b.debt || 0), 0) || 0;
+        const standaloneDebt = data.debts?.reduce((a, b) => a + Number(b.balance || 0), 0) || 0;
+        summaries.totalLiabilities = realEstateDebt + otherAssetDebt + standaloneDebt;
+
+        summaries.netWorth = summaries.totalAssets - summaries.totalLiabilities;
+
+        // --- Income & Savings ---
+        let currentAnnualGross = 0;
+        let projected2026Gross = 0;
+        let totalPersonal401k = 0;
+        let totalMatch401k = 0;
+        const yearsTo2026 = 2026 - new Date().getFullYear();
+
+        data.income?.forEach(inc => {
+            const base = Number(inc.amount) || 0;
+            const bonus = base * (Number(inc.bonusPct) / 100);
+            const increaseRate = 1 + (Number(inc.increase) / 100);
+            
+            currentAnnualGross += base + bonus;
+            projected2026Gross += (base * Math.pow(increaseRate, yearsTo2026)) + bonus; // Simplified bonus projection
+
+            const personalContribTotal = inc.contribIncBonus ? (base + bonus) : base;
+            totalPersonal401k += personalContribTotal * (Number(inc.contribution) / 100);
+
+            const matchContribTotal = inc.matchIncBonus ? (base + bonus) : base;
+            totalMatch401k += matchContribTotal * (Number(inc.match) / 100);
+        });
+
+        summaries.grossIncome2026 = projected2026Gross;
+        summaries.workplaceSavings = { personal: totalPersonal401k, match: totalMatch401k };
+
+        const manualSavings = data.manualSavings?.reduce((a, b) => a + Number(b.amount || 0), 0) || 0;
+        summaries.totalAnnualSavings = totalPersonal401k + totalMatch401k + manualSavings;
+        
+        // --- Budget & Cashflow ---
+        summaries.totalMonthlyExpenses = data.expenses?.reduce((a, b) => a + Number(b.amount || 0), 0) || 0;
+        const annualTaxableIncome = currentAnnualGross - totalPersonal401k; // Simplified deduction
+        const estimatedAnnualTaxes = math.calculateProgressiveTax(annualTaxableIncome);
+        const netAnnualIncome = currentAnnualGross - estimatedAnnualTaxes;
+        summaries.estimatedMonthlyCashflow = (netAnnualIncome / 12) - summaries.totalMonthlyExpenses - (manualSavings / 12);
+
+        return summaries;
+    },
+
+    /**
+     * 2. Core Projection Logic (Asset Growth & Drawdowns)
+     */
+    runProjection: (data) => {
+        if (!data || !data.assumptions) return;
+
+        const { assumptions, investments, realEstate, otherAssets, income, manualSavings, debts } = data;
+        const startAge = new Date().getFullYear() - (assumptions.birthYear || 1986);
+        const stockG = 1 + (Number(assumptions.stockGrowth) / 100);
+        const reG = 1 + (Number(assumptions.reAppreciation) / 100);
+
+        const summaries = engine.calculateSummaries(data);
+        let cStock = investments?.reduce((a, b) => a + Number(b.value || 0), 0) || 0;
+        let cRE = realEstate?.reduce((a, b) => a + Number(b.value || 0), 0) || 0;
+        let cOther = otherAssets?.reduce((a, b) => a + Number(b.value || 0), 0) || 0;
+        let cDebt = summaries.totalLiabilities;
+
+        const annualSavings = summaries.totalAnnualSavings;
 
         const results = [];
         for (let age = startAge; age <= 100; age++) {
             if (age > startAge) {
-                cStock *= stockG;
+                cStock = cStock * stockG + annualSavings; // Simplified: assumes all savings are invested
                 cRE *= reG;
-
-                data.income.forEach(inc => {
-                    const base = Number(inc.amount);
-                    const total = base * (1 + (Number(inc.bonusPct) / 100));
-                    const personal = inc.contribIncBonus ? (total * (inc.contribution/100)) : (base * (inc.contribution/100));
-                    const match = inc.matchIncBonus ? (total * (inc.match/100)) : (base * (inc.match/100));
-                    cStock += (personal + match);
-                });
-                cDebt *= 0.94; // Estimated debt payoff curve
+                cDebt *= 0.95; // Simplified 5% annual debt reduction
             }
             results.push({ 
-                age, 
-                portfolio: cStock, 
-                realEstate: cRE, 
+                age,
+                portfolio: cStock,
+                realEstate: cRE,
                 otherAssets: cOther,
                 debt: cDebt,
-                netWorth: (cStock + cRE + cOther) - cDebt 
+                netWorth: (cStock + cRE + cOther) - cDebt
             });
         }
-        engine.displayProjection(results, data.assumptions.inflation);
+        engine.displayProjection(results, assumptions);
     },
 
-    // 2. Display Projection Data
-    displayProjection: (results, inflation) => {
+    /**
+     * 3. Display Projection Data in the Table
+     */
+    displayProjection: (results, assumptions) => {
         const body = document.getElementById('projection-table-body');
-        const summaryNetWorth = document.getElementById('sum-networth');
-        const summaryAssets = document.getElementById('sum-assets');
-        const summaryLiabilities = document.getElementById('sum-liabilities');
-        const summaryIncome = document.getElementById('sum-income');
-        
         if (!body) return;
         body.innerHTML = '';
         
         results.forEach(row => {
             const tr = document.createElement('tr');
-            tr.innerHTML = templates.projectionRow(row, inflation);
+            tr.className = "border-t border-slate-100";
+            tr.innerHTML = templates.projectionRow(row, assumptions);
             body.appendChild(tr);
-        });
-        
-        // Update dashboard summaries
-        const firstRow = results[0];
-        if (firstRow) {
-            const totalAssets = firstRow.portfolio + firstRow.realEstate + firstRow.otherAssets;
-            summaryNetWorth.textContent = math.toCurrency(firstRow.netWorth);
-            summaryAssets.textContent = math.toCurrency(totalAssets);
-            summaryLiabilities.textContent = math.toCurrency(firstRow.debt);
-        }
-    },
-
-    // 3. Update Age Display
-    updateAgeDisplay: () => {
-        const birthYear = document.getElementById('user-birth-year').value;
-        const currentAge = new Date().getFullYear() - birthYear;
-        document.getElementById('current-age-display').textContent = `(Age ${currentAge})`;
-    },
-
-    // 4. Get Table Data
-    getTableData: (selector, fields) => {
-        return Array.from(document.querySelectorAll(selector)).map(row => {
-            const inputs = row.querySelectorAll('input, select');
-            const rowData = {};
-            fields.forEach((field, i) => {
-                rowData[field] = inputs[i]?.type === 'checkbox' ? inputs[i].checked : inputs[i]?.value;
-            });
-            return rowData;
         });
     }
 };
