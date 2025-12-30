@@ -1,18 +1,15 @@
 let growthChart = null;
 
 window.syncFromCloud = async function() {
-    const user = firebase.auth().currentUser;
-    if (!user || typeof db === 'undefined') return;
+    const user = window.auth?.currentUser;
+    if (!user || !window.db) return;
     
-    try {
-        // Systemic fix: uses the UID from the login
-        const dataDoc = await db.collection("users").doc(user.uid).get();
-        if (dataDoc.exists) {
-            console.log("Data loaded for:", user.uid);
-            window.loadUserDataIntoUI(dataDoc.data());
-        }
-    } catch (e) {
-        console.error("Cloud Fetch Error:", e);
+    // Use the v10 Modular syntax to match auth.js
+    const { getDoc, doc } = await import("https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js");
+    const docSnap = await getDoc(doc(window.db, "users", user.uid));
+    
+    if (docSnap.exists()) {
+        window.loadUserDataIntoUI(docSnap.data().financialData);
     }
 };
 
@@ -203,12 +200,8 @@ window.autoSave = () => {
     window.currentData = data;
     localEngine.updateSummary(data);
 
-    // 2. Systemic Save Logic: Use user.uid for the document ID
-    if (user && typeof db !== 'undefined') {
-        // Save birthYear to a metadata sub-collection for that specific user
-        db.collection("users").doc(user.uid).collection("metadata").doc("profile").set({ birthYear }, { merge: true });
-        // Save main financial data to the user's primary document
-        db.collection("users").doc(user.uid).set(data, { merge: true });
+    if (window.saveUserData) {
+        window.saveUserData(data);
     }
 };
 
@@ -244,3 +237,5 @@ window.loadUserDataIntoUI = (data) => {
     });
     localEngine.updateSummary(data);
 };
+window.auth = auth;
+window.db = db;
