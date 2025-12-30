@@ -53,7 +53,7 @@ const templates = {
 // --- MATH ENGINE ---
 const engine = {
     formatCompact: (val) => {
-        if (!val) return "$0";
+        if (!val || isNaN(val)) return "$0";
         const abs = Math.abs(val);
         const sign = val < 0 ? "-" : "";
         if (abs >= 1000000) return sign + "$" + (abs / 1000000).toFixed(2).replace(/\.00$/, "") + "M";
@@ -66,6 +66,17 @@ const engine = {
                        (data.otherAssets?.reduce((a, b) => a + Number(b.value || 0), 0) || 0);
         const liabilities = (data.realEstate?.reduce((a, b) => a + Number(b.mortgage || 0), 0) || 0) +
                             (data.debts?.reduce((a, b) => a + Number(b.balance || 0), 0) || 0);
+        
+        const currentAge = new Date().getFullYear() - (data.birthYear || 1986);
+        const yearsToRetire = Math.max(0, (data.retAge || 62) - currentAge);
+        const stockGrowth = 1 + (Number(data.stockGrowth || 8) / 100);
+        const drawRate = (data.retAge < 55) ? (Number(data.drawEarly || 4) / 100) : (Number(data.drawLate || 5) / 100);
+
+        // Future Projection
+        const currentInvestments = data.investments?.reduce((a, b) => a + Number(b.balance || 0), 0) || 0;
+        const futurePortfolio = currentInvestments * Math.pow(stockGrowth, yearsToRetire);
+        const annualDraw = futurePortfolio * drawRate;
+        const monthlySS = Number(data.ssAmount || 0); // SS in today's dollars for simplicity
         
         let grossTotal = 0, total401k = 0;
         data.income?.forEach(inc => {
@@ -84,6 +95,7 @@ const engine = {
         document.getElementById('sum-networth').innerText = engine.formatCompact(assets - liabilities);
         document.getElementById('sum-income').innerText = engine.formatCompact(grossTotal);
         document.getElementById('sum-savings').innerText = engine.formatCompact(annualSavings);
+        document.getElementById('sum-ret-income').innerText = engine.formatCompact((annualDraw / 12) + monthlySS) + "/mo";
     }
 };
 
@@ -97,6 +109,7 @@ window.showTab = (tabId) => {
 
 window.addRow = (containerId, type, data = null) => {
     const container = document.getElementById(containerId);
+    if (!container) return;
     const row = document.createElement(type === 'income' ? 'div' : 'tr');
     if (type !== 'income') row.className = "border-t border-slate-100";
     row.innerHTML = templates[type]();
@@ -109,18 +122,24 @@ function fillRow(row, type, data) {
     if (type === 'income') {
         row.querySelector('input[placeholder="Source Name"]').value = data.name || '';
         const nums = row.querySelectorAll('input[type=number]');
-        nums[0].value = data.amount; nums[1].value = data.bonusPct; nums[2].value = data.nonTaxableUntil;
+        nums[0].value = data.amount || 0; nums[1].value = data.bonusPct || 0; nums[2].value = data.nonTaxableUntil || '';
         const ranges = row.querySelectorAll('input[type=range]');
-        ranges[0].value = data.increase; ranges[1].value = data.contribution; ranges[2].value = data.match;
+        ranges[0].value = data.increase || 0; ranges[1].value = data.contribution || 0; ranges[2].value = data.match || 0;
         ranges.forEach(r => r.previousElementSibling.lastElementChild.innerText = r.value + '%');
+        const checks = row.querySelectorAll('input[type=checkbox]');
+        if(checks[0]) checks[0].checked = data.contribIncludeBonus ?? true;
+        if(checks[1]) checks[1].checked = data.matchIncludeBonus ?? true;
     } else {
         const inputs = row.querySelectorAll('input');
-        if (inputs[0]) inputs[0].value = data.name || '';
-        if (inputs[1]) inputs[1].value = data.balance || data.value || data.amount || '';
-        if (inputs[2]) inputs[2].value = data.mortgage || '';
-        if (inputs[3]) inputs[3].value = data.tax || '';
+        if (inputs[0]) inputs[0].value = data.name || data.address || '';
+        if (inputs[1]) inputs[1].value = data.balance || data.value || data.amount || 0;
+        if (inputs[2]) inputs[2].value = data.mortgage || data.basis || 0;
+        if (inputs[3]) inputs[3].value = data.tax || 0;
         const select = row.querySelector('select');
-        if (select && data.class) select.value = data.class;
+        if (select && data.class) {
+            select.value = data.class;
+            if (data.class === "Post-Tax (Roth)") window.toggleCostBasis(select);
+        }
     }
 }
 
@@ -132,19 +151,30 @@ window.calculateUserAge = () => {
 
 window.toggleCostBasis = (el) => {
     const container = el.closest('tr').querySelector('.cost-basis-container');
-    el.value === "Post-Tax (Roth)" ? container.classList.remove('hidden') : container.classList.add('hidden');
+    if (container) el.value === "Post-Tax (Roth)" ? container.classList.remove('hidden') : container.classList.add('hidden');
 };
 
 window.autoSave = () => {
     const data = {
         birthYear: document.getElementById('user-birth-year').value,
+        // Assumptions
+        inflation: document.getElementById('input-inflation').value,
+        stockGrowth: document.getElementById('input-stock').value,
+        reAppreciation: document.getElementById('input-re').value,
+        retAge: document.getElementById('input-ret-age').value,
+        ssAge: document.getElementById('input-ss-age').value,
+        ssAmount: document.getElementById('input-ss-amount').value,
+        drawEarly: document.getElementById('input-draw-early').value,
+        drawLate: document.getElementById('input-draw-late').value,
+        // Lists
         investments: Array.from(document.querySelectorAll('#investment-rows tr')).map(r => ({
             name: r.cells[0]?.querySelector('input')?.value || '',
             class: r.cells[1]?.querySelector('select')?.value || '',
-            balance: r.cells[2]?.querySelector('input[type=number]')?.value || 0
+            balance: r.cells[2]?.querySelector('input[type=number]')?.value || 0,
+            basis: r.querySelector('.cost-basis-container input')?.value || 0
         })),
         realEstate: Array.from(document.querySelectorAll('#housing-list tr')).map(r => ({
-            name: r.cells[0]?.querySelector('input')?.value || '',
+            address: r.cells[0]?.querySelector('input')?.value || '',
             value: r.cells[1]?.querySelector('input')?.value || 0,
             mortgage: r.cells[2]?.querySelector('input')?.value || 0,
             tax: r.cells[3]?.querySelector('input')?.value || 0
@@ -184,7 +214,6 @@ window.autoSave = () => {
 
 window.loadUserDataIntoUI = (data) => {
     if (!data) {
-        // PREPOPULATE DEFAULTS
         window.addRow('income-list', 'income', { name: 'Primary Salary', amount: 0, increase: 0 });
         window.addRow('savings-rows', 'savings-item', { name: 'Roth', class: 'Roth', amount: 0 });
         window.addRow('savings-rows', 'savings-item', { name: 'HSA', class: 'HSA', amount: 0 });
@@ -196,7 +225,25 @@ window.loadUserDataIntoUI = (data) => {
         return;
     }
     
-    document.getElementById('user-birth-year').value = data.birthYear || 1990;
+    document.getElementById('user-birth-year').value = data.birthYear || 1986;
+    
+    // Load Assumptions
+    const setVal = (id, val, suffix='') => {
+        const el = document.getElementById(id);
+        if (el) {
+            el.value = val;
+            const display = document.getElementById('val-' + id.split('-')[1]);
+            if (display) display.innerText = val + suffix;
+        }
+    };
+    setVal('input-inflation', data.inflation || 3, '%');
+    setVal('input-stock', data.stockGrowth || 8, '%');
+    setVal('input-re', data.reAppreciation || 3, '%');
+    if(data.retAge) document.getElementById('input-ret-age').value = data.retAge;
+    if(data.ssAge) document.getElementById('input-ss-age').value = data.ssAge;
+    if(data.ssAmount) document.getElementById('input-ss-amount').value = data.ssAmount;
+    if(data.drawEarly) document.getElementById('input-draw-early').value = data.drawEarly;
+    if(data.drawLate) document.getElementById('input-draw-late').value = data.drawLate;
     
     const mapping = [
         { id: 'investment-rows', type: 'investment', list: data.investments },
