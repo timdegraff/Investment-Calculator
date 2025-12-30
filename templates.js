@@ -8,6 +8,9 @@ const templates = {
                 <option>Taxable</option>
                 <option>Pre-Tax (401k/IRA)</option>
                 <option>Post-Tax (Roth)</option>
+                <option>Cash</option>
+                <option>Bitcoin</option>
+                <option>Metals</option>
             </select>
         </td>
         <td class="px-4 py-3 text-right"><input data-id="value" type="number" placeholder="0" class="w-full text-right font-bold outline-none bg-transparent text-sm"></td>
