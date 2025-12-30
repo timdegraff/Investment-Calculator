@@ -21,18 +21,18 @@ const assumptions = {
     sliders: {
         // Personal
         birthYear: { label: "Birth Year", min: 1940, max: new Date().getFullYear(), step: 1, format: (v) => `${v} (Age ${new Date().getFullYear() - v})` },
-        retirementAge: { label: "Retirement Age", min: 50, max: 80, step: 1, format: (v) => v },
+        retirementAge: { label: "Retirement Age", min: 30, max: 80, step: 1, format: (v) => v },
         // Growth
         stockGrowth: { label: "Stock APY (%)             ", min: 0, max: 15, step: 0.5, format: (v) => `${v}%` },
         housingGrowth: { label: "Housing APY (%)           ", min: 0, max: 10, step: 0.5, format: (v) => `${v}%` },
         salaryGrowth: { label: "Annual Salary Raise (%)   ", min: 0, max: 10, step: 0.1, format: (v) => `${v}%` },
         // Rates
-        inflation: { label: "Inflation (%)             ", min: 0, max: 10, step: 0.5, format: (v) => `${v}%` },
+        inflation: { label: "Inflation (%)             ", min: 0, max: 10, step: 0.1, format: (v) => `${v}%` },
         preSSDraw: { label: "Pre-SS Draw Rate (%)      ", min: 0, max: 10, step: 0.1, format: (v) => `${v}%` },
         postSSDraw: { label: "Post-SS Draw Rate (%)     ", min: 0, max: 10, step: 0.1, format: (v) => `${v}%` },
         // Social Security
         ssStartAge: { label: "SS Start Age              ", min: 62, max: 70, step: 1, format: (v) => v },
-        ssMonthly: { label: "SS Monthly ($)            ", min: 0, max: 5000, step: 100, format: (v) => math.toCurrency(v) },
+        ssMonthly: { label: "SS Monthly ($)            ", min: 0, max: 5000, step: 100, format: (v) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(v) },
     },
 
     /**
