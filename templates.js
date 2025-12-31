@@ -9,7 +9,7 @@ export const templates = {
                 <option>HSA</option>
                 <option>529 Plan</option>
                 <option>Cash</option>
-                <option>Bitcoin</option>
+                <option>Crypto</option>
                 <option>Metals</option>
             </select>
         </td>
@@ -83,6 +83,9 @@ export const templates = {
                 <input data-id="match" type="range" min="0" max="20" step="0.5" value="0" class="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer range-thumb-blue-500">
                 <label class="text-sm flex gap-2 items-center text-slate-400 mt-2"><input data-id="matchIncBonus" type="checkbox"> Include Bonus</label>
             </div>
+        </div>
+        <div class="pt-4 border-t border-slate-700/60">
+            <label class="text-sm flex gap-2 items-center text-slate-400"><input data-id="remainsInRetirement" type="checkbox"> Remains in Retirement?</label>
         </div>
     </div>`,
 

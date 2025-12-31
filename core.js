@@ -30,6 +30,7 @@ export function initializeUI() {
     attachGlobalListeners();
     attachNavigationListeners();
     attachDynamicRowListeners();
+    attachSortingListeners(); // New listener for sorting
     
     console.log("UI Initialized.");
 }
@@ -65,14 +66,19 @@ function attachDynamicRowListeners() {
         } else if (removeButton) {
             const row = removeButton.closest('tr, .income-card, .real-estate-card');
             if (row) {
-                // For real estate, we clear the data, we don't remove the card
-                if (row.classList.contains('real-estate-card')) {
-                    row.querySelectorAll('input').forEach(input => input.value = '');
-                } else {
-                    row.remove();
-                }
+                row.remove();
                 debouncedAutoSave();
             }
+        }
+    });
+}
+
+function attachSortingListeners() {
+    document.querySelector('#tab-budget thead').addEventListener('click', (e) => {
+        const header = e.target.closest('[data-sort]');
+        if (header) {
+            const sortKey = header.dataset.sort;
+            sortBudgetTable(sortKey);
         }
     });
 }
@@ -108,9 +114,6 @@ function addRow(containerId, type, data = null) {
 
     if (data) {
         fillRow(element, data);
-    } else {
-        // If it's a new row, trigger a save immediately
-        debouncedAutoSave();
     }
     
     return element;
@@ -122,30 +125,53 @@ function attachInputListeners(element) {
         input.addEventListener('input', debouncedAutoSave);
     });
 
-    // Special handling for investment rows
-    const typeSelect = element.querySelector('[data-id="type"]');
-    if (typeSelect) {
-        const updateAssetType = () => {
-            const selectedValue = typeSelect.value;
-            const costBasisInput = element.querySelector('[data-id="costBasis"]');
-            
-            // Disable cost basis unless it's a Roth account
-            if (costBasisInput) {
-                costBasisInput.disabled = (selectedValue !== 'Post-Tax (Roth)');
-                if (costBasisInput.disabled) {
-                    costBasisInput.value = ''; // Clear value if disabled
-                }
-            }
-            
-            // Set the color of the type selector
-            typeSelect.style.color = assetClassColors[selectedValue] || '#e2e8f0';
-        };
+    // Budget auto-calculation
+    const monthlyInput = element.querySelector('[data-id="monthly"]');
+    const annualInput = element.querySelector('[data-id="annual"]');
+    if (monthlyInput && annualInput) {
+        monthlyInput.addEventListener('input', () => {
+            const monthlyValue = math.fromCurrency(monthlyInput.value);
+            annualInput.value = math.toCurrency(monthlyValue * 12, true);
+        });
+        annualInput.addEventListener('input', () => {
+            const annualValue = math.fromCurrency(annualInput.value);
+            monthlyInput.value = math.toCurrency(annualValue / 12, true);
+        });
+    }
 
-        typeSelect.addEventListener('change', updateAssetType);
-        updateAssetType(); // Initial call
+    // Income card sliders
+    const incomeCard = element.closest('.income-card');
+    if (incomeCard) {
+        incomeCard.querySelectorAll('input[type="range"]').forEach(slider => {
+            const display = slider.previousElementSibling.querySelector('span');
+            slider.addEventListener('input', () => {
+                display.textContent = `${slider.value}%`;
+            });
+        });
     }
 }
 
+function sortBudgetTable(sortKey) {
+    const tableBody = document.getElementById('budget-rows');
+    const rows = Array.from(tableBody.querySelectorAll('tr'));
+    const isAscending = tableBody.dataset.sortOrder === 'asc';
+
+    rows.sort((a, b) => {
+        const aValue = math.fromCurrency(a.querySelector(`[data-id="${sortKey}"]`).value);
+        const bValue = math.fromCurrency(b.querySelector(`[data-id="${sortKey}"]`).value);
+        return isAscending ? aValue - bValue : bValue - aValue;
+    });
+
+    rows.forEach(row => tableBody.appendChild(row));
+    tableBody.dataset.sortOrder = isAscending ? 'desc' : 'asc';
+
+    // Update sort icons
+    document.querySelectorAll('#tab-budget th .fa-sort, #tab-budget th .fa-sort-up, #tab-budget th .fa-sort-down').forEach(icon => {
+        icon.className = 'fas fa-sort';
+    });
+    const headerIcon = document.querySelector(`#tab-budget [data-sort="${sortKey}"] i`);
+    headerIcon.className = `fas fa-sort-${isAscending ? 'up' : 'down'}`;
+}
 
 function fillRow(row, data) {
     Object.keys(data).forEach(key => {
@@ -156,16 +182,9 @@ function fillRow(row, data) {
             } else {
                 input.value = data[key];
             }
-            // Dispatch events to ensure sliders and other listeners update
-            input.dispatchEvent(new Event('change', { bubbles: true }));
             input.dispatchEvent(new Event('input', { bubbles: true }));
         }
     });
-}
-
-// This function is no longer needed as the column will always be visible.
-function updateCostBasisHeaderVisibility() {
-    // No longer needed
 }
 
 export function createAssumptionControls(data) {
@@ -211,3 +230,4 @@ export function createAssumptionControls(data) {
 window.addRow = addRow;
 window.updateSummaries = updateSummaries;
 window.createAssumptionControls = createAssumptionControls;
+window.fillRow = fillRow;

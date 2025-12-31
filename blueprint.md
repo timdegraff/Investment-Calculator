@@ -8,7 +8,7 @@ FinCalc is a modern, single-page web application designed to be a personal finan
 
 This section documents all design, style, and features implemented from the initial version to the current one.
 
-### 2.1. Core Architecture (as of v1.1)
+### 2.1. Core Architecture (as of v1.2)
 
 -   **Modular JavaScript & Debouncing:** The application uses a modern module-based architecture. All `.js` files are proper ES Modules. A global debounce utility has been implemented to prevent excessive writes to the database during rapid UI interactions.
 -   **Centralized Entry Point:** `main.js` serves as the single entry point.
@@ -39,27 +39,27 @@ This section documents all design, style, and features implemented from the init
 
 ---
 
-## 3. Current Plan: Refine Assets & Debts Page
+## 3. Current Plan: UI & UX Enhancements
 
 This section outlines the plan for the current requested change.
 
 ### 3.1. Goal
 
-To improve the clarity, usability, and accuracy of the "Assets & Debts" tab by refining the Investments table and re-introducing a dedicated Real Estate section.
+To improve the user experience by implementing several UI and functionality enhancements across the application.
 
 ### 3.2. Actionable Steps
 
-1.  **Refine Investments Table Layout & Logic:**
-    *   **Layout:** Modify the table layout in `index.html` and `templates.js` to ensure the "Remove" button is always right-justified.
-    *   **Cost Basis Column:** Make the "Cost Basis" column permanently visible for all investment rows.
-    *   **Conditional Input:** Update `core.js` to make the "Cost Basis" input field `disabled` for all investment types except for "Post-Tax (Roth)".
+1.  **Enhance Monthly Budget:**
+    *   **Auto-Calculation:** Implement auto-calculation for the "Monthly" and "Annual" columns in `core.js`.
+    *   **Sorting:** Add sorting arrows to the table headers in `index.html` and implement the sorting logic in `core.js`.
 
-2.  **Implement Real Estate Card:**
-    *   **HTML Structure:** Add a new "Real Estate" card to the `index.html` file within the "Assets & Debts" tab.
-    *   **Input Fields:** The card will contain two primary input fields: "Property Value" and "Mortgage Balance".
-    *   **Data Handling:** Update `data.js` to scrape, load, and initialize this new real estate data, storing it as an object (e.g., `{ value: 500000, mortgage: 300000 }`) in the user's data file.
+2.  **Rename "Bitcoin" to "Crypto":**
+    *   Perform a global search and replace in `templates.js` and `utils.js` to change all instances of "Bitcoin" to "Crypto."
 
-3.  **Integrate Home Equity into Net Worth:**
-    *   **Update Calculation Engine:** Modify the `calculateSummaries` function in `utils.js`.
-    *   The `totalAssets` calculation will be updated to include the `realEstate.value`.
-    *   The `totalLiabilities` calculation will be updated to include the `realEstate.mortgage`.
+3.  **Add "Assets & Debts" Summary:**
+    *   Add a summary section at the top of the "Assets & Debts" tab in `index.html`.
+    *   Update `data.js` to populate the summary with "Total Assets," "Total Liabilities," and "Total Net Worth."
+
+4.  **Fix Income Tab Issues:**
+    *   **Sliders:** Fix the bug with the "Annual Increase" and "401k Contribution" sliders in `core.js`.
+    *   **Checkbox:** Add the "remains in retirement?" checkbox to the income card in `templates.js`.

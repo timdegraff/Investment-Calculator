@@ -22,7 +22,7 @@ export const assetClassColors = {
     'HSA': '#4ade80', // green-400
     '529 Plan': '#fbbf24', // amber-400
     'Cash': '#2dd4bf', // teal-400
-    'Bitcoin': '#f97316', // orange-500
+    'Crypto': '#f97316', // orange-500
     'Metals': '#eab308' // yellow-500
 };
 

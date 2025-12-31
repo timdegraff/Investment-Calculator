@@ -168,6 +168,15 @@ export function updateSummaries(data) {
     const sidebarNetworth = document.getElementById('sidebar-networth');
     if (sidebarNetworth) sidebarNetworth.textContent = math.toCurrency(summaries.netWorth, false);
 
+    // Tab Summary
+    const sumAssets = document.getElementById('sum-assets');
+    if (sumAssets) sumAssets.textContent = math.toCurrency(summaries.totalAssets, true);
+
+    const sumLiabilities = document.getElementById('sum-liabilities');
+    if (sumLiabilities) sumLiabilities.textContent = math.toCurrency(summaries.totalLiabilities, true);
+
+    const sumNetworth = document.getElementById('sum-networth');
+    if (sumNetworth) sumNetworth.textContent = math.toCurrency(summaries.netWorth, true);
 }
 
 // This is now a global function
