@@ -9,7 +9,7 @@ import { initializeAuth } from './auth.js';
 window.showTab = (tabId) => {
     document.querySelectorAll('.tab-content').forEach(tab => tab.classList.add('hidden'));
     document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
-    document.getElementById(`tab-${tabId}`).classList.remove('hidden');
+    document.getElementById(`tab-${tabId}`).classList.remove('hidden'));
     document.getElementById(`btn-${tabId}`).classList.add('active');
 
     if (tabId === 'projection' && window.currentData) {
@@ -23,24 +23,25 @@ window.updateSummaries = (data) => {
 
     const summaries = engine.calculateSummaries(data);
 
-    // Sidebar & Assets Tab
-    document.getElementById('sidebar-networth').textContent = math.toCurrency(summaries.netWorth);
-    document.getElementById('sum-assets').textContent = math.toCurrency(summaries.totalAssets);
-    document.getElementById('sum-liabilities').textContent = math.toCurrency(summaries.totalLiabilities);
+    // Sidebar & Main Summary
+    document.getElementById('sidebar-networth').textContent = math.toCurrency(summaries.netWorth, false);
+    document.getElementById('sum-assets').textContent = math.toCurrency(summaries.totalAssets, false);
+    document.getElementById('sum-liabilities').textContent = math.toCurrency(summaries.totalLiabilities, false);
+    document.getElementById('sum-income-summary').textContent = `${math.toCurrency(summaries.grossIncome, false)}/yr`;
+    document.getElementById('sum-total-savings-summary').textContent = `${math.toCurrency(summaries.totalAnnualSavings, false)}/yr`;
 
     // Income Tab
-    document.getElementById('sum-income').textContent = math.toCurrency(summaries.grossIncome);
+    // (No summary to update on this tab)
 
     // Savings Tab
-    document.getElementById('sum-total-savings').textContent = math.toCurrency(summaries.totalAnnualSavings);
-    document.getElementById('val-401k-personal').textContent = math.toCurrency(summaries.workplaceSavings.personal);
-    document.getElementById('val-401k-match').textContent = math.toCurrency(summaries.workplaceSavings.match);
+    document.getElementById('val-401k-personal').textContent = math.toCurrency(summaries.workplaceSavings.personal, false);
+    document.getElementById('val-401k-match').textContent = math.toCurrency(summaries.workplaceSavings.match, false);
 
     // Budget Tab
-    document.getElementById('budget-sum-monthly').textContent = math.toCurrency(summaries.totalMonthlyExpenses);
-    document.getElementById('budget-sum-annual').textContent = `${math.toCurrency(summaries.totalAnnualExpenses)} / year`;
+    document.getElementById('budget-sum-monthly').textContent = math.toCurrency(summaries.totalMonthlyExpenses, true);
+    document.getElementById('budget-sum-annual').textContent = `${math.toCurrency(summaries.totalAnnualExpenses, false)} / year`;
     document.getElementById('budget-cashflow-monthly').textContent = math.toCurrency(summaries.estimatedMonthlyCashflow, true);
-    document.getElementById('budget-cashflow-annual').textContent = `${math.toCurrency(summaries.estimatedAnnualCashflow, true)} / year`;
+    document.getElementById('budget-cashflow-annual').textContent = `${math.toCurrency(summaries.estimatedAnnualCashflow, false)} / year`;
 
     engine.runProjection(data);
 };
@@ -87,6 +88,19 @@ function attachInputListeners(element) {
         annualInput.addEventListener('input', () => {
             const annualValue = parseFloat(formatter.stripCommas(annualInput.value)) || 0;
             monthlyInput.value = formatter.addCommas(Math.round(annualValue / 12));
+        });
+    }
+
+    // Show/hide cost basis for Roth assets
+    const typeSelect = element.querySelector('[data-id="type"]');
+    const costBasisCell = element.querySelector('.cost-basis-cell');
+    if (typeSelect && costBasisCell) {
+        typeSelect.addEventListener('change', () => {
+            if (typeSelect.value === 'Post-Tax (Roth)') {
+                costBasisCell.classList.remove('hidden');
+            } else {
+                costBasisCell.classList.add('hidden');
+            }
         });
     }
 }

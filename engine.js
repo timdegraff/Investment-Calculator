@@ -56,49 +56,112 @@ const engine = {
         const a = data.assumptions;
         const startAge = new Date().getFullYear() - a.birthYear;
 
-        // 1. Correctly initialize asset values
-        let portfolio = (data.investments?.reduce((s, i) => s + Number(i.value || 0), 0) || 0) +
-                        (data.otherAssets?.reduce((s, o) => s + Number(o.value || 0), 0) || 0);
+        // 1. Initialize asset buckets
+        let taxable = 0;
+        let roth = 0;
+        let cryptoMetals = 0;
+
+        data.investments?.forEach(inv => {
+            const value = Number(inv.value || 0);
+            switch (inv.type) {
+                case 'taxable':
+                case 'brokerage':
+                    taxable += value;
+                    break;
+                case 'roth-ira':
+                case '401k':
+                case 'hsa':
+                    roth += value;
+                    break;
+                case 'crypto':
+                case 'metals':
+                    cryptoMetals += value;
+                    break;
+                default:
+                    taxable += value;
+            }
+        });
+
+        cryptoMetals += data.otherAssets?.reduce((s, o) => s + Number(o.value || 0), 0) || 0;
         let realEstate = data.realEstate?.reduce((s, r) => s + Number(r.value || 0), 0) || 0;
         
-        // 2. Get initial income and savings rates from summaries
         const initialSummaries = engine.calculateSummaries(data);
         let currentAnnualGross = initialSummaries.grossIncome;
-        const workplaceSavingsRate = currentAnnualGross > 0 ? (initialSummaries.workplaceSavings.personal + initialSummaries.workplaceSavings.match) / currentAnnualGross : 0;
-        const manualSavings = data.manualSavings?.reduce((s, item) => s + Number(item.annual || 0), 0) || 0;
+        const workplaceSavings = initialSummaries.workplaceSavings.personal + initialSummaries.workplaceSavings.match;
+
+        let manualSavingsTaxable = 0;
+        let manualSavingsRoth = 0;
+        data.manualSavings?.forEach(item => {
+            const annual = Number(item.annual || 0);
+            if (item.type === 'roth-ira' || item.type === 'hsa') {
+                manualSavingsRoth += annual;
+            } else { 
+                manualSavingsTaxable += annual;
+            }
+        });
+
+        const leftoverCashflow = initialSummaries.estimatedAnnualCashflow > 0 ? initialSummaries.estimatedAnnualCashflow : 0;
 
         const results = [];
-        results.push({ age: startAge, portfolio, realEstate, netWorth: portfolio + realEstate }); // Log initial state
+        results.push({ 
+            age: startAge, 
+            taxable, 
+            roth, 
+            cryptoMetals, 
+            realEstate, 
+            netWorth: taxable + roth + cryptoMetals + realEstate 
+        });
 
         for (let age = startAge + 1; age <= 100; age++) {
-            let annualSavings;
-            
-            // 3. Calculate savings/drawdown for the year
+            let annualSavingsTaxable = manualSavingsTaxable + leftoverCashflow;
+            let annualSavingsRoth = workplaceSavings + manualSavingsRoth;
+
             if (age <= a.retirementAge) {
-                // Pre-retirement: grow income and calculate savings
                 currentAnnualGross *= (1 + a.salaryGrowth / 100);
-                const workplaceSavings = currentAnnualGross * workplaceSavingsRate;
-                annualSavings = workplaceSavings + manualSavings;
+                const currentWorkplaceSavings = currentAnnualGross * (workplaceSavings / initialSummaries.grossIncome);
+                
+                const annualTaxableIncome = currentAnnualGross - (initialSummaries.workplaceSavings.personal);
+                const estimatedAnnualTaxes = math.calculateProgressiveTax(annualTaxableIncome);
+                const netAnnualIncome = currentAnnualGross - estimatedAnnualTaxes;
+                const currentLeftover = netAnnualIncome - initialSummaries.totalAnnualExpenses - (manualSavingsTaxable + manualSavingsRoth);
+                
+                annualSavingsTaxable = manualSavingsTaxable + (currentLeftover > 0 ? currentLeftover : 0);
+                annualSavingsRoth = currentWorkplaceSavings + manualSavingsRoth;
             } else {
-                // Post-retirement: calculate drawdown and add SS
+                const totalPortfolio = taxable + roth + cryptoMetals;
                 const drawRate = age < a.ssStartAge ? a.preSSDraw : a.postSSDraw;
-                const drawAmount = portfolio * (drawRate / 100);
+                const drawAmount = totalPortfolio * (drawRate / 100);
                 const ssIncome = (age >= a.ssStartAge) ? (a.ssMonthly * 12) : 0;
-                annualSavings = ssIncome - drawAmount;
+                const netCashflow = ssIncome - drawAmount;
+
+                if (netCashflow < 0) {
+                    const drawFromTaxable = Math.min(taxable, Math.abs(netCashflow));
+                    taxable -= drawFromTaxable;
+                    const remainingDraw = Math.abs(netCashflow) - drawFromTaxable;
+                    roth -= remainingDraw;
+                } else {
+                    taxable += netCashflow;
+                }
+                annualSavingsTaxable = 0;
+                annualSavingsRoth = 0;
             }
-            
-            // 4. Apply growth to assets
-            portfolio = portfolio * (1 + (a.stockGrowth / 100)) + annualSavings;
+
+            taxable = taxable * (1 + (a.stockGrowth / 100)) + annualSavingsTaxable;
+            roth = roth * (1 + (a.stockGrowth / 100)) + annualSavingsRoth;
+            cryptoMetals = cryptoMetals * (1 + ((a.cryptoGrowth || a.stockGrowth) / 100));
             realEstate *= (1 + (a.housingGrowth / 100));
             
+            const netWorth = taxable + roth + cryptoMetals + realEstate;
             results.push({ 
                 age,
-                portfolio: Math.max(0, portfolio),
+                taxable: Math.max(0, taxable),
+                roth: Math.max(0, roth),
+                cryptoMetals: Math.max(0, cryptoMetals),
                 realEstate: Math.max(0, realEstate),
-                netWorth: Math.max(0, portfolio + realEstate)
+                netWorth: Math.max(0, netWorth)
             });
         }
-        engine.displayProjection(results.slice(1), a); // Display from the first projected year
+        engine.displayProjection(results.slice(1), a);
     },
 
     displayProjection: (results, assumptions) => {
@@ -106,7 +169,9 @@ const engine = {
         if (!ctx) return;
 
         const labels = results.map(r => r.age);
-        const portfolioData = results.map(r => r.portfolio);
+        const taxableData = results.map(r => r.taxable);
+        const rothData = results.map(r => r.roth);
+        const cryptoMetalsData = results.map(r => r.cryptoMetals);
         const realEstateData = results.map(r => r.realEstate);
 
         if (engine.chart) {
@@ -119,21 +184,37 @@ const engine = {
                 labels: labels,
                 datasets: [
                     {
-                        label: 'Portfolio',
-                        data: portfolioData,
-                        backgroundColor: 'rgba(99, 102, 241, 0.2)',
-                        borderColor: 'rgba(79, 70, 229, 1)',
-                        borderWidth: 2,
+                        label: 'Taxable',
+                        data: taxableData,
+                        backgroundColor: 'rgba(59, 130, 246, 0.5)',
+                        borderColor: 'rgba(37, 99, 235, 1)',
                         fill: true,
                         pointRadius: 0,
                         tension: 0.4
                     },
                     {
+                        label: 'Roth',
+                        data: rothData,
+                        backgroundColor: 'rgba(34, 197, 94, 0.5)',
+                        borderColor: 'rgba(22, 163, 74, 1)',
+                        fill: true,
+                        pointRadius: 0,
+                        tension: 0.4
+                    },
+                    {
+                        label: 'Crypto/Metals',
+                        data: cryptoMetalsData,
+                        backgroundColor: 'rgba(251, 191, 36, 0.5)',
+                        borderColor: 'rgba(245, 158, 11, 1)',
+                        fill: true,
+                        pointRadius: 0,
+                        tension: 0.4
+                    },
+                     {
                         label: 'Real Estate',
                         data: realEstateData,
-                        backgroundColor: 'rgba(34, 197, 94, 0.2)',
-                        borderColor: 'rgba(22, 163, 74, 1)',
-                        borderWidth: 2,
+                        backgroundColor: 'rgba(249, 115, 22, 0.5)',
+                        borderColor: 'rgba(234, 88, 12, 1)',
                         fill: true,
                         pointRadius: 0,
                         tension: 0.4
@@ -168,7 +249,6 @@ const engine = {
             }
         });
 
-        // Also update the table view
         const body = document.getElementById('projection-table-body');
         if (!body) return;
         body.innerHTML = '';
@@ -176,14 +256,16 @@ const engine = {
 
         results.forEach((row, i) => {
             const tr = document.createElement('tr');
-            const todaysValue = row.netWorth / Math.pow(inflation, i + 1); // Adjust index for inflation calculation
-            tr.className = "border-t border-slate-100";
+            const todaysValue = row.netWorth / Math.pow(inflation, i + 1);
+            tr.className = "border-t border-slate-700";
             tr.innerHTML = `
                 <td class="px-6 py-3 font-bold">${row.age}</td>
-                <td class="px-6 py-3 text-right">${math.toCurrency(row.portfolio)}</td>
+                <td class="px-6 py-3 text-right">${math.toCurrency(row.taxable)}</td>
+                <td class="px-6 py-3 text-right">${math.toCurrency(row.roth)}</td>
+                <td class="px-6 py-3 text-right">${math.toCurrency(row.cryptoMetals)}</td>
                 <td class="px-6 py-3 text-right">${math.toCurrency(row.realEstate)}</td>
                 <td class="px-6 py-3 text-right font-black">${math.toCurrency(row.netWorth)}</td>
-                <td class="px-6 py-3 text-right text-emerald-600 font-bold">${math.toCurrency(todaysValue)}</td>
+                <td class="px-6 py-3 text-right text-green-400 font-bold">${math.toCurrency(todaysValue)}</td>
             `;
             body.appendChild(tr);
         });
