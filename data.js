@@ -34,6 +34,11 @@ export function loadUserDataIntoUI(data) {
     console.log("Populating UI with user data...");
     clearDynamicContent();
 
+    // Populate Real Estate
+    if (data.realEstate) {
+        fillRow(document.getElementById('real-estate-card'), data.realEstate);
+    }
+
     // Populate data tables
     data.investments?.forEach(item => window.addRow('investment-rows', 'investment', item));
     data.helocs?.forEach(item => window.addRow('heloc-rows', 'heloc', item));
@@ -47,7 +52,6 @@ export function loadUserDataIntoUI(data) {
         window.createAssumptionControls(data);
     }
     
-    window.updateCostBasisHeaderVisibility();
     updateSummaries(data);
     console.log("UI Population complete.");
 }
@@ -59,6 +63,8 @@ function clearDynamicContent() {
     document.getElementById('income-rows').innerHTML = '';
     document.getElementById('savings-list').innerHTML = '';
     document.getElementById('budget-rows').innerHTML = '';
+    // Also clear real estate
+    document.getElementById('real-estate-card').querySelectorAll('input').forEach(input => input.value = '');
 }
 
 export async function autoSave(scrape = true) {
@@ -89,6 +95,7 @@ function scrapeDataFromUI() {
     const data = { 
         assumptions: {}, 
         investments: [], 
+        realEstate: {}, // New object for real estate
         helocs: [], 
         debts: [], 
         income: [], 
@@ -98,8 +105,11 @@ function scrapeDataFromUI() {
 
     // Scrape Assumptions
     document.querySelectorAll('#assumptions-container [data-id]').forEach(input => {
-        data.assumptions[input.dataset.id] = input.value;
+        data.assumptions[input.dataset.id] = parseFloat(input.value);
     });
+
+    // Scrape Real Estate
+    data.realEstate = scrapeRow(document.getElementById('real-estate-card'));
 
     // Scrape Investments, HELOCs, Debts, etc.
     document.querySelectorAll('#investment-rows tr').forEach(row => data.investments.push(scrapeRow(row)));
@@ -115,12 +125,15 @@ function scrapeDataFromUI() {
 function scrapeRow(row) {
     const rowData = {};
     row.querySelectorAll('[data-id]').forEach(input => {
+        const key = input.dataset.id;
         if (input.type === 'checkbox') {
-            rowData[input.dataset.id] = input.checked;
+            rowData[key] = input.checked;
         } else if (input.dataset.type === 'currency') {
-            rowData[input.dataset.id] = math.fromCurrency(input.value);
+            rowData[key] = math.fromCurrency(input.value);
+        } else if (input.type === 'number' || input.type === 'range') {
+            rowData[key] = parseFloat(input.value) || 0;
         } else {
-            rowData[input.dataset.id] = input.value;
+            rowData[key] = input.value;
         }
     });
     return rowData;
@@ -130,6 +143,7 @@ function getInitialData() {
     return { 
         assumptions: assumptions.defaults,
         investments: [],
+        realEstate: { value: 500000, mortgage: 250000 },
         helocs: [],
         debts: [],
         income: [],
@@ -150,16 +164,28 @@ export function updateSummaries(data) {
 
     const summaries = engine.calculateSummaries(data);
 
-    // Sidebar & Main Summary
+    // Sidebar Networth
     const sidebarNetworth = document.getElementById('sidebar-networth');
-    const sumAssets = document.getElementById('sum-assets');
-    const sumLiabilities = document.getElementById('sum-liabilities');
-    const sumIncome = document.getElementById('sum-income-summary');
-    const sumSavings = document.getElementById('sum-total-savings-summary');
-
     if (sidebarNetworth) sidebarNetworth.textContent = math.toCurrency(summaries.netWorth, false);
-    if (sumAssets) sumAssets.textContent = math.toCurrency(summaries.totalAssets, false);
-    if (sumLiabilities) sumLiabilities.textContent = math.toCurrency(summaries.totalLiabilities, false);
-    if (sumIncome) sumIncome.textContent = `${math.toCurrency(summaries.grossIncome, false)}/yr`;
-    if (sumSavings) sumSavings.textContent = `${math.toCurrency(summaries.totalAnnualSavings, false)}/yr`;
+
 }
+
+// This is now a global function
+window.fillRow = (row, data) => {
+    Object.keys(data).forEach(key => {
+        const input = row.querySelector(`[data-id="${key}"]`);
+        if (input) {
+            if (input.type === 'checkbox') {
+                input.checked = data[key];
+            } else if (input.dataset.type === 'currency') {
+                // Format currency for display
+                input.value = math.toCurrency(data[key], true);
+            } else {
+                input.value = data[key];
+            }
+            // Dispatch events to ensure other listeners update
+            input.dispatchEvent(new Event('change', { bubbles: true }));
+            input.dispatchEvent(new Event('input', { bubbles: true }));
+        }
+    });
+};

@@ -13,9 +13,9 @@ export const templates = {
                 <option>Metals</option>
             </select>
         </td>
-        <td class="px-4 py-3 text-right"><input data-id="value" type="text" data-type="currency" placeholder="0" class="w-full text-right font-bold outline-none bg-transparent text-sm text-emerald-600"></td>
-        <td class="px-4 py-3 text-right cost-basis-cell hidden"><input data-id="costBasis" type="text" data-type="currency" placeholder="0" class="w-full text-right font-bold outline-none bg-transparent text-sm text-blue-400"></td>
-        <td class="px-4 py-2 text-center"><button data-action="remove" class="text-slate-300 hover:text-red-500 text-xs w-6 h-6"><i class="fas fa-times"></i></button></td>`,
+        <td class="px-4 py-3 text-right"><input data-id="value" type="text" data-type="currency" placeholder="0" class="w-full text-right font-bold outline-none bg-transparent text-sm text-emerald-400"></td>
+        <td class="px-4 py-3 text-right"><input data-id="costBasis" type="text" data-type="currency" placeholder="N/A" class="w-full text-right font-bold outline-none bg-transparent text-sm text-blue-400 disabled:text-slate-500 disabled:cursor-not-allowed"></td>
+        <td class="px-4 py-2 text-center"><button data-action="remove" class="text-slate-400 hover:text-red-500 text-xs w-6 h-6"><i class="fas fa-times"></i></button></td>`,
     
     heloc: () => `
         <td class="px-4 py-3"><input data-id="name" type="text" placeholder="e.g., Chase HELOC" class="bg-transparent outline-none w-full text-sm font-bold"></td>

@@ -160,8 +160,15 @@ export const engine = {
     },
 
     calculateSummaries: (data) => {
-        const totalAssets = data.investments?.reduce((sum, item) => sum + math.fromCurrency(item.value), 0) || 0;
-        const totalLiabilities = data.debts?.reduce((sum, item) => sum + math.fromCurrency(item.balance), 0) || 0;
+        const investmentAssets = data.investments?.reduce((sum, item) => sum + math.fromCurrency(item.value), 0) || 0;
+        const realEstateValue = math.fromCurrency(data.realEstate?.value) || 0;
+        const totalAssets = investmentAssets + realEstateValue;
+
+        const debtLiabilities = data.debts?.reduce((sum, item) => sum + math.fromCurrency(item.balance), 0) || 0;
+        const helocLiabilities = data.helocs?.reduce((sum, item) => sum + math.fromCurrency(item.balance), 0) || 0;
+        const mortgageLiability = math.fromCurrency(data.realEstate?.mortgage) || 0;
+        const totalLiabilities = debtLiabilities + helocLiabilities + mortgageLiability;
+
         const grossIncome = data.income?.reduce((sum, item) => sum + math.fromCurrency(item.amount), 0) || 0;
         const totalAnnualSavings = data.savings?.reduce((sum, item) => sum + math.fromCurrency(item.contribution), 0) || 0;
         const totalAnnualSpending = data.budget?.reduce((sum, item) => sum + math.fromCurrency(item.annual), 0) || 0;

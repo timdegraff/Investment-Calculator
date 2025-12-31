@@ -63,11 +63,15 @@ function attachDynamicRowListeners() {
                 addRow(containerId, type);
             }
         } else if (removeButton) {
-            const row = removeButton.closest('tr, .income-card');
+            const row = removeButton.closest('tr, .income-card, .real-estate-card');
             if (row) {
-                row.remove();
+                // For real estate, we clear the data, we don't remove the card
+                if (row.classList.contains('real-estate-card')) {
+                    row.querySelectorAll('input').forEach(input => input.value = '');
+                } else {
+                    row.remove();
+                }
                 debouncedAutoSave();
-                updateCostBasisHeaderVisibility(); 
             }
         }
     });
@@ -113,26 +117,35 @@ function addRow(containerId, type, data = null) {
 }
 
 function attachInputListeners(element) {
+    // Attach autosave listener to all inputs within the element
     element.querySelectorAll('input, select').forEach(input => {
         input.addEventListener('input', debouncedAutoSave);
     });
 
+    // Special handling for investment rows
     const typeSelect = element.querySelector('[data-id="type"]');
     if (typeSelect) {
         const updateAssetType = () => {
             const selectedValue = typeSelect.value;
-            const costBasisCell = element.querySelector('.cost-basis-cell');
-            if (costBasisCell) {
-                costBasisCell.classList.toggle('hidden', selectedValue !== 'Post-Tax (Roth)');
+            const costBasisInput = element.querySelector('[data-id="costBasis"]');
+            
+            // Disable cost basis unless it's a Roth account
+            if (costBasisInput) {
+                costBasisInput.disabled = (selectedValue !== 'Post-Tax (Roth)');
+                if (costBasisInput.disabled) {
+                    costBasisInput.value = ''; // Clear value if disabled
+                }
             }
+            
+            // Set the color of the type selector
             typeSelect.style.color = assetClassColors[selectedValue] || '#e2e8f0';
-            updateCostBasisHeaderVisibility();
         };
 
         typeSelect.addEventListener('change', updateAssetType);
         updateAssetType(); // Initial call
     }
 }
+
 
 function fillRow(row, data) {
     Object.keys(data).forEach(key => {
@@ -150,17 +163,9 @@ function fillRow(row, data) {
     });
 }
 
+// This function is no longer needed as the column will always be visible.
 function updateCostBasisHeaderVisibility() {
-    const investmentRows = document.getElementById('investment-rows');
-    if (!investmentRows) return;
-
-    const typeSelects = investmentRows.querySelectorAll('[data-id="type"]');
-    const hasRoth = Array.from(typeSelects).some(select => select.value === 'Post-Tax (Roth)');
-
-    const costBasisHeader = document.querySelector('th.cost-basis-cell');
-    if (costBasisHeader) {
-        costBasisHeader.classList.toggle('hidden', !hasRoth);
-    }
+    // No longer needed
 }
 
 export function createAssumptionControls(data) {
@@ -205,5 +210,4 @@ export function createAssumptionControls(data) {
 // Make functions globally available if they need to be called from the data layer
 window.addRow = addRow;
 window.updateSummaries = updateSummaries;
-window.updateCostBasisHeaderVisibility = updateCostBasisHeaderVisibility;
 window.createAssumptionControls = createAssumptionControls;
