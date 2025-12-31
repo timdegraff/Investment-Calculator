@@ -1,6 +1,5 @@
-
 import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
-import { assumptions, math } from './utils.js';
+import { assumptions, math, engine } from './utils.js';
 
 let db;
 let user;
@@ -150,7 +149,7 @@ function getInitialData() {
 export function updateSummaries(data) {
     if (!data) return;
 
-    const summaries = window.engine.calculateSummaries(data);
+    const summaries = engine.calculateSummaries(data);
 
     // Sidebar & Main Summary
     const sidebarNetworth = document.getElementById('sidebar-networth');

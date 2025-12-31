@@ -15,6 +15,7 @@
     extensions = [
       # "vscodevim.vim"
       "google.gemini-cli-vscode-ide-companion"
+      "ms-vscode.js-debug"
     ];
     workspace = {
       # Runs when a workspace is first created with this `dev.nix` file
