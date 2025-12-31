@@ -32,18 +32,27 @@ export function loadUserDataIntoUI(data) {
     console.log("Populating UI with data:", data);
     clearDynamicContent();
 
-    data.investments?.forEach(item => window.addRow('investment-rows', 'investment', item));
-    data.realEstate?.forEach(item => window.addRow('real-estate-rows', 'realEstate', item));
-    data.helocs?.forEach(item => window.addRow('heloc-rows', 'heloc', item));
-    data.debts?.forEach(item => window.addRow('debt-rows', 'debt', item));
-    data.income?.forEach(item => window.addRow('income-rows', 'income', item));
-    data.budget?.savings?.forEach(item => window.addRow('budget-savings-rows', 'budget-savings', item));
-    data.budget?.expenses?.forEach(item => window.addRow('budget-expenses-rows', 'budget-expense', item));
-    
+    const populateOrAddBlank = (dataArray, containerId, rowType) => {
+        const items = dataArray || [];
+        if (items.length > 0) {
+            items.forEach(item => window.addRow(containerId, rowType, item));
+        } else {
+            window.addRow(containerId, rowType, {}); // Add a single blank row
+        }
+    };
+
+    populateOrAddBlank(data.investments, 'investment-rows', 'investment');
+    populateOrAddBlank(data.realEstate, 'real-estate-rows', 'realEstate');
+    populateOrAddBlank(data.helocs, 'heloc-rows', 'heloc');
+    populateOrAddBlank(data.debts, 'debt-rows', 'debt');
+    populateOrAddBlank(data.income, 'income-rows', 'income');
+    populateOrAddBlank(data.budget?.savings, 'budget-savings-rows', 'budget-savings');
+    populateOrAddBlank(data.budget?.expenses, 'budget-expenses-rows', 'budget-expense');
+
     if (data.assumptions) {
         window.createAssumptionControls(data);
     }
-    
+
     updateSummaries(data);
     console.log("UI Population complete.");
 }
@@ -125,19 +134,13 @@ function getInitialData() {
     return { 
         assumptions: assumptions.defaults,
         investments: [],
-        realEstate: [{ name: "Primary Home", value: 500000, mortgage: 250000 }],
+        realEstate: [],
         helocs: [],
         debts: [],
         income: [],
         budget: {
-            savings: [
-                { name: "401k", contribution: 12000 },
-                { name: "Roth IRA", contribution: 6000 },
-            ],
-            expenses: [
-                { name: "Housing", monthly: 2000, annual: 24000 },
-                { name: "Groceries", monthly: 500, annual: 6000 },
-            ]
+            savings: [],
+            expenses: []
         }
     };
 }
