@@ -1,8 +1,8 @@
 export const math = {
     toCurrency: (value, isCompact = false) => {
         if (isNaN(value)) return '$0';
-        return new Intl.NumberFormat('en-US', { 
-            style: 'currency', 
+        return new Intl.NumberFormat('en-US', {
+            style: 'currency',
             currency: 'USD',
             notation: isCompact ? 'compact' : 'standard',
             minimumFractionDigits: 0,
@@ -129,15 +129,15 @@ export const engine = {
             if (i > 0) {
                 currentValues = currentValues.map((value, index) => (value + annualContributions[index]) * (1 + investmentGrowth));
             }
-            
+
             currentValues.forEach((value, index) => {
                 datasets[index].data.push(value);
                 tableRow[assetNames[index]] = value;
             });
-            
+
             tableData.push(tableRow);
         }
-        
+
         return { labels, datasets, tableData, assetNames };
     },
 
@@ -159,14 +159,14 @@ export const engine = {
 
         const totalAnnualSavings = data.budget?.savings?.reduce((sum, item) => sum + math.fromCurrency(item.contribution), 0) || 0;
         const totalAnnualBudget = data.budget?.expenses?.reduce((sum, item) => sum + math.fromCurrency(item.annual), 0) || 0;
-        
+
         return {
             netWorth: totalAssets - totalLiabilities,
             totalAssets,
             totalLiabilities,
             grossIncome,
             totalAnnualSavings,
-            totalMonthlyBudget: totalAnnualBudget / 12, // Ensure this is derived correctly
+            totalMonthlyBudget: totalAnnualBudget / 12,
             totalAnnualBudget
         };
     }

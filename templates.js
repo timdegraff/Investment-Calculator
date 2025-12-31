@@ -33,8 +33,9 @@ export const templates = {
 
     income: () => `
         <div class="space-y-4 relative group">
+             <i class="fas fa-money-bill-wave absolute top-5 left-5 text-teal-400 text-lg"></i>
             <button data-action="remove" class="btn-icon absolute top-2 right-2 opacity-50 group-hover:opacity-100"><i class="fas fa-times"></i></button>
-            <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4 pl-12">
                 <div class="col-span-2 md:col-span-1">
                     <label class="label-form">Source Name</label>
                     <input data-id="name" type="text" placeholder="e.g., W2 Job" class="input-base w-full font-bold">
@@ -55,24 +56,28 @@ export const templates = {
                     <input data-id="nonTaxYear" type="number" placeholder="Year" class="input-base w-full text-right">
                 </div>
             </div>
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 pt-4 border-t border-slate-700">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 pt-4 border-t border-slate-700">
                 <div>
-                    <label class="label-form flex justify-between">Annual Increase <span>0%</span></label>
+                    <label class="label-form flex justify-between">Annual Increase <span>3%</span></label>
                     <input data-id="increase" type="range" min="0" max="10" step="0.1" value="3" class="input-range">
+                    <div class="mt-2">
+                         <label class="flex items-center gap-2 text-sm text-slate-400"><input data-id="remainsInRetirement" type="checkbox" class="checkbox-base"> Remains in Retirement?</label>
+                    </div>
                 </div>
                 <div>
-                    <label class="label-form flex justify-between">401k Contribution <span>0%</span></label>
+                    <label class="label-form flex justify-between">Personal 401k % <span>0%</span></label>
                     <input data-id="contribution" type="range" min="0" max="30" step="1" value="0" class="input-range">
+                     <div class="mt-2">
+                        <label class="flex items-center gap-2 text-sm text-slate-400"><input data-id="contribIncBonus" type="checkbox" class="checkbox-base"> Include Bonus</label>
+                    </div>
                 </div>
                 <div>
-                    <label class="label-form flex justify-between">Employer Match <span>0%</span></label>
+                    <label class="label-form flex justify-between">Company 401k % <span>0%</span></label>
                     <input data-id="match" type="range" min="0" max="20" step="0.5" value="0" class="input-range">
+                     <div class="mt-2">
+                        <label class="flex items-center gap-2 text-sm text-slate-400"><input data-id="matchIncBonus" type-="checkbox" class="checkbox-base"> Include Bonus</label>
+                    </div>
                 </div>
-            </div>
-            <div class="flex justify-between items-center pt-4 border-t border-slate-700">
-                 <label class="flex items-center gap-2 text-sm text-slate-300"><input data-id="contribIncBonus" type="checkbox" class="checkbox-base"> Include Bonus in 401k Contrib.</label>
-                 <label class="flex items-center gap-2 text-sm text-slate-300"><input data-id="matchIncBonus" type="checkbox" class="checkbox-base"> Include Bonus in Match</label>
-                 <label class="flex items-center gap-2 text-sm text-slate-300"><input data-id="remainsInRetirement" type="checkbox" class="checkbox-base"> Remains in Retirement?</label>
             </div>
         </div>`,
 

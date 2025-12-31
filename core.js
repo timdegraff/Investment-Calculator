@@ -37,7 +37,7 @@ function attachGlobalListeners() {
 
     document.body.addEventListener('input', (e) => {
         const target = e.target;
-        if (target.closest('.input-base, .income-card, #assumptions-container, .real-estate-card, .input-range')) {
+        if (target.closest('.input-base, .income-card, #assumptions-container, #real-estate-card, .input-range')) {
             debouncedAutoSave();
         }
     });
@@ -115,10 +115,10 @@ function addRow(containerId, type, data = {}) {
 
     const isCard = type === 'income';
     const newElement = document.createElement(isCard ? 'div' : 'tr');
-    
-    newElement.className = isCard 
-        ? 'income-card bg-slate-800 rounded-2xl p-5 shadow-lg' 
-        : 'table-row';
+
+    newElement.className = isCard
+        ? 'income-card bg-slate-800 rounded-2xl p-5 shadow-lg'
+        : 'border-b border-slate-700 hover:bg-slate-700/50';
 
     newElement.innerHTML = templates[type](data);
     container.appendChild(newElement);
@@ -182,11 +182,11 @@ function attachInputListeners(element) {
 function sortBudgetTable(sortKey, header) {
     const tableBody = document.getElementById('budget-expenses-rows');
     const rows = Array.from(tableBody.querySelectorAll('tr'));
-    
+
     const currentSort = tableBody.dataset.sortKey;
     const currentOrder = tableBody.dataset.sortOrder;
     const newOrder = (currentSort === sortKey && currentOrder === 'desc') ? 'asc' : 'desc';
-    
+
     rows.sort((a, b) => {
         const aVal = math.fromCurrency(a.querySelector(`[data-id="${sortKey}"]`).value);
         const bVal = math.fromCurrency(b.querySelector(`[data-id="${sortKey}"]`).value);
@@ -194,7 +194,7 @@ function sortBudgetTable(sortKey, header) {
     });
 
     rows.forEach(row => tableBody.appendChild(row));
-    
+
     tableBody.dataset.sortKey = sortKey;
     tableBody.dataset.sortOrder = newOrder;
 
@@ -223,11 +223,11 @@ function createAssumptionControls(data) {
             </label>
             <input type="range" data-id="${key}" min="${def.min}" max="${def.max}" step="${def.step}" value="${value}" class="input-range">
         `;
-        
+
         const slider = controlWrapper.querySelector('input[type="range"]');
         const display = controlWrapper.querySelector('span');
         slider.addEventListener('input', () => display.textContent = `${slider.value}${def.unit}`);
-        
+
         container.appendChild(controlWrapper);
     });
 }
