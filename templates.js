@@ -75,7 +75,7 @@ export const templates = {
                     <label class="label-form flex justify-between">Company 401k % <span>0%</span></label>
                     <input data-id="match" type="range" min="0" max="20" step="0.5" value="0" class="input-range">
                      <div class="mt-2">
-                        <label class="flex items-center gap-2 text-sm text-slate-400"><input data-id="matchIncBonus" type-="checkbox" class="checkbox-base"> Include Bonus</label>
+                        <label class="flex items-center gap-2 text-sm text-slate-400"><input data-id="matchIncBonus" type="checkbox" class="checkbox-base"> Include Bonus</label>
                     </div>
                 </div>
             </div>
