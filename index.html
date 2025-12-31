@@ -145,6 +145,7 @@
                                         <th class="px-4 py-3">Name</th>
                                         <th class="px-4 py-3">Type</th>
                                         <th class="px-4 py-3 text-right">Value</th>
+                                        <th class="px-4 py-3 text-right cost-basis-cell hidden">Cost Basis</th>
                                         <th class="px-4 py-3 w-8"></th>
                                     </tr>
                                 </thead>
@@ -334,10 +335,15 @@
                         <thead class="table-header text-gray-300 uppercase text-xs font-bold">
                             <tr id="projection-header">
                                 <th class="px-6 py-4">Age</th>
-                                <th class="px-6 py-4 text-right">Taxable</th>
-                                <th class="px-6 py-4 text-right">Roth</th>
-                                <th class="px-6 py-4 text-right">Crypto/Metals</th>
-                                <th class="px-6 py-4 text-right">Real Estate</th>
+                                <th class="px-6 py-4 text-right" style="color: #3b82f6;">Taxable</th>
+                                <th class="px-6 py-4 text-right" style="color: #8b5cf6;">Pre-Tax</th>
+                                <th class="px-6 py-4 text-right" style="color: #10b981;">Roth</th>
+                                <th class="px-6 py-4 text-right" style="color: #14b8a6;">HSA</th>
+                                <th class="px-6 py-4 text-right" style="color: #06b6d4;">529 Plan</th>
+                                <th class="px-6 py-4 text-right" style="color: #6b7280;">Cash</th>
+                                <th class="px-6 py-4 text-right" style="color: #f97316;">Bitcoin</th>
+                                <th class="px-6 py-4 text-right" style="color: #facc15;">Metals</th>
+                                <th class="px-6 py-4 text-right" style="color: #ef4444;">Real Estate</th>
                                 <th class="px-6 py-4 text-right font-black">Net Worth</th>
                                 <th class="px-6 py-4 text-right text-green-400">Today's $</th>
                             </tr>
@@ -349,9 +355,9 @@
         </main>
     </div>
 
-    <script src="templates.js"></script>
-    <script src="engine.js"></script>
-    <script src="data.js"></script>
+    <script type="module" src="engine.js"></script>
+    <script type="module" src="templates.js"></script>
+    <script type="module" src="data.js"></script>
     <script type="module" src="core.js"></script>
 
 </body>

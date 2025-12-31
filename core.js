@@ -9,7 +9,7 @@ import { initializeAuth } from './auth.js';
 window.showTab = (tabId) => {
     document.querySelectorAll('.tab-content').forEach(tab => tab.classList.add('hidden'));
     document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
-    document.getElementById(`tab-${tabId}`).classList.remove('hidden'));
+    document.getElementById(`tab-${tabId}`).classList.remove('hidden');
     document.getElementById(`btn-${tabId}`).classList.add('active');
 
     if (tabId === 'projection' && window.currentData) {
@@ -91,17 +91,26 @@ function attachInputListeners(element) {
         });
     }
 
-    // Show/hide cost basis for Roth assets
+    // Show/hide cost basis for Roth assets and apply color
     const typeSelect = element.querySelector('[data-id="type"]');
     const costBasisCell = element.querySelector('.cost-basis-cell');
-    if (typeSelect && costBasisCell) {
-        typeSelect.addEventListener('change', () => {
-            if (typeSelect.value === 'Post-Tax (Roth)') {
-                costBasisCell.classList.remove('hidden');
-            } else {
-                costBasisCell.classList.add('hidden');
+    if (typeSelect) { // Check if typeSelect exists
+        const updateAssetType = () => {
+            const selectedValue = typeSelect.value;
+            // Toggle cost basis field
+            if (costBasisCell) {
+                if (selectedValue === 'Post-Tax (Roth)') {
+                    costBasisCell.classList.remove('hidden');
+                } else {
+                    costBasisCell.classList.add('hidden');
+                }
             }
-        });
+            // Apply color
+            typeSelect.style.color = assetClassColors[selectedValue] || '#e2e8f0';
+        };
+
+        typeSelect.addEventListener('change', updateAssetType);
+        updateAssetType(); // Initial call to set state
     }
 }
 
@@ -116,10 +125,9 @@ function fillRow(row, data) {
             } else {
                 input.value = data[key];
             }
-            if (input.type === 'range') {
-                const display = input.previousElementSibling?.querySelector('span');
-                if (display) display.textContent = input.value + '%';
-            }
+            // Trigger change events to apply initial styling
+            input.dispatchEvent(new Event('change', { bubbles: true }));
+            input.dispatchEvent(new Event('input', { bubbles: true }));
         }
     });
 }

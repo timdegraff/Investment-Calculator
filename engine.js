@@ -1,3 +1,15 @@
+const assetClassColors = {
+    'Taxable': '#3b82f6', // Blue
+    'Pre-Tax (401k/IRA)': '#8b5cf6', // Violet
+    'Post-Tax (Roth)': '#10b981', // Emerald
+    'HSA': '#14b8a6', // Teal
+    '529 Plan': '#06b6d4', // Cyan
+    'Cash': '#6b7280', // Gray
+    'Bitcoin': '#f97316', // Orange
+    'Metals': '#facc15', // Yellow/Gold
+    'Real Estate': '#ef4444', // Red
+};
+
 const engine = {
     chart: null, // To hold the chart instance
 
@@ -58,43 +70,44 @@ const engine = {
 
         // 1. Initialize asset buckets
         let taxable = 0;
+        let preTax = 0;
         let roth = 0;
-        let cryptoMetals = 0;
+        let hsa = 0;
+        let plan529 = 0;
+        let cash = 0;
+        let bitcoin = 0;
+        let metals = 0;
+        let realEstate = 0;
 
         data.investments?.forEach(inv => {
             const value = Number(inv.value || 0);
             switch (inv.type) {
-                case 'taxable':
-                case 'brokerage':
-                    taxable += value;
-                    break;
-                case 'roth-ira':
-                case '401k':
-                case 'hsa':
-                    roth += value;
-                    break;
-                case 'crypto':
-                case 'metals':
-                    cryptoMetals += value;
-                    break;
-                default:
-                    taxable += value;
+                case 'Taxable': taxable += value; break;
+                case 'Pre-Tax (401k/IRA)': preTax += value; break;
+                case 'Post-Tax (Roth)': roth += value; break;
+                case 'HSA': hsa += value; break;
+                case '529 Plan': plan529 += value; break;
+                case 'Cash': cash += value; break;
+                case 'Bitcoin': bitcoin += value; break;
+                case 'Metals': metals += value; break;
+                default: taxable += value;
             }
         });
 
-        cryptoMetals += data.otherAssets?.reduce((s, o) => s + Number(o.value || 0), 0) || 0;
-        let realEstate = data.realEstate?.reduce((s, r) => s + Number(r.value || 0), 0) || 0;
-        
         const initialSummaries = engine.calculateSummaries(data);
         let currentAnnualGross = initialSummaries.grossIncome;
         const workplaceSavings = initialSummaries.workplaceSavings.personal + initialSummaries.workplaceSavings.match;
 
         let manualSavingsTaxable = 0;
+        let manualSavingsPreTax = 0;
         let manualSavingsRoth = 0;
+
         data.manualSavings?.forEach(item => {
             const annual = Number(item.annual || 0);
-            if (item.type === 'roth-ira' || item.type === 'hsa') {
+            if (item.type === 'Post-Tax (Roth)' || item.type === 'HSA') {
                 manualSavingsRoth += annual;
+            } else if (item.type === 'Pre-Tax (401k/IRA)') {
+                manualSavingsPreTax += annual;
             } else { 
                 manualSavingsTaxable += annual;
             }
@@ -104,17 +117,14 @@ const engine = {
 
         const results = [];
         results.push({ 
-            age: startAge, 
-            taxable, 
-            roth, 
-            cryptoMetals, 
-            realEstate, 
-            netWorth: taxable + roth + cryptoMetals + realEstate 
+            age: startAge, taxable, preTax, roth, hsa, plan529, cash, bitcoin, metals, realEstate, 
+            netWorth: taxable + preTax + roth + hsa + plan529 + cash + bitcoin + metals + realEstate 
         });
 
         for (let age = startAge + 1; age <= 100; age++) {
             let annualSavingsTaxable = manualSavingsTaxable + leftoverCashflow;
-            let annualSavingsRoth = workplaceSavings + manualSavingsRoth;
+            let annualSavingsPreTax = workplaceSavings + manualSavingsPreTax;
+            let annualSavingsRoth = manualSavingsRoth;
 
             if (age <= a.retirementAge) {
                 currentAnnualGross *= (1 + a.salaryGrowth / 100);
@@ -123,12 +133,13 @@ const engine = {
                 const annualTaxableIncome = currentAnnualGross - (initialSummaries.workplaceSavings.personal);
                 const estimatedAnnualTaxes = math.calculateProgressiveTax(annualTaxableIncome);
                 const netAnnualIncome = currentAnnualGross - estimatedAnnualTaxes;
-                const currentLeftover = netAnnualIncome - initialSummaries.totalAnnualExpenses - (manualSavingsTaxable + manualSavingsRoth);
+                const currentLeftover = netAnnualIncome - initialSummaries.totalAnnualExpenses - (manualSavingsTaxable + manualSavingsPreTax + manualSavingsRoth);
                 
                 annualSavingsTaxable = manualSavingsTaxable + (currentLeftover > 0 ? currentLeftover : 0);
-                annualSavingsRoth = currentWorkplaceSavings + manualSavingsRoth;
+                annualSavingsPreTax = currentWorkplaceSavings + manualSavingsPreTax;
+
             } else {
-                const totalPortfolio = taxable + roth + cryptoMetals;
+                const totalPortfolio = taxable + preTax + roth + hsa + plan529 + cash + bitcoin + metals;
                 const drawRate = age < a.ssStartAge ? a.preSSDraw : a.postSSDraw;
                 const drawAmount = totalPortfolio * (drawRate / 100);
                 const ssIncome = (age >= a.ssStartAge) ? (a.ssMonthly * 12) : 0;
@@ -138,27 +149,31 @@ const engine = {
                     const drawFromTaxable = Math.min(taxable, Math.abs(netCashflow));
                     taxable -= drawFromTaxable;
                     const remainingDraw = Math.abs(netCashflow) - drawFromTaxable;
-                    roth -= remainingDraw;
+                    preTax -= remainingDraw;
                 } else {
                     taxable += netCashflow;
                 }
                 annualSavingsTaxable = 0;
+                annualSavingsPreTax = 0;
                 annualSavingsRoth = 0;
             }
 
             taxable = taxable * (1 + (a.stockGrowth / 100)) + annualSavingsTaxable;
+            preTax = preTax * (1 + (a.stockGrowth / 100)) + annualSavingsPreTax;
             roth = roth * (1 + (a.stockGrowth / 100)) + annualSavingsRoth;
-            cryptoMetals = cryptoMetals * (1 + ((a.cryptoGrowth || a.stockGrowth) / 100));
+            hsa = hsa * (1 + (a.stockGrowth / 100));
+            plan529 = plan529 * (1 + (a.stockGrowth / 100));
+            cash = cash * (1 + (a.inflation / 100));
+            bitcoin = bitcoin * (1 + ((a.cryptoGrowth || a.stockGrowth) / 100));
+            metals = metals * (1 + (a.inflation / 100));
             realEstate *= (1 + (a.housingGrowth / 100));
             
-            const netWorth = taxable + roth + cryptoMetals + realEstate;
+            const netWorth = taxable + preTax + roth + hsa + plan529 + cash + bitcoin + metals + realEstate;
             results.push({ 
-                age,
-                taxable: Math.max(0, taxable),
-                roth: Math.max(0, roth),
-                cryptoMetals: Math.max(0, cryptoMetals),
-                realEstate: Math.max(0, realEstate),
-                netWorth: Math.max(0, netWorth)
+                age, 
+                taxable: Math.max(0, taxable), preTax: Math.max(0, preTax), roth: Math.max(0, roth), hsa: Math.max(0, hsa), 
+                plan529: Math.max(0, plan529), cash: Math.max(0, cash), bitcoin: Math.max(0, bitcoin), 
+                metals: Math.max(0, metals), realEstate: Math.max(0, realEstate), netWorth: Math.max(0, netWorth)
             });
         }
         engine.displayProjection(results.slice(1), a);
@@ -169,10 +184,15 @@ const engine = {
         if (!ctx) return;
 
         const labels = results.map(r => r.age);
-        const taxableData = results.map(r => r.taxable);
-        const rothData = results.map(r => r.roth);
-        const cryptoMetalsData = results.map(r => r.cryptoMetals);
-        const realEstateData = results.map(r => r.realEstate);
+        const datasets = Object.keys(assetClassColors).map(key => ({
+            label: key,
+            data: results.map(r => r[key.toLowerCase().replace(/[^a-z0-9]/g, '')]),
+            backgroundColor: assetClassColors[key] + '80', // Add alpha for fill
+            borderColor: assetClassColors[key],
+            fill: true,
+            pointRadius: 0,
+            tension: 0.4
+        }));
 
         if (engine.chart) {
             engine.chart.destroy();
@@ -180,47 +200,7 @@ const engine = {
 
         engine.chart = new Chart(ctx, {
             type: 'line',
-            data: {
-                labels: labels,
-                datasets: [
-                    {
-                        label: 'Taxable',
-                        data: taxableData,
-                        backgroundColor: 'rgba(59, 130, 246, 0.5)',
-                        borderColor: 'rgba(37, 99, 235, 1)',
-                        fill: true,
-                        pointRadius: 0,
-                        tension: 0.4
-                    },
-                    {
-                        label: 'Roth',
-                        data: rothData,
-                        backgroundColor: 'rgba(34, 197, 94, 0.5)',
-                        borderColor: 'rgba(22, 163, 74, 1)',
-                        fill: true,
-                        pointRadius: 0,
-                        tension: 0.4
-                    },
-                    {
-                        label: 'Crypto/Metals',
-                        data: cryptoMetalsData,
-                        backgroundColor: 'rgba(251, 191, 36, 0.5)',
-                        borderColor: 'rgba(245, 158, 11, 1)',
-                        fill: true,
-                        pointRadius: 0,
-                        tension: 0.4
-                    },
-                     {
-                        label: 'Real Estate',
-                        data: realEstateData,
-                        backgroundColor: 'rgba(249, 115, 22, 0.5)',
-                        borderColor: 'rgba(234, 88, 12, 1)',
-                        fill: true,
-                        pointRadius: 0,
-                        tension: 0.4
-                    }
-                ]
-            },
+            data: { labels, datasets },
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
@@ -261,8 +241,13 @@ const engine = {
             tr.innerHTML = `
                 <td class="px-6 py-3 font-bold">${row.age}</td>
                 <td class="px-6 py-3 text-right">${math.toCurrency(row.taxable)}</td>
+                <td class="px-6 py-3 text-right">${math.toCurrency(row.preTax)}</td>
                 <td class="px-6 py-3 text-right">${math.toCurrency(row.roth)}</td>
-                <td class="px-6 py-3 text-right">${math.toCurrency(row.cryptoMetals)}</td>
+                <td class="px-6 py-3 text-right">${math.toCurrency(row.hsa)}</td>
+                <td class="px-6 py-3 text-right">${math.toCurrency(row.plan529)}</td>
+                <td class="px-6 py-3 text-right">${math.toCurrency(row.cash)}</td>
+                <td class="px-6 py-3 text-right">${math.toCurrency(row.bitcoin)}</td>
+                <td class="px-6 py-3 text-right">${math.toCurrency(row.metals)}</td>
                 <td class="px-6 py-3 text-right">${math.toCurrency(row.realEstate)}</td>
                 <td class="px-6 py-3 text-right font-black">${math.toCurrency(row.netWorth)}</td>
                 <td class="px-6 py-3 text-right text-green-400 font-bold">${math.toCurrency(todaysValue)}</td>
