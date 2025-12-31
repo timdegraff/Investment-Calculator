@@ -1,3 +1,4 @@
+
 import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
 import { assumptions, math, engine } from './utils.js';
 
@@ -23,8 +24,7 @@ async function loadData() {
     } else {
         console.log("No data found for user, initializing with default data.");
         window.currentData = getInitialData();
-        // Save this initial data to Firebase immediately
-        await autoSave(false); // Don't re-scrape UI on first save
+        await autoSave(false);
     }
     
     loadUserDataIntoUI(window.currentData);
@@ -32,11 +32,9 @@ async function loadData() {
 
 export function loadUserDataIntoUI(data) {
     console.log("Populating UI with user data...");
-
-    // Clear existing dynamic content to prevent duplication
     clearDynamicContent();
 
-    // Populate Investments
+    // Populate data tables
     data.investments?.forEach(item => window.addRow('investment-rows', 'investment', item));
     data.helocs?.forEach(item => window.addRow('heloc-rows', 'heloc', item));
     data.debts?.forEach(item => window.addRow('debt-rows', 'debt', item));
@@ -44,13 +42,9 @@ export function loadUserDataIntoUI(data) {
     data.savings?.forEach(item => window.addRow('savings-list', 'savings-item', item));
     data.budget?.forEach(item => window.addRow('budget-rows', 'budget-item', item));
     
-    // Populate Assumptions
-    const assumptionsContainer = document.getElementById('assumptions-container');
-    if (data.assumptions && assumptionsContainer) {
-        Object.keys(data.assumptions).forEach(key => {
-            const input = assumptionsContainer.querySelector(`[data-id="${key}"]`);
-            if (input) input.value = data.assumptions[key];
-        });
+    // Create and populate the assumption controls
+    if (data.assumptions) {
+        window.createAssumptionControls(data);
     }
     
     window.updateCostBasisHeaderVisibility();
@@ -73,6 +67,12 @@ export async function autoSave(scrape = true) {
     }
 
     updateSummaries(window.currentData);
+
+    // Re-run projection if the projection tab is currently active
+    const projectionTab = document.getElementById('tab-projection');
+    if (projectionTab && !projectionTab.classList.contains('hidden')) {
+        engine.runProjection(window.currentData);
+    }
 
     if (user && db) {
         const docRef = doc(db, "users", user.uid);
@@ -145,7 +145,6 @@ function getInitialData() {
     };
 }
 
-// We need to re-export this so it can be used in core.js
 export function updateSummaries(data) {
     if (!data) return;
 

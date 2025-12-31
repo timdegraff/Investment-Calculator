@@ -2,7 +2,22 @@
 import { loginWithGoogle, logoutUser } from './auth.js';
 import { templates } from './templates.js';
 import { autoSave, updateSummaries } from './data.js';
-import { engine, math, assetClassColors } from './utils.js';
+import { engine, math, assetClassColors, assumptions } from './utils.js';
+
+// --- DEBOUNCE UTILITY ---
+function debounce(func, wait) {
+    let timeout;
+    return function executedFunction(...args) {
+        const later = () => {
+            clearTimeout(timeout);
+            func(...args);
+        };
+        clearTimeout(timeout);
+        timeout = setTimeout(later, wait);
+    };
+}
+
+const debouncedAutoSave = debounce(autoSave, 500); // 500ms delay
 
 // This single function is exported to main.js to initialize the entire UI.
 export function initializeUI() {
@@ -51,7 +66,7 @@ function attachDynamicRowListeners() {
             const row = removeButton.closest('tr, .income-card');
             if (row) {
                 row.remove();
-                autoSave();
+                debouncedAutoSave();
                 updateCostBasisHeaderVisibility(); 
             }
         }
@@ -91,7 +106,7 @@ function addRow(containerId, type, data = null) {
         fillRow(element, data);
     } else {
         // If it's a new row, trigger a save immediately
-        autoSave();
+        debouncedAutoSave();
     }
     
     return element;
@@ -99,14 +114,7 @@ function addRow(containerId, type, data = null) {
 
 function attachInputListeners(element) {
     element.querySelectorAll('input, select').forEach(input => {
-        input.addEventListener('input', autoSave);
-    });
-
-    element.querySelectorAll('input[type="range"]').forEach(slider => {
-        const display = slider.previousElementSibling.querySelector('span');
-        slider.addEventListener('input', () => {
-            display.textContent = `${slider.value}%`;
-        });
+        input.addEventListener('input', debouncedAutoSave);
     });
 
     const typeSelect = element.querySelector('[data-id="type"]');
@@ -155,7 +163,47 @@ function updateCostBasisHeaderVisibility() {
     }
 }
 
+export function createAssumptionControls(data) {
+    const container = document.getElementById('assumptions-container');
+    if (!container) return;
+    container.innerHTML = ''; // Clear existing controls
+
+    const controlDefs = {
+        currentAge: { label: 'Current Age', min: 18, max: 100, step: 1, unit: ' years' },
+        retirementAge: { label: 'Retirement Age', min: 40, max: 80, step: 1, unit: ' years' },
+        investmentGrowth: { label: 'Investment Growth', min: 0, max: 20, step: 0.5, unit: '%' },
+        swr: { label: 'Safe Withdrawal Rate', min: 1, max: 10, step: 0.1, unit: '%' },
+        taxRate: { label: 'Effective Tax Rate', min: 0, max: 50, step: 1, unit: '%' },
+    };
+
+    Object.entries(controlDefs).forEach(([key, def]) => {
+        const value = data.assumptions[key] || assumptions.defaults[key];
+        const controlWrapper = document.createElement('div');
+
+        const controlHtml = `
+            <label class="flex justify-between items-center font-bold text-slate-300 mb-2">
+                ${def.label}
+                <span class="text-lg font-black text-blue-400">${value}${def.unit}</span>
+            </label>
+            <input type="range" data-id="${key}" min="${def.min}" max="${def.max}" step="${def.step}" value="${value}" class="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer">
+        `;
+        controlWrapper.innerHTML = controlHtml;
+
+        const slider = controlWrapper.querySelector('input[type="range"]');
+        const display = controlWrapper.querySelector('span');
+
+        slider.addEventListener('input', () => {
+            display.textContent = `${slider.value}${def.unit}`;
+            debouncedAutoSave();
+        });
+
+        container.appendChild(controlWrapper);
+    });
+}
+
+
 // Make functions globally available if they need to be called from the data layer
 window.addRow = addRow;
 window.updateSummaries = updateSummaries;
 window.updateCostBasisHeaderVisibility = updateCostBasisHeaderVisibility;
+window.createAssumptionControls = createAssumptionControls;

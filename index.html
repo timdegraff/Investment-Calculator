@@ -37,7 +37,6 @@
                 <button data-tab="income" class="tab-btn w-full text-left p-3 rounded-lg flex items-center gap-3"><i class="fas fa-money-bill-wave w-6"></i><span>Income</span></button>
                 <button data-tab="savings" class="tab-btn w-full text-left p-3 rounded-lg flex items-center gap-3"><i class="fas fa-piggy-bank w-6"></i><span>Savings</span></button>
                 <button data-tab="budget" class="tab-btn w-full text-left p-3 rounded-lg flex items-center gap-3"><i class="fas fa-chart-pie w-6"></i><span>Monthly Budget</span></button>
-                <button data-tab="assumptions" class="tab-btn w-full text-left p-3 rounded-lg flex items-center gap-3"><i class="fas fa-cogs w-6"></i><span>Assumptions</span></button>
                 <button data-tab="projection" class="tab-btn w-full text-left p-3 rounded-lg flex items-center gap-3"><i class="fas fa-chart-line w-6"></i><span>Projection</span></button>
             </nav>
             <div class="p-4 border-t border-slate-700">
@@ -167,13 +166,17 @@
                 </div>
             </section>
 
-            <section id="tab-assumptions" class="tab-content hidden max-w-4xl mx-auto">
-                 <div id="assumptions-container" class="bg-slate-800 rounded-2xl shadow-lg p-8 space-y-6"></div>
-            </section>
-
             <section id="tab-projection" class="tab-content hidden max-w-7xl mx-auto">
-                <div class="bg-slate-800 rounded-2xl shadow-lg p-8 h-[60vh]">
-                    <canvas id="projectionChart"></canvas>
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                    <div class="lg:col-span-2 bg-slate-800 rounded-2xl shadow-lg p-8 h-[60vh]">
+                        <canvas id="projectionChart"></canvas>
+                    </div>
+                    <div class="bg-slate-800 rounded-2xl shadow-lg p-8">
+                        <h3 class="text-xl font-bold mb-6">Projection Controls</h3>
+                        <div id="assumptions-container" class="space-y-6">
+                            <!-- Controls will be added here dynamically -->
+                        </div>
+                    </div>
                 </div>
             </section>
 

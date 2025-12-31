@@ -28,23 +28,23 @@ export const assetClassColors = {
 
 export const assumptions = {
     defaults: {
-        drawdown: 4,
-        drawdownSWR: 3,
-        stockAPY: 10,
+        currentAge: 40,
         retirementAge: 65,
-        taxRate: 25
+        investmentGrowth: 8,
+        swr: 4,
+        taxRate: 20
     }
 };
 
 export const engine = {
     runProjection: (data) => {
-        // Projection logic will go here
         console.log("Running projection with:", data);
 
         const canvas = document.getElementById('projectionChart');
         if (!canvas) return;
 
         const projectionData = engine.calculateProjection(data);
+        const retirementIndex = parseInt(data.assumptions.retirementAge, 10) - parseInt(data.assumptions.currentAge, 10);
 
         if (window.myChart instanceof Chart) {
             window.myChart.destroy();
@@ -59,11 +59,14 @@ export const engine = {
                     {
                         label: 'Net Worth',
                         data: projectionData.netWorth,
-                        borderColor: '#34d399',
                         backgroundColor: 'rgba(52, 211, 153, 0.1)',
                         fill: true,
                         tension: 0.4,
                         yAxisID: 'y',
+                        segment: {
+                            borderColor: ctx => (ctx.p1.parsed.x >= retirementIndex ? 'rgba(251, 113, 133, 1)' : 'rgba(52, 211, 153, 1)'),
+                            borderDash: ctx => (ctx.p1.parsed.x >= retirementIndex ? [5, 5] : undefined),
+                        }
                     },
                     {
                         label: 'Annual Spending',
@@ -80,6 +83,12 @@ export const engine = {
                 responsive: true,
                 maintainAspectRatio: false,
                 scales: {
+                    x: {
+                        title: {
+                            display: true,
+                            text: 'Age'
+                        }
+                    },
                     y: { 
                         type: 'linear', 
                         display: true, 
@@ -115,19 +124,36 @@ export const engine = {
     },
 
     calculateProjection: (data) => {
-        const years = 50; // Project 50 years into the future
-        const labels = Array.from({length: years}, (_, i) => new Date().getFullYear() + i);
+        const yearsToProject = 60;
+        const labels = [];
         const netWorthData = [];
         const spendingData = [];
+
+        const { assumptions } = data;
+        const currentAge = parseInt(assumptions.currentAge, 10);
+        const retirementAge = parseInt(assumptions.retirementAge, 10);
+        const investmentGrowth = parseFloat(assumptions.investmentGrowth) / 100;
+        const swr = parseFloat(assumptions.swr) / 100;
 
         let currentNetWorth = engine.calculateSummaries(data).netWorth;
         const annualSavings = engine.calculateSummaries(data).totalAnnualSavings;
         const annualSpending = engine.calculateSummaries(data).totalAnnualSpending;
 
-        for (let i = 0; i < years; i++) {
+        for (let i = 0; i < yearsToProject; i++) {
+            const age = currentAge + i;
+            labels.push(age);
+
+            if (age < retirementAge) {
+                // Pre-retirement: accumulating
+                spendingData.push(annualSpending);
+                currentNetWorth = (currentNetWorth + annualSavings) * (1 + investmentGrowth);
+            } else {
+                // Post-retirement: drawing down
+                const withdrawal = currentNetWorth * swr;
+                spendingData.push(withdrawal);
+                currentNetWorth = currentNetWorth * (1 + investmentGrowth) - withdrawal;
+            }
             netWorthData.push(currentNetWorth);
-            spendingData.push(annualSpending);
-            currentNetWorth = (currentNetWorth + annualSavings) * (1 + (data.assumptions.stockAPY / 100));
         }
 
         return { labels, netWorth: netWorthData, spending: spendingData };
