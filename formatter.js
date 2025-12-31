@@ -63,6 +63,26 @@ const formatter = {
     stripCommas: (str) => {
         if (typeof str !== 'string') return str;
         return str.replace(/,/g, '');
+    },
+
+    /**
+     * Formats a number into a compact, readable currency string (e.g., $1.23M, $215K).
+     * @param {number} value - The numeric value to format.
+     * @returns {string} - The formatted currency string.
+     */
+    formatCurrency: (value) => {
+        if (typeof value !== 'number') return '$0';
+
+        const absValue = Math.abs(value);
+        const sign = value < 0 ? '-' : '';
+
+        if (absValue >= 1_000_000) {
+            return `${sign}$${(absValue / 1_000_000).toFixed(2)}M`;
+        } else if (absValue >= 1_000) {
+            return `${sign}$${(absValue / 1_000).toFixed(0)}K`;
+        }
+
+        return `$${formatter.addCommas(value.toFixed(0))}`;
     }
 };
 

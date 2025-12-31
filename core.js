@@ -63,8 +63,11 @@ function attachDynamicRowListeners() {
             addRow(containerId, type);
             debouncedAutoSave();
         } else if (removeButton) {
-            removeButton.closest('tr, .income-card').remove();
-            debouncedAutoSave();
+            const row = removeButton.closest('tr, .income-card, .real-estate-card');
+            if (row) {
+                row.remove();
+                debouncedAutoSave();
+            }
         }
     });
 }
@@ -113,12 +116,16 @@ function addRow(containerId, type, data = {}) {
     const container = document.getElementById(containerId);
     if (!container) return;
 
-    const isCard = type === 'income';
+    const isCard = ['income', 'realEstate'].includes(type);
     const newElement = document.createElement(isCard ? 'div' : 'tr');
 
-    newElement.className = isCard
-        ? 'income-card bg-slate-800 rounded-2xl p-5 shadow-lg'
-        : 'border-b border-slate-700 hover:bg-slate-700/50';
+    if (type === 'income') {
+        newElement.className = 'income-card bg-slate-800 rounded-2xl shadow-lg';
+    } else if (type === 'realEstate') {
+        newElement.className = 'real-estate-card grid grid-cols-1 md:grid-cols-4 gap-4 items-center p-5';
+    } else {
+        newElement.className = 'border-b border-slate-700 hover:bg-slate-700/50';
+    }
 
     newElement.innerHTML = templates[type](data);
     container.appendChild(newElement);
@@ -155,9 +162,17 @@ function attachInputListeners(element) {
     if (typeSelect) {
         const costBasisInput = element.querySelector('input[data-id="costBasis"]');
         const handleTypeChange = () => {
-            const isRoth = typeSelect.value === 'Post-Tax (Roth)';
-            costBasisInput.disabled = !isRoth;
-            if (!isRoth) costBasisInput.value = 'N/A';
+            const selectedType = typeSelect.value;
+            const isTaxable = selectedType === 'Taxable';
+            const isRoth = selectedType === 'Post-Tax (Roth)';
+
+            costBasisInput.disabled = !(isTaxable || isRoth);
+
+            if (!isTaxable && !isRoth) {
+                costBasisInput.value = 'N/A';
+            } else if (costBasisInput.value === 'N/A') {
+                costBasisInput.value = ''; // Clear N/A if it becomes enabled
+            }
         };
         typeSelect.addEventListener('change', handleTypeChange);
         handleTypeChange();

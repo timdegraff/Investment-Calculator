@@ -1,6 +1,7 @@
 
 import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
 import { assumptions, math, engine } from './utils.js';
+import { formatter } from './formatter.js';
 
 let db;
 let user;
@@ -151,12 +152,12 @@ export function updateSummaries(data) {
 
     const summaries = engine.calculateSummaries(data);
 
-    const updateText = (id, value, isCompact = true) => {
+    const updateText = (id, value) => {
         const el = document.getElementById(id);
-        if (el) el.textContent = math.toCurrency(value, isCompact);
+        if (el) el.textContent = formatter.formatCurrency(value);
     };
 
-    updateText('sidebar-networth', summaries.netWorth, false);
+    updateText('sidebar-networth', summaries.netWorth);
 
     updateText('sum-assets', summaries.totalAssets);
     updateText('sum-liabilities', summaries.totalLiabilities);
