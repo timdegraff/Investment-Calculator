@@ -31,6 +31,9 @@ export const assetClassColors = {
 export const assumptions = {
     defaults: {
         currentAge: 40,
+        retirementAge: 65,
+        ssStartAge: 67,
+        ssMonthly: 2500,
         stockGrowth: 7,
         cryptoGrowth: 10,
         metalsGrowth: 2,
@@ -42,7 +45,7 @@ const getGrowthRate = (assetType, assumptions) => {
     if (stockTypes.includes(assetType)) return parseFloat(assumptions.stockGrowth) / 100;
     if (assetType === 'Crypto') return parseFloat(assumptions.cryptoGrowth) / 100;
     if (assetType === 'Metals') return parseFloat(assumptions.metalsGrowth) / 100;
-    return 0; // For Cash and Savings
+    return 0.02; // For Cash and Savings
 };
 
 export const engine = {
@@ -87,7 +90,7 @@ export const engine = {
 
         const ctx = canvas.getContext('2d');
         window.myChart = new Chart(ctx, {
-            type: 'bar', // Changed to bar for better stacking visualization
+            type: 'bar', 
             data: { labels, datasets },
             options: {
                 responsive: true,
@@ -106,43 +109,36 @@ export const engine = {
     },
 
     calculateAssetProjection: (data) => {
-        const { assumptions, investments, budget } = data;
+        const { assumptions, investments, budget, income } = data;
+        const { totalAnnualBudget } = engine.calculateSummaries(data);
+        
         const currentAge = parseInt(assumptions.currentAge, 10) || assumptions.defaults.currentAge;
+        const retirementAge = parseInt(assumptions.retirementAge, 10) || assumptions.defaults.retirementAge;
+        const ssStartAge = parseInt(assumptions.ssStartAge, 10) || assumptions.defaults.ssStartAge;
+        const ssAnnual = (parseInt(assumptions.ssMonthly, 10) || 0) * 12;
         const yearsToProject = 80 - currentAge;
 
         const allAssets = [
-            ...(investments || []).map(inv => ({ name: inv.name, type: inv.type, currentValue: math.fromCurrency(inv.value), annualContribution: 0 })),
-            ...(budget?.savings || []).map(sav => ({ name: sav.name, type: 'Savings', currentValue: 0, annualContribution: math.fromCurrency(sav.annual) }))
+            ...(investments || []).map(inv => ({ ...inv, currentValue: math.fromCurrency(inv.value) })),
         ];
-        
+
+        // Find or create a 'Cash' account to deposit savings into
+        let cashAccount = allAssets.find(a => a.type === 'Cash');
+        if (!cashAccount) {
+            cashAccount = { name: 'Cash', type: 'Cash', currentValue: 0 };
+            allAssets.push(cashAccount);
+        }
+
         if (allAssets.length === 0) return { labels: [], datasets: [], tableData: [], assetDetails: [] };
 
-        // --- Aggregate by Type for Chart ---
-        const aggregatedAssets = {};
-        allAssets.forEach(asset => {
-            if (!aggregatedAssets[asset.type]) {
-                aggregatedAssets[asset.type] = { currentValue: 0, annualContribution: 0 };
-            }
-            aggregatedAssets[asset.type].currentValue += asset.currentValue;
-            aggregatedAssets[asset.type].annualContribution += asset.annualContribution;
-        });
-
-        const chartAssetTypes = Object.keys(aggregatedAssets);
-        let chartCurrentValues = chartAssetTypes.map(type => aggregatedAssets[type].currentValue);
-        const chartAnnualContributions = chartAssetTypes.map(type => aggregatedAssets[type].annualContribution);
-
-        const datasets = chartAssetTypes.map(type => ({
-            label: type,
-            data: [],
-            backgroundColor: assetClassColors[type] || '#34d399',
-            barPercentage: 0.9, // Adjust for spacing
-            categoryPercentage: 0.8, // Adjust for spacing
-        }));
-
-        // --- Keep Individual Assets for Table ---
-        let tableCurrentValues = allAssets.map(a => a.currentValue);
-        const tableAnnualContributions = allAssets.map(a => a.annualContribution);
         const assetDetails = allAssets.map(a => ({ name: a.name || 'Unnamed', type: a.type }));
+        let currentValues = allAssets.map(a => a.currentValue);
+
+        const datasets = assetDetails.map(asset => ({
+            label: asset.name,
+            data: [],
+            backgroundColor: assetClassColors[asset.type] || '#34d399',
+        }));
 
         const labels = [];
         const tableData = [];
@@ -150,37 +146,101 @@ export const engine = {
         for (let i = 0; i <= yearsToProject; i++) {
             const age = currentAge + i;
             labels.push(age);
-            const tableRow = { 'Year': new Date().getFullYear() + i, 'Age': age, 'Total': 0 };
 
-            // --- Update & Record Chart Data ---
-            if (i > 0) {
-                chartCurrentValues = chartCurrentValues.map((value, index) => {
-                    const assetType = chartAssetTypes[index];
-                    const growthRate = getGrowthRate(assetType, assumptions);
-                    return (value + chartAnnualContributions[index]) * (1 + growthRate);
+            // --- Calculate Total Annual Income & Savings ---
+            const isRetired = age >= retirementAge;
+            let totalAnnualIncome = 0;
+            let total401kContribution = 0;
+
+            if (!isRetired) {
+                (income || []).forEach(inc => {
+                    const base = math.fromCurrency(inc.amount);
+                    const bonus = base * (parseFloat(inc.bonusPct) / 100 || 0);
+                    let currentYearIncome = base;
+                    // Apply raises only up to retirement
+                    if (age > currentAge) {
+                       currentYearIncome *= Math.pow(1 + (parseFloat(inc.increase) / 100 || 0), i);
+                    }
+                    totalAnnualIncome += currentYearIncome + bonus;
+
+                    if (!inc.remainsInRetirement) {
+                        const personalContrib = (inc.contribIncBonus ? currentYearIncome + bonus : currentYearIncome) * (parseFloat(inc.contribution) / 100 || 0);
+                        const companyMatch = (inc.contribIncBonus ? currentYearIncome + bonus : currentYearIncome) * (parseFloat(inc.match) / 100 || 0);
+                        total401kContribution += personalContrib + companyMatch;
+                    }
                 });
             }
-            chartCurrentValues.forEach((value, index) => datasets[index].data.push(value));
-            
-            // --- Update & Record Table Data ---
-             if (i > 0) {
-                tableCurrentValues = tableCurrentValues.map((value, index) => {
+
+            const ssIncome = age >= ssStartAge ? ssAnnual : 0;
+            const annualSavings = (budget?.savings?.reduce((sum, s) => sum + math.fromCurrency(s.annual), 0) || 0) + total401kContribution;
+
+            // --- Grow assets ---
+            if (i > 0) {
+                currentValues = currentValues.map((value, index) => {
                     const assetType = assetDetails[index].type;
                     const growthRate = getGrowthRate(assetType, assumptions);
-                    return (value + tableAnnualContributions[index]) * (1 + growthRate);
+                    return value * (1 + growthRate);
                 });
             }
-            let totalRowValue = 0;
-            tableCurrentValues.forEach((value, index) => {
-                tableRow[assetDetails[index].name] = value;
-                totalRowValue += value;
-            });
-            tableRow.Total = totalRowValue;
+            
+            // Distribute savings to cash/401k
+            const preTax401k = allAssets.find(a => a.type === 'Pre-Tax (401k/IRA)');
+            if (preTax401k) {
+                const idx = assetDetails.findIndex(a => a.name === preTax401k.name);
+                if (idx !== -1) currentValues[idx] += total401kContribution;
+            }
 
+            const cashIdx = assetDetails.findIndex(a => a.type === 'Cash');
+            if (cashIdx !== -1) {
+                 currentValues[cashIdx] += (budget?.savings?.reduce((sum, s) => sum + math.fromCurrency(s.annual), 0) || 0);
+                 currentValues[cashIdx] += ssIncome;
+            }
+
+            // --- Handle Retirement Spending ---
+            if (isRetired) {
+                let remainingExpenses = totalAnnualBudget;
+                const withdrawalOrder = ['Cash', 'Taxable', 'Post-Tax (Roth)', 'Pre-Tax (401k/IRA)'];
+                
+                for (const type of withdrawalOrder) {
+                    const accountsOfType = assetDetails.map((detail, idx) => ({...detail, idx})).filter(d => d.type === type);
+                    for (const acc of accountsOfType) {
+                        if (remainingExpenses <= 0) break;
+                        const available = currentValues[acc.idx];
+                        const withdraw = Math.min(remainingExpenses, available);
+                        currentValues[acc.idx] -= withdraw;
+                        remainingExpenses -= withdraw;
+                    }
+                }
+            }
+
+            // Record data for chart and table
+            const totalRowValue = currentValues.reduce((sum, v) => sum + v, 0);
+            const tableRow = { 'Year': new Date().getFullYear() + i, 'Age': age, 'Total': totalRowValue };
+            
+            const aggregatedForChart = {};
+            currentValues.forEach((value, index) => {
+                const assetType = assetDetails[index].type;
+                if(!aggregatedForChart[assetType]) aggregatedForChart[assetType] = 0;
+                aggregatedForChart[assetType] += value;
+                tableRow[assetDetails[index].name] = value;
+            });
+
+            datasets.forEach(ds => {
+                const assetType = allAssets.find(a => a.name === ds.label).type;
+                const totalForType = Object.entries(aggregatedForChart).reduce((sum, [type, value]) => (type === assetType ? sum + value : sum), 0);
+                const individualValue = currentValues[assetDetails.findIndex(a => a.name === ds.label)];
+                ds.data.push(individualValue);
+            });
+            
             tableData.push(tableRow);
         }
         
-        return { labels, datasets, tableData, assetDetails };
+        const finalDataSets = assetDetails.map(asset => {
+             const dsIndex = datasets.findIndex(d => d.label === asset.name);
+             return datasets[dsIndex];
+        });
+        
+        return { labels, datasets: finalDataSets, tableData, assetDetails };
     },
 
     calculateSummaries: (data) => {

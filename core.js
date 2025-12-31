@@ -1,4 +1,3 @@
-
 import { loginWithGoogle, logoutUser } from './auth.js';
 import { templates } from './templates.js';
 import { autoSave } from './data.js';
@@ -212,6 +211,9 @@ function createAssumptionControls(data) {
 
     const controlDefs = {
         currentAge: { label: 'Current Age', min: 18, max: 100, step: 1, unit: ' years', defaultValue: 40 },
+        retirementAge: { label: 'Retirement Age', min: 50, max: 80, step: 1, unit: ' years', defaultValue: 65 },
+        ssStartAge: { label: 'SS Start Age', min: 62, max: 70, step: 1, unit: ' years', defaultValue: 67 },
+        ssMonthly: { label: 'SS Monthly', min: 0, max: 7000, step: 100, unit: '/mo', defaultValue: 2500, isCurrency: true },
         stockGrowth: { label: 'Stock Growth 📈', min: 0, max: 20, step: 0.5, unit: '%', defaultValue: 7 },
         cryptoGrowth: { label: 'Crypto Growth ₿', min: -20, max: 50, step: 1, unit: '%', defaultValue: 10 },
         metalsGrowth: { label: 'Metals Growth 🪙', min: -10, max: 20, step: 0.5, unit: '%', defaultValue: 2 },
@@ -221,10 +223,13 @@ function createAssumptionControls(data) {
         const value = data.assumptions?.[key] ?? def.defaultValue;
         const controlWrapper = document.createElement('div');
         controlWrapper.className = 'space-y-2';
+        
+        const displayValue = def.isCurrency ? formatter.formatCurrency(value, false) : `${value}${def.unit}`;
+
         controlWrapper.innerHTML = `
             <label class="flex justify-between items-center font-bold text-slate-300">
                 ${def.label}
-                <span class="text-lg font-black text-blue-400">${value}${def.unit}</span>
+                <span class="text-lg font-black text-blue-400">${displayValue}</span>
             </label>
             <input type="range" data-id="${key}" min="${def.min}" max="${def.max}" step="${def.step}" value="${value}" class="input-range">
         `;
@@ -232,15 +237,17 @@ function createAssumptionControls(data) {
         const slider = controlWrapper.querySelector('input[type="range"]');
         const display = controlWrapper.querySelector('span');
         
-        const updateDisplay = () => display.textContent = `${slider.value}${def.unit}`;
+        const updateDisplay = () => {
+            const sliderValue = parseFloat(slider.value);
+            display.textContent = def.isCurrency ? formatter.formatCurrency(sliderValue, false) : `${sliderValue}${def.unit}`;
+        };
         
         slider.addEventListener('input', () => {
             updateDisplay();
-            // No need to call runProjection here as the global input listener handles it via debouncedAutoSave
         });
 
         container.appendChild(controlWrapper);
-        updateDisplay(); // Set initial text
+        updateDisplay(); 
     });
 }
 
