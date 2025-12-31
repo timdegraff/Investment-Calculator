@@ -2,7 +2,8 @@
 import { loginWithGoogle, logoutUser } from './auth.js';
 import { templates } from './templates.js';
 import { autoSave } from './data.js';
-import { engine, math, assumptions } from './utils.js';
+import { engine, math } from './utils.js';
+import { formatter } from './formatter.js';
 
 // --- DEBOUNCE UTILITY ---
 function debounce(func, wait) {
@@ -94,7 +95,6 @@ function initializeSortable() {
     }
 }
 
-
 // --- UI MANIPULATION & LOGIC ---
 
 function showTab(tabId) {
@@ -130,6 +130,9 @@ function addRow(containerId, type, data = {}) {
 
     attachInputListeners(newElement);
     window.fillRow(newElement, data);
+
+    // Bind currency formatting to new row inputs
+    newElement.querySelectorAll('[data-type="currency"]').forEach(formatter.bindCurrencyEventListeners);
 }
 
 function attachInputListeners(element) {
@@ -138,13 +141,15 @@ function attachInputListeners(element) {
     const annualInput = element.querySelector('[data-id="annual"]');
     if (monthlyInput && annualInput) {
         monthlyInput.addEventListener('input', () => {
-            annualInput.value = math.toCurrency(math.fromCurrency(monthlyInput.value) * 12, false);
+            const monthlyValue = math.fromCurrency(monthlyInput.value);
+            annualInput.value = formatter.formatCurrency(monthlyValue * 12, false);
         });
         annualInput.addEventListener('input', () => {
-            monthlyInput.value = math.toCurrency(math.fromCurrency(annualInput.value) / 12, false);
+            const annualValue = math.fromCurrency(annualInput.value);
+            monthlyInput.value = formatter.formatCurrency(annualValue / 12, false);
         });
     }
-
+    
     // Income card sliders
     element.querySelectorAll('input[type="range"]').forEach(slider => {
         const display = slider.previousElementSibling.querySelector('span');
@@ -175,21 +180,6 @@ function attachInputListeners(element) {
         typeSelect.addEventListener('change', handleTypeChange);
         handleTypeChange();
     }
-
-    // General input formatting
-    element.querySelectorAll('input').forEach(input => {
-        if (input.dataset.type === 'currency') {
-            input.addEventListener('blur', (e) => e.target.value = math.toCurrency(math.fromCurrency(e.target.value), false));
-            input.addEventListener('focus', (e) => {
-                const value = math.fromCurrency(e.target.value);
-                if (value === 0) {
-                    e.target.value = '';
-                } else {
-                    e.target.value = value;
-                }
-            });
-        }
-    });
 }
 
 function sortBudgetTable(sortKey, header) {
@@ -265,7 +255,8 @@ window.fillRow = (row, data) => {
             if (input.type === 'checkbox') {
                 input.checked = !!data[key];
             } else if (input.dataset.type === 'currency') {
-                input.value = math.toCurrency(data[key], false);
+                input.value = formatter.formatCurrency(data[key], false);
+                formatter.bindCurrencyEventListeners(input);
             } else {
                 input.value = data[key];
             }
