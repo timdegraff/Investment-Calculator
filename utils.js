@@ -11,6 +11,7 @@ export const math = {
     },
     fromCurrency: (value) => {
         if (typeof value === 'number') return value;
+        if (!value) return 0;
         return Number(String(value).replace(/[^0-9.-]+/g, "")) || 0;
     }
 };
@@ -24,7 +25,7 @@ export const assetClassColors = {
     'Cash': '#2dd4bf', // teal-400
     'Crypto': '#f97316', // orange-500
     'Metals': '#eab308', // yellow-500
-    'Savings': '#ec4899' // pink-500
+    'Savings': '#34d399', // emerald-400 - for consistency
 };
 
 export const assumptions = {
@@ -36,8 +37,6 @@ export const assumptions = {
 
 export const engine = {
     runProjection: (data) => {
-        console.log("Running projection with:", data);
-
         const canvas = document.getElementById('projectionChart');
         if (!canvas) return;
 
@@ -53,7 +52,7 @@ export const engine = {
             tableHeader.innerHTML = '';
             tableBody.innerHTML = '';
 
-            if (assetNames && assetNames.length > 0) {
+            if (assetNames.length > 0) {
                 let headerHtml = `<th class="px-4 py-2">Year</th><th class="px-4 py-2">Age</th>`;
                 assetNames.forEach(name => {
                     headerHtml += `<th class="px-4 py-2 text-right">${name}</th>`;
@@ -62,7 +61,7 @@ export const engine = {
 
                 let bodyHtml = '';
                 tableData.forEach(row => {
-                    bodyHtml += `<tr class="border-b border-slate-700 hover:bg-slate-700/50">`;
+                    bodyHtml += `<tr class="table-row">`;
                     bodyHtml += `<td class="px-4 py-2 font-bold">${row.Year}</td>`;
                     bodyHtml += `<td class="px-4 py-2 font-bold">${row.Age}</td>`;
                     assetNames.forEach(name => {
@@ -77,50 +76,19 @@ export const engine = {
         const ctx = canvas.getContext('2d');
         window.myChart = new Chart(ctx, {
             type: 'line',
-            data: {
-                labels: labels,
-                datasets: datasets
-            },
+            data: { labels, datasets },
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
                 scales: {
-                    x: {
-                        title: { display: true, text: 'Age', color: '#94a3b8' },
-                        ticks: { color: '#94a3b8' },
-                        grid: { color: 'rgba(255, 255, 255, 0.1)' }
-                    },
-                    y: { 
-                        stacked: true,
-                        title: { display: true, text: 'Projected Value', color: '#94a3b8' },
-                        ticks: {
-                            color: '#94a3b8',
-                            callback: value => math.toCurrency(value, true)
-                        },
-                        grid: { color: 'rgba(255, 255, 255, 0.1)' }
-                    },
+                    x: { title: { display: true, text: 'Age', color: '#94a3b8' }, ticks: { color: '#94a3b8' }, grid: { color: '#334155' } },
+                    y: { stacked: true, title: { display: true, text: 'Projected Value', color: '#94a3b8' }, ticks: { color: '#94a3b8', callback: value => math.toCurrency(value, true) }, grid: { color: '#334155' } },
                 },
                 plugins: {
-                    tooltip: {
-                        callbacks: {
-                            label: function(context) {
-                                let label = context.dataset.label || '';
-                                if (label) label += ': ';
-                                label += math.toCurrency(context.parsed.y);
-                                return label;
-                            }
-                        }
-                    },
-                    legend: {
-                        labels: {
-                            color: '#94a3b8'
-                        }
-                    }
+                    tooltip: { callbacks: { label: ctx => `${ctx.dataset.label}: ${math.toCurrency(ctx.parsed.y)}` } },
+                    legend: { labels: { color: '#94a3b8' } }
                 },
-                interaction: {
-                    mode: 'index',
-                    intersect: false,
-                },
+                interaction: { mode: 'index', intersect: false },
             }
         });
     },
@@ -132,52 +100,34 @@ export const engine = {
         const investmentGrowth = parseFloat(assumptions.investmentGrowth) / 100;
         const yearsToProject = 80 - currentAge;
 
-        const labels = [];
-        const tableData = [];
-        
         const allAssets = [
-            ...(investments || []).map(inv => ({ 
-                name: inv.name || 'Unnamed Investment', 
-                type: inv.type,
-                currentValue: math.fromCurrency(inv.value), 
-                annualContribution: 0 
-            })),
-            ...savings.map(sav => ({ 
-                name: sav.name || 'Unnamed Savings', 
-                type: 'Savings',
-                currentValue: 0, // No current balance for savings
-                annualContribution: math.fromCurrency(sav.contribution)
-            }))
+            ...(investments || []).map(inv => ({ name: inv.name, type: inv.type, currentValue: math.fromCurrency(inv.value), annualContribution: 0 })),
+            ...savings.map(sav => ({ name: sav.name, type: 'Savings', currentValue: 0, annualContribution: math.fromCurrency(sav.contribution) }))
         ];
 
-        if (allAssets.length === 0) {
-            return { labels: [], datasets: [], tableData: [], assetNames: [] };
-        }
+        if (allAssets.length === 0) return { labels: [], datasets: [], tableData: [], assetNames: [] };
 
-        const assetNames = allAssets.map(a => a.name);
+        const assetNames = allAssets.map(a => a.name || 'Unnamed');
         let currentValues = allAssets.map(a => a.currentValue);
         const annualContributions = allAssets.map(a => a.annualContribution);
 
         const datasets = allAssets.map(asset => ({
-            label: asset.name,
+            label: asset.name || 'Unnamed',
             data: [],
-            backgroundColor: assetClassColors[asset.type] || '#2dd4bf',
-            fill: true,
-            borderColor: '#1e293b',
-            borderWidth: 1,
+            backgroundColor: assetClassColors[asset.type] || '#34d399',
+            fill: true, borderColor: '#1e293b', borderWidth: 1,
         }));
+
+        const labels = [];
+        const tableData = [];
 
         for (let i = 0; i <= yearsToProject; i++) {
             const age = currentAge + i;
             labels.push(age);
-            const year = new Date().getFullYear() + i;
-
-            const tableRow = { 'Year': year, 'Age': age };
+            const tableRow = { 'Year': new Date().getFullYear() + i, 'Age': age };
 
             if (i > 0) {
-                 currentValues = currentValues.map((value, index) => {
-                    return (value + annualContributions[index]) * (1 + investmentGrowth);
-                });
+                currentValues = currentValues.map((value, index) => (value + annualContributions[index]) * (1 + investmentGrowth));
             }
             
             currentValues.forEach((value, index) => {
@@ -208,8 +158,6 @@ export const engine = {
         }, 0) || 0;
 
         const totalAnnualSavings = data.budget?.savings?.reduce((sum, item) => sum + math.fromCurrency(item.contribution), 0) || 0;
-
-        const totalMonthlyBudget = data.budget?.expenses?.reduce((sum, item) => sum + math.fromCurrency(item.monthly), 0) || 0;
         const totalAnnualBudget = data.budget?.expenses?.reduce((sum, item) => sum + math.fromCurrency(item.annual), 0) || 0;
         
         return {
@@ -218,7 +166,7 @@ export const engine = {
             totalLiabilities,
             grossIncome,
             totalAnnualSavings,
-            totalMonthlyBudget,
+            totalMonthlyBudget: totalAnnualBudget / 12, // Ensure this is derived correctly
             totalAnnualBudget
         };
     }

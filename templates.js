@@ -14,20 +14,20 @@ export const templates = {
                 <option>Metals</option>
             </select>
         </td>
-        <td class="px-4 py-2"><input data-id="value" type="text" data-type="currency" placeholder="$0" class="input-base w-full text-right text-emerald-400"></td>
+        <td class="px-4 py-2"><input data-id="value" type="text" data-type="currency" placeholder="$0" class="input-base w-full text-right text-teal-400"></td>
         <td class="px-4 py-2"><input data-id="costBasis" type="text" data-type="currency" placeholder="N/A" class="input-base w-full text-right text-blue-400 disabled:text-slate-500 disabled:cursor-not-allowed"></td>
         <td class="px-4 py-2 text-center"><button data-action="remove" class="btn-icon"><i class="fas fa-times"></i></button></td>`,
     
     heloc: () => `
         <td class="px-4 py-2"><input data-id="name" type="text" placeholder="e.g., Chase HELOC" class="input-base w-full"></td>
-        <td class="px-4 py-2"><input data-id="balance" type="text" data-type="currency" placeholder="$0" class="input-base w-full text-right text-red-400"></td>
+        <td class="px-4 py-2"><input data-id="balance" type="text" data-type="currency" placeholder="$0" class="input-base w-full text-right text-pink-500"></td>
         <td class="px-4 py-2"><input data-id="limit" type="text" data-type="currency" placeholder="$0" class="input-base w-full text-right"></td>
         <td class="px-4 py-2"><input data-id="rate" type="number" placeholder="5.0" class="input-base w-24 text-right"></td>
         <td class="px-4 py-2 text-center"><button data-action="remove" class="btn-icon"><i class="fas fa-times"></i></button></td>`,
 
     debt: () => `
         <td class="px-4 py-2"><input data-id="name" type="text" placeholder="e.g., Credit Card" class="input-base w-full"></td>
-        <td class="px-4 py-2"><input data-id="balance" type="text" data-type="currency" placeholder="$0" class="input-base w-full text-right text-red-400"></td>
+        <td class="px-4 py-2"><input data-id="balance" type="text" data-type="currency" placeholder="$0" class="input-base w-full text-right text-pink-500"></td>
         <td class="px-4 py-2"><input data-id="rate" type="number" placeholder="22.9" class="input-base w-24 text-right"></td>
         <td class="px-4 py-2 text-center"><button data-action="remove" class="btn-icon"><i class="fas fa-times"></i></button></td>`,
 
@@ -41,7 +41,7 @@ export const templates = {
                 </div>
                 <div>
                     <label class="label-form">Base Salary</label>
-                    <input data-id="amount" type="text" data-type="currency" value="$0" class="input-base w-full text-right">
+                    <input data-id="amount" type="text" data-type="currency" value="$0" class="input-base w-full text-right text-teal-400">
                 </div>
                 <div>
                     <label class="label-form">Avg Bonus</label>
@@ -78,7 +78,7 @@ export const templates = {
 
     "budget-savings": () => `
         <td class="px-4 py-2"><input data-id="name" type="text" placeholder="e.g., Roth IRA" class="input-base w-full"></td>
-        <td class="px-4 py-2"><input data-id="contribution" type="text" data-type="currency" placeholder="$0" class="input-base w-full text-right text-green-400"></td>
+        <td class="px-4 py-2"><input data-id="contribution" type="text" data-type="currency" placeholder="$0" class="input-base w-full text-right text-teal-400"></td>
         <td class="px-4 py-2 text-center"><button data-action="remove" class="btn-icon"><i class="fas fa-times"></i></button></td>`,
     
     "budget-expense": () => `

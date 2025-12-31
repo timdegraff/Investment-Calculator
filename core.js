@@ -118,7 +118,7 @@ function addRow(containerId, type, data = {}) {
     
     newElement.className = isCard 
         ? 'income-card bg-slate-800 rounded-2xl p-5 shadow-lg' 
-        : 'border-b border-slate-700 hover:bg-slate-700/50';
+        : 'table-row';
 
     newElement.innerHTML = templates[type](data);
     container.appendChild(newElement);
@@ -169,7 +169,11 @@ function attachInputListeners(element) {
             input.addEventListener('blur', (e) => e.target.value = math.toCurrency(math.fromCurrency(e.target.value), false));
             input.addEventListener('focus', (e) => {
                 const value = math.fromCurrency(e.target.value);
-                if (value !== 0) e.target.value = value;
+                if (value === 0) {
+                    e.target.value = '';
+                } else {
+                    e.target.value = value;
+                }
             });
         }
     });

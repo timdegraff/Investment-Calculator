@@ -8,37 +8,42 @@ FinCalc is a modern, single-page web application designed to be a personal finan
 
 This section documents all design, style, and features implemented from the initial version to the current one.
 
-- **UI & Styling:** The app uses a dark theme with teal and pink accents, styled with Tailwind CSS. The active navigation tab is highlighted.
+- **UI & Styling:** The app uses a dark theme with vibrant color accents, styled with Tailwind CSS. Navigation icons are colored to match their respective tabs.
 - **Data Persistence:** User data is saved automatically to Firestore after changes are made in the UI.
 - **Summaries:** Key financial metrics (Net Worth, Total Assets, Liabilities, etc.) are displayed in the sidebar and at the top of relevant tabs.
-- **Asset & Liability Tracking:** Users can manage a detailed list of their investments, real estate, HELOCs, and other debts.
+- **Asset & Liability Tracking:** Users can manage a detailed list of their investments, real estate, HELOCs, and other debts. Investment rows are reorderable.
+- **Conditional Inputs:** The "Cost Basis" field for investments is intelligently enabled or disabled based on the investment type.
 - **Income Tracking:** Users can log multiple income sources with details like annual increases and bonus percentages.
 - **Integrated Budgeting:** The "Budget" tab combines both expenses and savings contributions for a holistic view. It features auto-calculating fields and sortable columns.
 - **Asset-Only Projection:** A dedicated tab provides a year-by-year projection of asset growth until age 80, visualized with a stacked area chart and a detailed data table.
 
 ---
 
-## 3. Current Plan: UI Enhancements & Reordering
+## 3. Current Plan: Bug Fixes & UI Polish
 
-This section outlines the plan for the current requested change.
+This section outlines the plan for the current requested change, focusing on fixing a critical calculation bug and implementing several UI/UX improvements.
 
 ### 3.1. Goal
 
-To enhance the user interface by adding colored sidebar icons and drag-and-drop reordering for investments. To improve data integrity by making the "Cost Basis" field conditional based on the investment type.
+To fix the incorrect HELOC net worth calculation, improve the layout and styling of the Real Estate card, enhance the usability of currency input fields, and standardize the color scheme for financial values across the application.
 
 ### 3.2. Actionable Steps
 
-1.  **Implement Conditional Cost Basis:**
-    *   **File:** `core.js`
-    *   **Action:** Add an event listener to the "Type" dropdown in the investment rows. When the type changes, check if it is "Post-Tax (Roth)". If it is, enable the "Cost Basis" input; otherwise, disable it and set its value to "N/A".
+1.  **Fix HELOC Calculation:**
+    *   **File:** `utils.js`
+    *   **Action:** Modify the `calculateSummaries` function to correctly include HELOC balances in the `totalLiabilities` calculation.
 
-2.  **Add Colored Sidebar Icons:**
+2.  **Update Real Estate Card:**
     *   **File:** `index.html`
-    *   **Action:** Add the appropriate Tailwind CSS color classes to the `<i>` elements for each navigation button in the sidebar to match the accent colors used in the main content.
+    *   **Action:** Add a new "Property Name" input field. Rearrange the fields into a three-column grid: Name, Value, Mortgage. Apply the `input-base` class to all inputs to ensure they match the dark theme.
 
-3.  **Implement Reorderable Investments:**
-    *   **File:** `index.html`, `templates.js`, `core.js`
-    *   **Action:**
-        *   Add the CDN for the `SortableJS` library to `index.html`.
-        *   Add a drag handle icon to the investment row template in `templates.js`.
-        *   In `core.js`, initialize `SortableJS` on the investments table body, configure it to use the new drag handle, and ensure that the `autoSave` function is called after a user finishes reordering the rows to persist the new order.
+3.  **Enhance Currency Inputs:**
+    *   **File:** `core.js`
+    *   **Action:** Update the `focus` event listener for currency fields. When a field is focused, if its numeric value is 0, the input's value will be cleared to an empty string for a smoother editing experience.
+
+4.  **Standardize Colors:**
+    *   **File:** `index.html`, `templates.js`
+    *   **Action:** Conduct a full review of all text color classes for financial figures.  
+        *   Standardize all positive values (assets, income, savings) to use a consistent green (`text-teal-400`).
+        *   Standardize all negative values (liabilities, expenses) to use a consistent pink (`text-pink-500`).
+        *   This includes summary cards, tables, and the sidebar.
