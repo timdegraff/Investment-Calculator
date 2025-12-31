@@ -32,11 +32,8 @@ export function loadUserDataIntoUI(data) {
     console.log("Populating UI with data:", data);
     clearDynamicContent();
 
-    if (data.realEstate) {
-        window.fillRow(document.getElementById('real-estate-card'), data.realEstate);
-    }
-
     data.investments?.forEach(item => window.addRow('investment-rows', 'investment', item));
+    data.realEstate?.forEach(item => window.addRow('real-estate-rows', 'realEstate', item));
     data.helocs?.forEach(item => window.addRow('heloc-rows', 'heloc', item));
     data.debts?.forEach(item => window.addRow('debt-rows', 'debt', item));
     data.income?.forEach(item => window.addRow('income-rows', 'income', item));
@@ -52,11 +49,10 @@ export function loadUserDataIntoUI(data) {
 }
 
 function clearDynamicContent() {
-    ['investment-rows', 'heloc-rows', 'debt-rows', 'income-rows', 'budget-savings-rows', 'budget-expenses-rows'].forEach(id => {
+    ['investment-rows', 'real-estate-rows', 'heloc-rows', 'debt-rows', 'income-rows', 'budget-savings-rows', 'budget-expenses-rows'].forEach(id => {
         const el = document.getElementById(id);
         if (el) el.innerHTML = '';
     });
-    document.getElementById('real-estate-card').querySelectorAll('input').forEach(input => input.value = '');
 }
 
 export async function autoSave(scrape = true) {
@@ -85,7 +81,7 @@ function scrapeDataFromUI() {
     const data = { 
         assumptions: {}, 
         investments: [], 
-        realEstate: {},
+        realEstate: [],
         helocs: [], 
         debts: [], 
         income: [], 
@@ -96,9 +92,8 @@ function scrapeDataFromUI() {
         data.assumptions[input.dataset.id] = parseFloat(input.value);
     });
 
-    data.realEstate = scrapeRow(document.getElementById('real-estate-card'));
-
     document.querySelectorAll('#investment-rows tr').forEach(row => data.investments.push(scrapeRow(row)));
+    document.querySelectorAll('#real-estate-rows tr').forEach(row => data.realEstate.push(scrapeRow(row)));
     document.querySelectorAll('#heloc-rows tr').forEach(row => data.helocs.push(scrapeRow(row)));
     document.querySelectorAll('#debt-rows tr').forEach(row => data.debts.push(scrapeRow(row)));
     document.querySelectorAll('#income-rows .income-card').forEach(card => data.income.push(scrapeRow(card)));
@@ -130,7 +125,7 @@ function getInitialData() {
     return { 
         assumptions: assumptions.defaults,
         investments: [],
-        realEstate: { value: 500000, mortgage: 250000 },
+        realEstate: [{ name: "Primary Home", value: 500000, mortgage: 250000 }],
         helocs: [],
         debts: [],
         income: [],

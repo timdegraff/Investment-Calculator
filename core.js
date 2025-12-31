@@ -37,7 +37,7 @@ function attachGlobalListeners() {
 
     document.body.addEventListener('input', (e) => {
         const target = e.target;
-        if (target.closest('.input-base, .income-card, #assumptions-container, #real-estate-card, .input-range')) {
+        if (target.closest('.input-base, .income-card, #assumptions-container, .input-range')) {
             debouncedAutoSave();
         }
     });
@@ -63,7 +63,7 @@ function attachDynamicRowListeners() {
             addRow(containerId, type);
             debouncedAutoSave();
         } else if (removeButton) {
-            const row = removeButton.closest('tr, .income-card, .real-estate-card');
+            const row = removeButton.closest('tr, .income-card');
             if (row) {
                 row.remove();
                 debouncedAutoSave();
@@ -116,13 +116,11 @@ function addRow(containerId, type, data = {}) {
     const container = document.getElementById(containerId);
     if (!container) return;
 
-    const isCard = ['income', 'realEstate'].includes(type);
+    const isCard = type === 'income';
     const newElement = document.createElement(isCard ? 'div' : 'tr');
 
     if (type === 'income') {
-        newElement.className = 'income-card bg-slate-800 rounded-2xl shadow-lg';
-    } else if (type === 'realEstate') {
-        newElement.className = 'real-estate-card grid grid-cols-1 md:grid-cols-4 gap-4 items-center p-5';
+        newElement.className = 'income-card bg-slate-800 rounded-2xl p-5 shadow-lg';
     } else {
         newElement.className = 'border-b border-slate-700 hover:bg-slate-700/50';
     }

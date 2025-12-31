@@ -1,4 +1,4 @@
-const formatter = {
+export const formatter = {
     /**
      * Attaches an event listener to a container to format currency inputs dynamically.
      * It listens for 'input' events and formats the value of any input that has
