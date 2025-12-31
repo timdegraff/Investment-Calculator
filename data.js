@@ -164,19 +164,30 @@ export function updateSummaries(data) {
 
     const summaries = engine.calculateSummaries(data);
 
-    // Sidebar Networth
-    const sidebarNetworth = document.getElementById('sidebar-networth');
-    if (sidebarNetworth) sidebarNetworth.textContent = math.toCurrency(summaries.netWorth, false);
+    // Helper to update text content
+    const updateText = (id, value, isCompact = true) => {
+        const el = document.getElementById(id);
+        if (el) el.textContent = math.toCurrency(value, isCompact);
+    };
 
-    // Tab Summary
-    const sumAssets = document.getElementById('sum-assets');
-    if (sumAssets) sumAssets.textContent = math.toCurrency(summaries.totalAssets, true);
+    // Sidebar
+    updateText('sidebar-networth', summaries.netWorth, false);
 
-    const sumLiabilities = document.getElementById('sum-liabilities');
-    if (sumLiabilities) sumLiabilities.textContent = math.toCurrency(summaries.totalLiabilities, true);
+    // Assets & Debts Tab
+    updateText('sum-assets', summaries.totalAssets);
+    updateText('sum-liabilities', summaries.totalLiabilities);
+    updateText('sum-networth', summaries.netWorth);
 
-    const sumNetworth = document.getElementById('sum-networth');
-    if (sumNetworth) sumNetworth.textContent = math.toCurrency(summaries.netWorth, true);
+    // Income Tab
+    updateText('sum-income', summaries.grossIncome);
+
+    // Savings Tab
+    updateText('sum-savings-balance', summaries.totalSavingsBalance);
+    updateText('sum-savings-contrib', summaries.totalAnnualContribution);
+
+    // Budget Tab
+    updateText('sum-budget-monthly', summaries.totalMonthlyBudget);
+    updateText('sum-budget-annual', summaries.totalAnnualBudget);
 }
 
 // This is now a global function
@@ -187,12 +198,10 @@ window.fillRow = (row, data) => {
             if (input.type === 'checkbox') {
                 input.checked = data[key];
             } else if (input.dataset.type === 'currency') {
-                // Format currency for display
                 input.value = math.toCurrency(data[key], true);
             } else {
                 input.value = data[key];
             }
-            // Dispatch events to ensure other listeners update
             input.dispatchEvent(new Event('change', { bubbles: true }));
             input.dispatchEvent(new Event('input', { bubbles: true }));
         }

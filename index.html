@@ -9,6 +9,13 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📈</text></svg>">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        .tab-btn.active {
+            background-color: #1e293b; 
+            color: #fff; 
+            font-weight: bold;
+        }
+    </style>
 </head>
 <body class="text-gray-200 bg-gray-900">
 
@@ -60,15 +67,15 @@
             <section id="tab-assets-debts" class="tab-content max-w-7xl mx-auto">
                  <!-- Summary -->
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8 text-center">
-                    <div class="bg-slate-800 p-4 rounded-xl"><p class="text-sm text-slate-400">Total Assets</p><p id="sum-assets" class="text-2xl font-bold"></p></div>
-                    <div class="bg-slate-800 p-4 rounded-xl"><p class="text-sm text-slate-400">Total Liabilities</p><p id="sum-liabilities" class="text-2xl font-bold"></p></div>
-                    <div class="bg-slate-800 p-4 rounded-xl"><p class="text-sm text-slate-400">Net Worth</p><p id="sum-networth" class="text-2xl font-bold"></p></div>
+                    <div class="bg-slate-800 p-4 rounded-xl"><p class="text-sm text-slate-400">Total Assets</p><p id="sum-assets" class="text-2xl font-bold text-teal-400"></p></div>
+                    <div class="bg-slate-800 p-4 rounded-xl"><p class="text-sm text-slate-400">Total Liabilities</p><p id="sum-liabilities" class="text-2xl font-bold text-pink-500"></p></div>
+                    <div class="bg-slate-800 p-4 rounded-xl"><p class="text-sm text-slate-400">Net Worth</p><p id="sum-networth" class="text-2xl font-bold text-green-400"></p></div>
                 </div>
 
                 <!-- Investments -->
                 <div class="bg-slate-800 rounded-2xl shadow-lg mb-8">
                     <div class="flex justify-between items-center p-5 border-b border-slate-700">
-                        <h2 class="text-xl font-bold">Investments</h2>
+                        <h2 class="text-xl font-bold"><i class="fas fa-chart-line text-teal-400 mr-2"></i>Investments</h2>
                         <button data-add-row="investment-rows" data-row-type="investment" class="btn btn-blue"><i class="fas fa-plus"></i> Add</button>
                     </div>
                     <table class="w-full">
@@ -87,7 +94,7 @@
 
                 <!-- Real Estate -->
                 <div id="real-estate-card" class="bg-slate-800 rounded-2xl shadow-lg mb-8 p-5 real-estate-card">
-                    <h2 class="text-xl font-bold mb-4">Real Estate</h2>
+                    <h2 class="text-xl font-bold mb-4"><i class="fas fa-home text-teal-400 mr-2"></i>Real Estate</h2>
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
                             <label class="block text-sm font-medium text-slate-400 mb-1">Property Value</label>
@@ -103,7 +110,7 @@
                 <!-- HELOCs -->
                 <div class="bg-slate-800 rounded-2xl shadow-lg mb-8">
                     <div class="flex justify-between items-center p-5 border-b border-slate-700">
-                        <h2 class="text-xl font-bold">HELOCs</h2>
+                        <h2 class="text-xl font-bold"><i class="fas fa-hand-holding-usd text-pink-500 mr-2"></i>HELOCs</h2>
                         <button data-add-row="heloc-rows" data-row-type="heloc" class="btn btn-blue"><i class="fas fa-plus"></i> Add</button>
                     </div>
                     <table class="w-full">
@@ -123,7 +130,7 @@
                 <!-- Debts -->
                 <div class="bg-slate-800 rounded-2xl shadow-lg">
                     <div class="flex justify-between items-center p-5 border-b border-slate-700">
-                        <h2 class="text-xl font-bold">Other Debts</h2>
+                        <h2 class="text-xl font-bold"><i class="fas fa-credit-card text-pink-500 mr-2"></i>Other Debts</h2>
                         <button data-add-row="debt-rows" data-row-type="debt" class="btn btn-blue"><i class="fas fa-plus"></i> Add</button>
                     </div>
                     <table class="w-full">
@@ -141,6 +148,9 @@
             </section>
 
             <section id="tab-income" class="tab-content hidden max-w-4xl mx-auto">
+                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8 text-center">
+                    <div class="bg-slate-800 p-4 rounded-xl"><p class="text-sm text-slate-400">Total Gross Income</p><p id="sum-income" class="text-2xl font-bold text-teal-400"></p></div>
+                </div>
                  <div class="flex justify-between items-center mb-6">
                     <h2 class="text-3xl font-bold">Income</h2>
                     <button data-add-row="income-rows" data-row-type="income" class="btn btn-blue"><i class="fas fa-plus"></i> Add Source</button>
@@ -149,9 +159,13 @@
             </section>
 
             <section id="tab-savings" class="tab-content hidden max-w-7xl mx-auto">
+                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8 text-center">
+                    <div class="bg-slate-800 p-4 rounded-xl"><p class="text-sm text-slate-400">Total Savings</p><p id="sum-savings-balance" class="text-2xl font-bold text-teal-400"></p></div>
+                    <div class="bg-slate-800 p-4 rounded-xl"><p class="text-sm text-slate-400">Annual Contribution</p><p id="sum-savings-contrib" class="text-2xl font-bold text-green-400"></p></div>
+                </div>
                 <div class="bg-slate-800 rounded-2xl shadow-lg">
                     <div class="flex justify-between items-center p-5 border-b border-slate-700">
-                        <h2 class="text-xl font-bold">Annual Savings Contributions</h2>
+                        <h2 class="text-xl font-bold"><i class="fas fa-piggy-bank text-pink-500 mr-2"></i>Annual Savings Contributions</h2>
                         <button data-add-row="savings-list" data-row-type="savings-item" class="btn btn-blue"><i class="fas fa-plus"></i> Add</button>
                     </div>
                     <table class="w-full">
@@ -169,9 +183,13 @@
             </section>
 
             <section id="tab-budget" class="tab-content hidden max-w-4xl mx-auto">
+                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8 text-center">
+                    <div class="bg-slate-800 p-4 rounded-xl"><p class="text-sm text-slate-400">Total Monthly Spend</p><p id="sum-budget-monthly" class="text-2xl font-bold text-pink-500"></p></div>
+                    <div class="bg-slate-800 p-4 rounded-xl"><p class="text-sm text-slate-400">Total Annual Spend</p><p id="sum-budget-annual" class="text-2xl font-bold text-pink-500"></p></div>
+                </div>
                 <div class="bg-slate-800 rounded-2xl shadow-lg">
                     <div class="flex justify-between items-center p-5 border-b border-slate-700">
-                        <h2 class="text-xl font-bold">Monthly & Annual Budget</h2>
+                        <h2 class="text-xl font-bold"><i class="fas fa-chart-pie text-teal-400 mr-2"></i>Monthly & Annual Budget</h2>
                         <button data-add-row="budget-rows" data-row-type="budget-item" class="btn btn-blue"><i class="fas fa-plus"></i> Add Item</button>
                     </div>
                     <table class="w-full">
@@ -190,14 +208,28 @@
 
             <section id="tab-projection" class="tab-content hidden max-w-7xl mx-auto">
                 <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                    <div class="lg:col-span-2 bg-slate-800 rounded-2xl shadow-lg p-8 h-[60vh]">
-                        <canvas id="projectionChart"></canvas>
+                    <div class="lg:col-span-2 bg-slate-800 rounded-2xl shadow-lg p-8">
+                        <h3 class="text-xl font-bold mb-6">Asset Growth Projection</h3>
+                        <div class="h-[50vh]">
+                           <canvas id="projectionChart"></canvas>
+                        </div>
                     </div>
                     <div class="bg-slate-800 rounded-2xl shadow-lg p-8">
                         <h3 class="text-xl font-bold mb-6">Projection Controls</h3>
                         <div id="assumptions-container" class="space-y-6">
                             <!-- Controls will be added here dynamically -->
                         </div>
+                    </div>
+                </div>
+                 <div class="bg-slate-800 rounded-2xl shadow-lg mt-8">
+                    <h3 class="text-xl font-bold p-5">Year-by-Year Breakdown</h3>
+                    <div class="max-h-[60vh] overflow-y-auto">
+                        <table class="w-full text-sm text-left">
+                            <thead class="sticky top-0 bg-slate-700 uppercase text-xs text-slate-300">
+                                <tr id="projection-table-header"></tr>
+                            </thead>
+                            <tbody id="projection-table-body"></tbody>
+                        </table>
                     </div>
                 </div>
             </section>

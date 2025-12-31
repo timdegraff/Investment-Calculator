@@ -551,3 +551,233 @@
 [error] Failed to fetch Firebase Project from Studio Workspace because WORKSPACE_SLUG environment variable is empty
 [debug] [2025-12-31T01:58:38.997Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform","https://www.googleapis.com/auth/userinfo.email"]
 [debug] [2025-12-31T01:58:38.997Z] > authorizing via signed-in user (degraff.tim@gmail.com)
+[error] Failed to fetch Firebase Project from Studio Workspace because WORKSPACE_SLUG environment variable is empty
+[error] Failed to fetch Firebase Project from Studio Workspace because WORKSPACE_SLUG environment variable is empty
+[error] Failed to fetch Firebase Project from Studio Workspace because WORKSPACE_SLUG environment variable is empty
+[error] Failed to fetch Firebase Project from Studio Workspace because WORKSPACE_SLUG environment variable is empty
+[debug] [2025-12-31T05:32:42.004Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform","https://www.googleapis.com/auth/userinfo.email"]
+[debug] [2025-12-31T05:32:42.011Z] > authorizing via signed-in user (degraff.tim@gmail.com)
+[debug] [2025-12-31T05:32:42.025Z] Checked if tokens are valid: false, expires at: 1767157338826
+[debug] [2025-12-31T05:32:42.027Z] Checked if tokens are valid: false, expires at: 1767157338826
+[debug] [2025-12-31T05:32:42.030Z] > refreshing access token with scopes: []
+[debug] [2025-12-31T05:32:42.041Z] >>> [apiv2][query] POST https://www.googleapis.com/oauth2/v3/token [none]
+[debug] [2025-12-31T05:32:42.042Z] >>> [apiv2][body] POST https://www.googleapis.com/oauth2/v3/token [omitted]
+[debug] [2025-12-31T05:32:42.059Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform","https://www.googleapis.com/auth/userinfo.email"]
+[debug] [2025-12-31T05:32:42.059Z] > authorizing via signed-in user (degraff.tim@gmail.com)
+[debug] [2025-12-31T05:32:42.064Z] Checked if tokens are valid: false, expires at: 1767157338826
+[debug] [2025-12-31T05:32:42.066Z] Checked if tokens are valid: false, expires at: 1767157338826
+[debug] [2025-12-31T05:32:42.067Z] > refreshing access token with scopes: []
+[debug] [2025-12-31T05:32:42.070Z] >>> [apiv2][query] POST https://www.googleapis.com/oauth2/v3/token [none]
+[debug] [2025-12-31T05:32:42.070Z] >>> [apiv2][body] POST https://www.googleapis.com/oauth2/v3/token [omitted]
+[error] Failed to fetch Firebase Project from Studio Workspace because WORKSPACE_SLUG environment variable is empty
+[debug] [2025-12-31T05:32:42.235Z] <<< [apiv2][status] POST https://www.googleapis.com/oauth2/v3/token 200
+[error] Failed to fetch Firebase Project from Studio Workspace because WORKSPACE_SLUG environment variable is empty
+[error] Failed to fetch Firebase Project from Studio Workspace because WORKSPACE_SLUG environment variable is empty
+[error] Failed to fetch Firebase Project from Studio Workspace because WORKSPACE_SLUG environment variable is empty
+[debug] [2025-12-31T05:32:42.192Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform","https://www.googleapis.com/auth/userinfo.email"]
+[debug] [2025-12-31T05:32:42.197Z] > authorizing via signed-in user (degraff.tim@gmail.com)
+[debug] [2025-12-31T05:32:42.203Z] Checked if tokens are valid: false, expires at: 1767157338826
+[debug] [2025-12-31T05:32:42.203Z] Checked if tokens are valid: false, expires at: 1767157338826
+[debug] [2025-12-31T05:32:42.204Z] > refreshing access token with scopes: []
+[debug] [2025-12-31T05:32:42.215Z] >>> [apiv2][query] POST https://www.googleapis.com/oauth2/v3/token [none]
+[debug] [2025-12-31T05:32:42.221Z] >>> [apiv2][body] POST https://www.googleapis.com/oauth2/v3/token [omitted]
+[debug] [2025-12-31T05:32:42.237Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform","https://www.googleapis.com/auth/userinfo.email"]
+[debug] [2025-12-31T05:32:42.237Z] > authorizing via signed-in user (degraff.tim@gmail.com)
+[debug] [2025-12-31T05:32:42.238Z] Checked if tokens are valid: false, expires at: 1767157338826
+[debug] [2025-12-31T05:32:42.238Z] Checked if tokens are valid: false, expires at: 1767157338826
+[debug] [2025-12-31T05:32:42.245Z] > refreshing access token with scopes: []
+[debug] [2025-12-31T05:32:42.246Z] >>> [apiv2][query] POST https://www.googleapis.com/oauth2/v3/token [none]
+[debug] [2025-12-31T05:32:42.246Z] >>> [apiv2][body] POST https://www.googleapis.com/oauth2/v3/token [omitted]
+[debug] [2025-12-31T05:32:42.235Z] <<< [apiv2][body] POST https://www.googleapis.com/oauth2/v3/token [omitted]
+[debug] [2025-12-31T05:32:42.293Z] >>> [apiv2][query] GET https://cloudbilling.googleapis.com/v1/projects/investment-calculator-931f2/billingInfo [none]
+[debug] [2025-12-31T05:32:42.357Z] <<< [apiv2][status] POST https://www.googleapis.com/oauth2/v3/token 200
+[debug] [2025-12-31T05:32:42.363Z] <<< [apiv2][body] POST https://www.googleapis.com/oauth2/v3/token [omitted]
+[debug] [2025-12-31T05:32:42.379Z] >>> [apiv2][query] GET https://cloudbilling.googleapis.com/v1/projects/investment-calculator-931f2/billingInfo [none]
+[debug] [2025-12-31T05:32:42.414Z] <<< [apiv2][status] POST https://www.googleapis.com/oauth2/v3/token 200
+[debug] [2025-12-31T05:32:42.414Z] <<< [apiv2][body] POST https://www.googleapis.com/oauth2/v3/token [omitted]
+[debug] [2025-12-31T05:32:42.435Z] >>> [apiv2][query] GET https://cloudbilling.googleapis.com/v1/projects/investment-calculator-931f2/billingInfo [none]
+[debug] [2025-12-31T05:32:42.457Z] <<< [apiv2][status] POST https://www.googleapis.com/oauth2/v3/token 200
+[debug] [2025-12-31T05:32:42.470Z] <<< [apiv2][status] GET https://cloudbilling.googleapis.com/v1/projects/investment-calculator-931f2/billingInfo 200
+[debug] [2025-12-31T05:32:42.457Z] <<< [apiv2][body] POST https://www.googleapis.com/oauth2/v3/token [omitted]
+[debug] [2025-12-31T05:32:42.479Z] >>> [apiv2][query] GET https://cloudbilling.googleapis.com/v1/projects/investment-calculator-931f2/billingInfo [none]
+[debug] [2025-12-31T05:32:42.471Z] <<< [apiv2][body] GET https://cloudbilling.googleapis.com/v1/projects/investment-calculator-931f2/billingInfo {"name":"projects/investment-calculator-931f2/billingInfo","projectId":"investment-calculator-931f2","billingAccountName":"billingAccounts/013AAB-647F6A-6EE8E8","billingEnabled":true}
+[debug] [2025-12-31T05:32:42.510Z] Checked if tokens are valid: true, expires at: 1767162761363
+[debug] [2025-12-31T05:32:42.510Z] Checked if tokens are valid: true, expires at: 1767162761363
+[debug] [2025-12-31T05:32:42.511Z] Checked if tokens are valid: true, expires at: 1767162761363
+[debug] [2025-12-31T05:32:42.512Z] Checked if tokens are valid: true, expires at: 1767162761363
+[debug] [2025-12-31T05:32:42.538Z] Checked if tokens are valid: true, expires at: 1767162761363
+[debug] [2025-12-31T05:32:42.539Z] Checked if tokens are valid: true, expires at: 1767162761363
+[debug] [2025-12-31T05:32:42.539Z] Checked if tokens are valid: true, expires at: 1767162761363
+[debug] [2025-12-31T05:32:42.540Z] Checked if tokens are valid: true, expires at: 1767162761363
+[debug] [2025-12-31T05:32:42.540Z] >>> [apiv2][query] GET https://serviceusage.googleapis.com/v1/projects/investment-calculator-931f2/services/firebasedataconnect.googleapis.com [none]
+[debug] [2025-12-31T05:32:42.540Z] >>> [apiv2][(partial)header] GET https://serviceusage.googleapis.com/v1/projects/investment-calculator-931f2/services/firebasedataconnect.googleapis.com x-goog-quota-user=projects/investment-calculator-931f2
+[debug] [2025-12-31T05:32:42.543Z] >>> [apiv2][query] GET https://serviceusage.googleapis.com/v1/projects/investment-calculator-931f2/services/cloudfunctions.googleapis.com [none]
+[debug] [2025-12-31T05:32:42.543Z] >>> [apiv2][(partial)header] GET https://serviceusage.googleapis.com/v1/projects/investment-calculator-931f2/services/cloudfunctions.googleapis.com x-goog-quota-user=projects/investment-calculator-931f2
+[debug] [2025-12-31T05:32:42.547Z] >>> [apiv2][query] GET https://serviceusage.googleapis.com/v1/projects/investment-calculator-931f2/services/firebaseapphosting.googleapis.com [none]
+[debug] [2025-12-31T05:32:42.547Z] >>> [apiv2][(partial)header] GET https://serviceusage.googleapis.com/v1/projects/investment-calculator-931f2/services/firebaseapphosting.googleapis.com x-goog-quota-user=projects/investment-calculator-931f2
+[debug] [2025-12-31T05:32:42.549Z] >>> [apiv2][query] GET https://serviceusage.googleapis.com/v1/projects/investment-calculator-931f2/services/firebaseio.com [none]
+[debug] [2025-12-31T05:32:42.549Z] >>> [apiv2][(partial)header] GET https://serviceusage.googleapis.com/v1/projects/investment-calculator-931f2/services/firebaseio.com x-goog-quota-user=projects/investment-calculator-931f2
+[debug] [2025-12-31T05:32:42.601Z] <<< [apiv2][status] GET https://cloudbilling.googleapis.com/v1/projects/investment-calculator-931f2/billingInfo 200
+[debug] [2025-12-31T05:32:42.639Z] <<< [apiv2][status] GET https://cloudbilling.googleapis.com/v1/projects/investment-calculator-931f2/billingInfo 200
+[debug] [2025-12-31T05:32:42.609Z] <<< [apiv2][body] GET https://cloudbilling.googleapis.com/v1/projects/investment-calculator-931f2/billingInfo {"name":"projects/investment-calculator-931f2/billingInfo","projectId":"investment-calculator-931f2","billingAccountName":"billingAccounts/013AAB-647F6A-6EE8E8","billingEnabled":true}
+[debug] [2025-12-31T05:32:42.661Z] Checked if tokens are valid: true, expires at: 1767162761458
+[debug] [2025-12-31T05:32:42.661Z] Checked if tokens are valid: true, expires at: 1767162761458
+[debug] [2025-12-31T05:32:42.671Z] Checked if tokens are valid: true, expires at: 1767162761458
+[debug] [2025-12-31T05:32:42.672Z] Checked if tokens are valid: true, expires at: 1767162761458
+[debug] [2025-12-31T05:32:42.731Z] Checked if tokens are valid: true, expires at: 1767162761458
+[debug] [2025-12-31T05:32:42.732Z] Checked if tokens are valid: true, expires at: 1767162761458
+[debug] [2025-12-31T05:32:42.732Z] Checked if tokens are valid: true, expires at: 1767162761458
+[debug] [2025-12-31T05:32:42.732Z] Checked if tokens are valid: true, expires at: 1767162761458
+[debug] [2025-12-31T05:32:42.733Z] >>> [apiv2][query] GET https://serviceusage.googleapis.com/v1/projects/investment-calculator-931f2/services/firebasedataconnect.googleapis.com [none]
+[debug] [2025-12-31T05:32:42.733Z] >>> [apiv2][(partial)header] GET https://serviceusage.googleapis.com/v1/projects/investment-calculator-931f2/services/firebasedataconnect.googleapis.com x-goog-quota-user=projects/investment-calculator-931f2
+[debug] [2025-12-31T05:32:42.736Z] >>> [apiv2][query] GET https://serviceusage.googleapis.com/v1/projects/investment-calculator-931f2/services/cloudfunctions.googleapis.com [none]
+[debug] [2025-12-31T05:32:42.736Z] >>> [apiv2][(partial)header] GET https://serviceusage.googleapis.com/v1/projects/investment-calculator-931f2/services/cloudfunctions.googleapis.com x-goog-quota-user=projects/investment-calculator-931f2
+[debug] [2025-12-31T05:32:42.738Z] >>> [apiv2][query] GET https://serviceusage.googleapis.com/v1/projects/investment-calculator-931f2/services/firebaseapphosting.googleapis.com [none]
+[debug] [2025-12-31T05:32:42.738Z] >>> [apiv2][(partial)header] GET https://serviceusage.googleapis.com/v1/projects/investment-calculator-931f2/services/firebaseapphosting.googleapis.com x-goog-quota-user=projects/investment-calculator-931f2
+[debug] [2025-12-31T05:32:42.741Z] >>> [apiv2][query] GET https://serviceusage.googleapis.com/v1/projects/investment-calculator-931f2/services/firebaseio.com [none]
+[debug] [2025-12-31T05:32:42.741Z] >>> [apiv2][(partial)header] GET https://serviceusage.googleapis.com/v1/projects/investment-calculator-931f2/services/firebaseio.com x-goog-quota-user=projects/investment-calculator-931f2
+[debug] [2025-12-31T05:32:42.645Z] <<< [apiv2][body] GET https://cloudbilling.googleapis.com/v1/projects/investment-calculator-931f2/billingInfo {"name":"projects/investment-calculator-931f2/billingInfo","projectId":"investment-calculator-931f2","billingAccountName":"billingAccounts/013AAB-647F6A-6EE8E8","billingEnabled":true}
+[debug] [2025-12-31T05:32:42.646Z] Checked if tokens are valid: true, expires at: 1767162761363
+[debug] [2025-12-31T05:32:42.646Z] Checked if tokens are valid: true, expires at: 1767162761363
+[debug] [2025-12-31T05:32:42.652Z] Checked if tokens are valid: true, expires at: 1767162761363
+[debug] [2025-12-31T05:32:42.652Z] Checked if tokens are valid: true, expires at: 1767162761363
+[debug] [2025-12-31T05:32:42.708Z] Checked if tokens are valid: true, expires at: 1767162761363
+[debug] [2025-12-31T05:32:42.709Z] Checked if tokens are valid: true, expires at: 1767162761363
+[debug] [2025-12-31T05:32:42.714Z] Checked if tokens are valid: true, expires at: 1767162761363
+[debug] [2025-12-31T05:32:42.714Z] Checked if tokens are valid: true, expires at: 1767162761363
+[debug] [2025-12-31T05:32:42.714Z] >>> [apiv2][query] GET https://serviceusage.googleapis.com/v1/projects/investment-calculator-931f2/services/firebasedataconnect.googleapis.com [none]
+[debug] [2025-12-31T05:32:42.715Z] >>> [apiv2][(partial)header] GET https://serviceusage.googleapis.com/v1/projects/investment-calculator-931f2/services/firebasedataconnect.googleapis.com x-goog-quota-user=projects/investment-calculator-931f2
+[debug] [2025-12-31T05:32:42.720Z] >>> [apiv2][query] GET https://serviceusage.googleapis.com/v1/projects/investment-calculator-931f2/services/cloudfunctions.googleapis.com [none]
+[debug] [2025-12-31T05:32:42.723Z] >>> [apiv2][(partial)header] GET https://serviceusage.googleapis.com/v1/projects/investment-calculator-931f2/services/cloudfunctions.googleapis.com x-goog-quota-user=projects/investment-calculator-931f2
+[debug] [2025-12-31T05:32:42.732Z] >>> [apiv2][query] GET https://serviceusage.googleapis.com/v1/projects/investment-calculator-931f2/services/firebaseapphosting.googleapis.com [none]
+[debug] [2025-12-31T05:32:42.733Z] >>> [apiv2][(partial)header] GET https://serviceusage.googleapis.com/v1/projects/investment-calculator-931f2/services/firebaseapphosting.googleapis.com x-goog-quota-user=projects/investment-calculator-931f2
+[debug] [2025-12-31T05:32:42.739Z] >>> [apiv2][query] GET https://serviceusage.googleapis.com/v1/projects/investment-calculator-931f2/services/firebaseio.com [none]
+[debug] [2025-12-31T05:32:42.743Z] >>> [apiv2][(partial)header] GET https://serviceusage.googleapis.com/v1/projects/investment-calculator-931f2/services/firebaseio.com x-goog-quota-user=projects/investment-calculator-931f2
+[debug] [2025-12-31T05:32:42.872Z] <<< [apiv2][status] GET https://cloudbilling.googleapis.com/v1/projects/investment-calculator-931f2/billingInfo 200
+[debug] [2025-12-31T05:32:42.923Z] <<< [apiv2][status] GET https://serviceusage.googleapis.com/v1/projects/investment-calculator-931f2/services/firebasedataconnect.googleapis.com 200
+[debug] [2025-12-31T05:32:42.924Z] <<< [apiv2][body] GET https://serviceusage.googleapis.com/v1/projects/investment-calculator-931f2/services/firebasedataconnect.googleapis.com [omitted]
+[debug] [2025-12-31T05:32:42.872Z] <<< [apiv2][body] GET https://cloudbilling.googleapis.com/v1/projects/investment-calculator-931f2/billingInfo {"name":"projects/investment-calculator-931f2/billingInfo","projectId":"investment-calculator-931f2","billingAccountName":"billingAccounts/013AAB-647F6A-6EE8E8","billingEnabled":true}
+[debug] [2025-12-31T05:32:42.876Z] Checked if tokens are valid: true, expires at: 1767162761458
+[debug] [2025-12-31T05:32:42.876Z] Checked if tokens are valid: true, expires at: 1767162761458
+[debug] [2025-12-31T05:32:42.877Z] Checked if tokens are valid: true, expires at: 1767162761458
+[debug] [2025-12-31T05:32:42.877Z] Checked if tokens are valid: true, expires at: 1767162761458
+[debug] [2025-12-31T05:32:42.894Z] Checked if tokens are valid: true, expires at: 1767162761458
+[debug] [2025-12-31T05:32:42.895Z] Checked if tokens are valid: true, expires at: 1767162761458
+[debug] [2025-12-31T05:32:42.895Z] Checked if tokens are valid: true, expires at: 1767162761458
+[debug] [2025-12-31T05:32:42.895Z] Checked if tokens are valid: true, expires at: 1767162761458
+[debug] [2025-12-31T05:32:42.896Z] >>> [apiv2][query] GET https://serviceusage.googleapis.com/v1/projects/investment-calculator-931f2/services/firebasedataconnect.googleapis.com [none]
+[debug] [2025-12-31T05:32:42.896Z] >>> [apiv2][(partial)header] GET https://serviceusage.googleapis.com/v1/projects/investment-calculator-931f2/services/firebasedataconnect.googleapis.com x-goog-quota-user=projects/investment-calculator-931f2
+[debug] [2025-12-31T05:32:42.900Z] >>> [apiv2][query] GET https://serviceusage.googleapis.com/v1/projects/investment-calculator-931f2/services/cloudfunctions.googleapis.com [none]
+[debug] [2025-12-31T05:32:42.901Z] >>> [apiv2][(partial)header] GET https://serviceusage.googleapis.com/v1/projects/investment-calculator-931f2/services/cloudfunctions.googleapis.com x-goog-quota-user=projects/investment-calculator-931f2
+[debug] [2025-12-31T05:32:42.911Z] >>> [apiv2][query] GET https://serviceusage.googleapis.com/v1/projects/investment-calculator-931f2/services/firebaseapphosting.googleapis.com [none]
+[debug] [2025-12-31T05:32:42.911Z] >>> [apiv2][(partial)header] GET https://serviceusage.googleapis.com/v1/projects/investment-calculator-931f2/services/firebaseapphosting.googleapis.com x-goog-quota-user=projects/investment-calculator-931f2
+[debug] [2025-12-31T05:32:42.918Z] >>> [apiv2][query] GET https://serviceusage.googleapis.com/v1/projects/investment-calculator-931f2/services/firebaseio.com [none]
+[debug] [2025-12-31T05:32:42.921Z] >>> [apiv2][(partial)header] GET https://serviceusage.googleapis.com/v1/projects/investment-calculator-931f2/services/firebaseio.com x-goog-quota-user=projects/investment-calculator-931f2
+[debug] [2025-12-31T05:32:42.933Z] <<< [apiv2][status] GET https://serviceusage.googleapis.com/v1/projects/investment-calculator-931f2/services/cloudfunctions.googleapis.com 200
+[debug] [2025-12-31T05:32:42.943Z] <<< [apiv2][body] GET https://serviceusage.googleapis.com/v1/projects/investment-calculator-931f2/services/cloudfunctions.googleapis.com [omitted]
+[debug] [2025-12-31T05:32:42.961Z] <<< [apiv2][status] GET https://serviceusage.googleapis.com/v1/projects/investment-calculator-931f2/services/firebaseio.com 403
+[debug] [2025-12-31T05:32:42.961Z] <<< [apiv2][body] GET https://serviceusage.googleapis.com/v1/projects/investment-calculator-931f2/services/firebaseio.com [omitted]
+[debug] [2025-12-31T05:32:42.985Z] <<< [apiv2][status] GET https://serviceusage.googleapis.com/v1/projects/investment-calculator-931f2/services/firebaseio.com 403
+[debug] [2025-12-31T05:32:42.985Z] <<< [apiv2][body] GET https://serviceusage.googleapis.com/v1/projects/investment-calculator-931f2/services/firebaseio.com [omitted]
+[debug] [2025-12-31T05:32:43.033Z] <<< [apiv2][status] GET https://serviceusage.googleapis.com/v1/projects/investment-calculator-931f2/services/firebaseio.com 403
+[debug] [2025-12-31T05:32:43.033Z] <<< [apiv2][body] GET https://serviceusage.googleapis.com/v1/projects/investment-calculator-931f2/services/firebaseio.com [omitted]
+[debug] [2025-12-31T05:32:43.046Z] <<< [apiv2][status] GET https://serviceusage.googleapis.com/v1/projects/investment-calculator-931f2/services/firebaseapphosting.googleapis.com 200
+[debug] [2025-12-31T05:32:43.046Z] <<< [apiv2][body] GET https://serviceusage.googleapis.com/v1/projects/investment-calculator-931f2/services/firebaseapphosting.googleapis.com [omitted]
+[error] Failed to fetch Firebase Project from Studio Workspace because WORKSPACE_SLUG environment variable is empty
+[debug] [2025-12-31T05:32:43.067Z] <<< [apiv2][status] GET https://serviceusage.googleapis.com/v1/projects/investment-calculator-931f2/services/firebasedataconnect.googleapis.com 200
+[debug] [2025-12-31T05:32:43.068Z] <<< [apiv2][body] GET https://serviceusage.googleapis.com/v1/projects/investment-calculator-931f2/services/firebasedataconnect.googleapis.com [omitted]
+[debug] [2025-12-31T05:32:43.073Z] <<< [apiv2][status] GET https://serviceusage.googleapis.com/v1/projects/investment-calculator-931f2/services/firebaseapphosting.googleapis.com 200
+[debug] [2025-12-31T05:32:43.073Z] <<< [apiv2][body] GET https://serviceusage.googleapis.com/v1/projects/investment-calculator-931f2/services/firebaseapphosting.googleapis.com [omitted]
+[debug] [2025-12-31T05:32:43.082Z] <<< [apiv2][status] GET https://serviceusage.googleapis.com/v1/projects/investment-calculator-931f2/services/cloudfunctions.googleapis.com 200
+[debug] [2025-12-31T05:32:43.082Z] <<< [apiv2][body] GET https://serviceusage.googleapis.com/v1/projects/investment-calculator-931f2/services/cloudfunctions.googleapis.com [omitted]
+[error] Failed to fetch Firebase Project from Studio Workspace because WORKSPACE_SLUG environment variable is empty
+[error] Failed to fetch Firebase Project from Studio Workspace because WORKSPACE_SLUG environment variable is empty
+[debug] [2025-12-31T05:32:43.102Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform","https://www.googleapis.com/auth/userinfo.email"]
+[debug] [2025-12-31T05:32:43.102Z] > authorizing via signed-in user (degraff.tim@gmail.com)
+[debug] [2025-12-31T05:32:43.103Z] Checked if tokens are valid: true, expires at: 1767162761363
+[debug] [2025-12-31T05:32:43.103Z] Checked if tokens are valid: true, expires at: 1767162761363
+[debug] [2025-12-31T05:32:43.103Z] >>> [apiv2][query] GET https://cloudbilling.googleapis.com/v1/projects/investment-calculator-931f2/billingInfo [none]
+[debug] [2025-12-31T05:32:43.122Z] <<< [apiv2][status] GET https://serviceusage.googleapis.com/v1/projects/investment-calculator-931f2/services/firebasedataconnect.googleapis.com 200
+[debug] [2025-12-31T05:32:43.122Z] <<< [apiv2][body] GET https://serviceusage.googleapis.com/v1/projects/investment-calculator-931f2/services/firebasedataconnect.googleapis.com [omitted]
+[debug] [2025-12-31T05:32:43.132Z] <<< [apiv2][status] GET https://serviceusage.googleapis.com/v1/projects/investment-calculator-931f2/services/firebaseapphosting.googleapis.com 200
+[debug] [2025-12-31T05:32:43.132Z] <<< [apiv2][body] GET https://serviceusage.googleapis.com/v1/projects/investment-calculator-931f2/services/firebaseapphosting.googleapis.com [omitted]
+[debug] [2025-12-31T05:32:43.140Z] <<< [apiv2][status] GET https://serviceusage.googleapis.com/v1/projects/investment-calculator-931f2/services/cloudfunctions.googleapis.com 200
+[debug] [2025-12-31T05:32:43.142Z] <<< [apiv2][body] GET https://serviceusage.googleapis.com/v1/projects/investment-calculator-931f2/services/cloudfunctions.googleapis.com [omitted]
+[debug] [2025-12-31T05:32:43.155Z] <<< [apiv2][status] GET https://serviceusage.googleapis.com/v1/projects/investment-calculator-931f2/services/firebaseio.com 403
+[debug] [2025-12-31T05:32:43.155Z] <<< [apiv2][body] GET https://serviceusage.googleapis.com/v1/projects/investment-calculator-931f2/services/firebaseio.com [omitted]
+[debug] [2025-12-31T05:32:43.596Z] <<< [apiv2][status] GET https://cloudbilling.googleapis.com/v1/projects/investment-calculator-931f2/billingInfo 200
+[debug] [2025-12-31T05:32:43.596Z] <<< [apiv2][body] GET https://cloudbilling.googleapis.com/v1/projects/investment-calculator-931f2/billingInfo {"name":"projects/investment-calculator-931f2/billingInfo","projectId":"investment-calculator-931f2","billingAccountName":"billingAccounts/013AAB-647F6A-6EE8E8","billingEnabled":true}
+[error] Failed to fetch Firebase Project from Studio Workspace because WORKSPACE_SLUG environment variable is empty
+[debug] [2025-12-31T05:32:43.602Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform","https://www.googleapis.com/auth/userinfo.email"]
+[debug] [2025-12-31T05:32:43.602Z] > authorizing via signed-in user (degraff.tim@gmail.com)
+[debug] [2025-12-31T05:32:43.621Z] <<< [apiv2][status] GET https://serviceusage.googleapis.com/v1/projects/investment-calculator-931f2/services/firebaseapphosting.googleapis.com 200
+[debug] [2025-12-31T05:32:43.621Z] <<< [apiv2][body] GET https://serviceusage.googleapis.com/v1/projects/investment-calculator-931f2/services/firebaseapphosting.googleapis.com [omitted]
+[debug] [2025-12-31T05:32:43.625Z] <<< [apiv2][status] GET https://serviceusage.googleapis.com/v1/projects/investment-calculator-931f2/services/firebasedataconnect.googleapis.com 200
+[debug] [2025-12-31T05:32:43.625Z] <<< [apiv2][body] GET https://serviceusage.googleapis.com/v1/projects/investment-calculator-931f2/services/firebasedataconnect.googleapis.com [omitted]
+[debug] [2025-12-31T05:32:43.630Z] <<< [apiv2][status] GET https://serviceusage.googleapis.com/v1/projects/investment-calculator-931f2/services/cloudfunctions.googleapis.com 200
+[debug] [2025-12-31T05:32:43.630Z] <<< [apiv2][body] GET https://serviceusage.googleapis.com/v1/projects/investment-calculator-931f2/services/cloudfunctions.googleapis.com [omitted]
+[error] Failed to fetch Firebase Project from Studio Workspace because WORKSPACE_SLUG environment variable is empty
+[error] Failed to fetch Firebase Project from Studio Workspace because WORKSPACE_SLUG environment variable is empty
+[error] Failed to fetch Firebase Project from Studio Workspace because WORKSPACE_SLUG environment variable is empty
+[error] Failed to fetch Firebase Project from Studio Workspace because WORKSPACE_SLUG environment variable is empty
+[error] Failed to fetch Firebase Project from Studio Workspace because WORKSPACE_SLUG environment variable is empty
+[debug] [2025-12-31T05:32:43.674Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform","https://www.googleapis.com/auth/userinfo.email"]
+[debug] [2025-12-31T05:32:43.674Z] > authorizing via signed-in user (degraff.tim@gmail.com)
+[debug] [2025-12-31T05:32:43.676Z] Checked if tokens are valid: true, expires at: 1767162761363
+[debug] [2025-12-31T05:32:43.677Z] Checked if tokens are valid: true, expires at: 1767162761363
+[debug] [2025-12-31T05:32:43.677Z] >>> [apiv2][query] GET https://cloudbilling.googleapis.com/v1/projects/investment-calculator-931f2/billingInfo [none]
+[error] Failed to fetch Firebase Project from Studio Workspace because WORKSPACE_SLUG environment variable is empty
+[error] Failed to fetch Firebase Project from Studio Workspace because WORKSPACE_SLUG environment variable is empty
+[debug] [2025-12-31T05:32:43.699Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform","https://www.googleapis.com/auth/userinfo.email"]
+[debug] [2025-12-31T05:32:43.703Z] > authorizing via signed-in user (degraff.tim@gmail.com)
+[debug] [2025-12-31T05:32:43.703Z] Checked if tokens are valid: true, expires at: 1767162761458
+[debug] [2025-12-31T05:32:43.703Z] Checked if tokens are valid: true, expires at: 1767162761458
+[debug] [2025-12-31T05:32:43.703Z] >>> [apiv2][query] GET https://cloudbilling.googleapis.com/v1/projects/investment-calculator-931f2/billingInfo [none]
+[debug] [2025-12-31T05:32:43.748Z] <<< [apiv2][status] GET https://cloudbilling.googleapis.com/v1/projects/investment-calculator-931f2/billingInfo 200
+[debug] [2025-12-31T05:32:43.748Z] <<< [apiv2][body] GET https://cloudbilling.googleapis.com/v1/projects/investment-calculator-931f2/billingInfo {"name":"projects/investment-calculator-931f2/billingInfo","projectId":"investment-calculator-931f2","billingAccountName":"billingAccounts/013AAB-647F6A-6EE8E8","billingEnabled":true}
+[error] Failed to fetch Firebase Project from Studio Workspace because WORKSPACE_SLUG environment variable is empty
+[debug] [2025-12-31T05:32:43.754Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform","https://www.googleapis.com/auth/userinfo.email"]
+[debug] [2025-12-31T05:32:43.754Z] > authorizing via signed-in user (degraff.tim@gmail.com)
+[error] Failed to fetch Firebase Project from Studio Workspace because WORKSPACE_SLUG environment variable is empty
+[error] Failed to fetch Firebase Project from Studio Workspace because WORKSPACE_SLUG environment variable is empty
+[debug] [2025-12-31T05:32:43.775Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform","https://www.googleapis.com/auth/userinfo.email"]
+[debug] [2025-12-31T05:32:43.775Z] > authorizing via signed-in user (degraff.tim@gmail.com)
+[debug] [2025-12-31T05:32:43.776Z] Checked if tokens are valid: true, expires at: 1767162761363
+[debug] [2025-12-31T05:32:43.776Z] Checked if tokens are valid: true, expires at: 1767162761363
+[debug] [2025-12-31T05:32:43.776Z] >>> [apiv2][query] GET https://cloudbilling.googleapis.com/v1/projects/investment-calculator-931f2/billingInfo [none]
+[debug] [2025-12-31T05:32:43.793Z] <<< [apiv2][status] GET https://cloudbilling.googleapis.com/v1/projects/investment-calculator-931f2/billingInfo 200
+[debug] [2025-12-31T05:32:43.793Z] <<< [apiv2][body] GET https://cloudbilling.googleapis.com/v1/projects/investment-calculator-931f2/billingInfo {"name":"projects/investment-calculator-931f2/billingInfo","projectId":"investment-calculator-931f2","billingAccountName":"billingAccounts/013AAB-647F6A-6EE8E8","billingEnabled":true}
+[error] Failed to fetch Firebase Project from Studio Workspace because WORKSPACE_SLUG environment variable is empty
+[debug] [2025-12-31T05:32:43.799Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform","https://www.googleapis.com/auth/userinfo.email"]
+[debug] [2025-12-31T05:32:43.799Z] > authorizing via signed-in user (degraff.tim@gmail.com)
+[error] Failed to fetch Firebase Project from Studio Workspace because WORKSPACE_SLUG environment variable is empty
+[error] Failed to fetch Firebase Project from Studio Workspace because WORKSPACE_SLUG environment variable is empty
+[error] Failed to fetch Firebase Project from Studio Workspace because WORKSPACE_SLUG environment variable is empty
+[error] Failed to fetch Firebase Project from Studio Workspace because WORKSPACE_SLUG environment variable is empty
+[debug] [2025-12-31T05:32:43.841Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform","https://www.googleapis.com/auth/userinfo.email"]
+[debug] [2025-12-31T05:32:43.841Z] > authorizing via signed-in user (degraff.tim@gmail.com)
+[debug] [2025-12-31T05:32:43.842Z] Checked if tokens are valid: true, expires at: 1767162761458
+[debug] [2025-12-31T05:32:43.842Z] Checked if tokens are valid: true, expires at: 1767162761458
+[debug] [2025-12-31T05:32:43.842Z] >>> [apiv2][query] GET https://cloudbilling.googleapis.com/v1/projects/investment-calculator-931f2/billingInfo [none]
+[debug] [2025-12-31T05:32:43.860Z] <<< [apiv2][status] GET https://cloudbilling.googleapis.com/v1/projects/investment-calculator-931f2/billingInfo 200
+[debug] [2025-12-31T05:32:43.860Z] <<< [apiv2][body] GET https://cloudbilling.googleapis.com/v1/projects/investment-calculator-931f2/billingInfo {"name":"projects/investment-calculator-931f2/billingInfo","projectId":"investment-calculator-931f2","billingAccountName":"billingAccounts/013AAB-647F6A-6EE8E8","billingEnabled":true}
+[error] Failed to fetch Firebase Project from Studio Workspace because WORKSPACE_SLUG environment variable is empty
+[debug] [2025-12-31T05:32:43.865Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform","https://www.googleapis.com/auth/userinfo.email"]
+[debug] [2025-12-31T05:32:43.868Z] > authorizing via signed-in user (degraff.tim@gmail.com)
+[error] Failed to fetch Firebase Project from Studio Workspace because WORKSPACE_SLUG environment variable is empty
+[error] Failed to fetch Firebase Project from Studio Workspace because WORKSPACE_SLUG environment variable is empty
+[debug] [2025-12-31T05:32:43.914Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform","https://www.googleapis.com/auth/userinfo.email"]
+[debug] [2025-12-31T05:32:43.914Z] > authorizing via signed-in user (degraff.tim@gmail.com)
+[debug] [2025-12-31T05:32:43.914Z] Checked if tokens are valid: true, expires at: 1767162761458
+[debug] [2025-12-31T05:32:43.914Z] Checked if tokens are valid: true, expires at: 1767162761458
+[debug] [2025-12-31T05:32:43.914Z] >>> [apiv2][query] GET https://cloudbilling.googleapis.com/v1/projects/investment-calculator-931f2/billingInfo [none]
+[debug] [2025-12-31T05:32:43.932Z] <<< [apiv2][status] GET https://cloudbilling.googleapis.com/v1/projects/investment-calculator-931f2/billingInfo 200
+[debug] [2025-12-31T05:32:43.932Z] <<< [apiv2][body] GET https://cloudbilling.googleapis.com/v1/projects/investment-calculator-931f2/billingInfo {"name":"projects/investment-calculator-931f2/billingInfo","projectId":"investment-calculator-931f2","billingAccountName":"billingAccounts/013AAB-647F6A-6EE8E8","billingEnabled":true}
+[error] Failed to fetch Firebase Project from Studio Workspace because WORKSPACE_SLUG environment variable is empty
+[debug] [2025-12-31T05:32:43.937Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform","https://www.googleapis.com/auth/userinfo.email"]
+[debug] [2025-12-31T05:32:43.938Z] > authorizing via signed-in user (degraff.tim@gmail.com)
+[debug] [2025-12-31T05:32:43.981Z] <<< [apiv2][status] GET https://cloudbilling.googleapis.com/v1/projects/investment-calculator-931f2/billingInfo 200
+[debug] [2025-12-31T05:32:43.981Z] <<< [apiv2][body] GET https://cloudbilling.googleapis.com/v1/projects/investment-calculator-931f2/billingInfo {"name":"projects/investment-calculator-931f2/billingInfo","projectId":"investment-calculator-931f2","billingAccountName":"billingAccounts/013AAB-647F6A-6EE8E8","billingEnabled":true}
+[error] Failed to fetch Firebase Project from Studio Workspace because WORKSPACE_SLUG environment variable is empty
+[debug] [2025-12-31T05:32:43.985Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform","https://www.googleapis.com/auth/userinfo.email"]
+[debug] [2025-12-31T05:32:43.985Z] > authorizing via signed-in user (degraff.tim@gmail.com)
