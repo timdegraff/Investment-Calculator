@@ -1,8 +1,8 @@
 export const templates = {
     investment: () => `
-        <td class="px-4 py-3"><input data-id="name" type="text" placeholder="e.g., Fidelity Brokerage" class="bg-transparent outline-none w-full text-sm font-bold"></td>
+        <td class="px-4 py-3"><input data-id="name" type="text" placeholder="e.g., Fidelity Brokerage" class="input-base w-full"></td>
         <td class="px-4 py-3">
-            <select data-id="type" class="bg-transparent outline-none w-full text-sm">
+            <select data-id="type" class="input-base w-full">
                 <option>Taxable</option>
                 <option>Pre-Tax (401k/IRA)</option>
                 <option>Post-Tax (Roth)</option>
@@ -13,91 +13,76 @@ export const templates = {
                 <option>Metals</option>
             </select>
         </td>
-        <td class="px-4 py-3 text-right"><input data-id="value" type="text" data-type="currency" placeholder="0" class="w-full text-right font-bold outline-none bg-transparent text-sm text-emerald-400"></td>
-        <td class="px-4 py-3 text-right"><input data-id="costBasis" type="text" data-type="currency" placeholder="N/A" class="w-full text-right font-bold outline-none bg-transparent text-sm text-blue-400 disabled:text-slate-500 disabled:cursor-not-allowed"></td>
-        <td class="px-4 py-2 text-center"><button data-action="remove" class="text-slate-400 hover:text-red-500 text-xs w-6 h-6"><i class="fas fa-times"></i></button></td>`,
+        <td class="px-4 py-3"><input data-id="value" type="text" data-type="currency" placeholder="$0" class="input-base w-full text-right text-emerald-400"></td>
+        <td class="px-4 py-3"><input data-id="costBasis" type="text" data-type="currency" placeholder="N/A" class="input-base w-full text-right text-blue-400 disabled:text-slate-500"></td>
+        <td class="px-4 py-2 text-center"><button data-action="remove" class="btn-icon"><i class="fas fa-times"></i></button></td>`,
     
     heloc: () => `
-        <td class="px-4 py-3"><input data-id="name" type="text" placeholder="e.g., Chase HELOC" class="bg-transparent outline-none w-full text-sm font-bold"></td>
-        <td class="px-4 py-3 text-right"><input data-id="balance" type="text" data-type="currency" placeholder="0" class="w-full text-right font-bold text-red-400 outline-none bg-transparent text-sm"></td>
-        <td class="px-4 py-3 text-right"><input data-id="limit" type="text" data-type="currency" placeholder="0" class="w-full text-right font-bold outline-none bg-transparent text-sm"></td>
-        <td class="px-4 py-3 text-right"><input data-id="rate" type="number" placeholder="5.0" class="w-20 text-right font-bold outline-none bg-transparent text-sm"></td>
-        <td class="px-4 py-2 text-center"><button data-action="remove" class="text-slate-300 hover:text-red-500 text-xs w-6 h-6"><i class="fas fa-times"></i></button></td>`,
+        <td class="px-4 py-3"><input data-id="name" type="text" placeholder="e.g., Chase HELOC" class="input-base w-full"></td>
+        <td class="px-4 py-3"><input data-id="balance" type="text" data-type="currency" placeholder="$0" class="input-base w-full text-right text-red-400"></td>
+        <td class="px-4 py-3"><input data-id="limit" type="text" data-type="currency" placeholder="$0" class="input-base w-full text-right"></td>
+        <td class="px-4 py-3"><input data-id="rate" type="number" placeholder="5.0" class="input-base w-24 text-right"></td>
+        <td class="px-4 py-2 text-center"><button data-action="remove" class="btn-icon"><i class="fas fa-times"></i></button></td>`,
 
     debt: () => `
-        <td class="px-4 py-3"><input data-id="name" type="text" placeholder="e.g., Credit Card" class="bg-transparent outline-none w-full text-sm font-bold text-red-400"></td>
-        <td class="px-4 py-3 text-right"><input data-id="balance" type="text" data-type="currency" placeholder="0" class="w-full text-right font-bold text-red-500 outline-none bg-transparent text-sm"></td>
-        <td class="px-4 py-3 text-right"><input data-id="rate" type="number" placeholder="22.9" class="w-20 text-right font-bold outline-none bg-transparent text-sm"></td>
-        <td class="px-4 py-2 text-center"><button data-action="remove" class="text-slate-300 hover:text-red-500 text-xs w-6 h-6"><i class="fas fa-times"></i></button></td>`,
+        <td class="px-4 py-3"><input data-id="name" type="text" placeholder="e.g., Credit Card" class="input-base w-full"></td>
+        <td class="px-4 py-3"><input data-id="balance" type="text" data-type="currency" placeholder="$0" class="input-base w-full text-right text-red-400"></td>
+        <td class="px-4 py-3"><input data-id="rate" type="number" placeholder="22.9" class="input-base w-24 text-right"></td>
+        <td class="px-4 py-2 text-center"><button data-action="remove" class="btn-icon"><i class="fas fa-times"></i></button></td>`,
 
     income: () => `
-    <div class="income-card p-5 bg-slate-800 rounded-xl border border-slate-700 space-y-4 relative group">
-        <button data-action="remove" class="absolute top-3 right-3 text-slate-500 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"><i class="fas fa-times text-sm"></i></button>
-        
-        <div class="grid grid-cols-2 md:grid-cols-4 gap-x-6 gap-y-4 items-end">
-            <div class="col-span-2 md:col-span-1">
-                <label class="text-xs font-bold text-slate-400 uppercase">Source Name</label>
-                <input data-id="name" type="text" placeholder="e.g., W2 Job" class="bg-transparent font-bold text-lg text-white outline-none w-full mt-1">
-            </div>
-            <div>
-                <label class="text-xs font-bold text-slate-400 uppercase">Base Salary</label>
-                <div class="flex items-center mt-1">
-                    <span class="text-slate-400 text-lg mr-2">$</span>
-                    <input data-id="amount" type="text" data-type="currency" value="0" class="w-full bg-slate-700/50 border border-slate-600 px-2 py-1.5 rounded font-bold text-right text-lg text-white">
+        <div class="space-y-4 relative group">
+            <button data-action="remove" class="btn-icon absolute top-2 right-2 opacity-50 group-hover:opacity-100"><i class="fas fa-times"></i></button>
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div class="col-span-2 md:col-span-1">
+                    <label class="label-form">Source Name</label>
+                    <input data-id="name" type="text" placeholder="e.g., W2 Job" class="input-base w-full font-bold">
+                </div>
+                <div>
+                    <label class="label-form">Base Salary</label>
+                    <input data-id="amount" type="text" data-type="currency" value="$0" class="input-base w-full text-right">
+                </div>
+                <div>
+                    <label class="label-form">Avg Bonus</label>
+                     <div class="relative">
+                        <input data-id="bonusPct" type="text" value="0" class="input-base w-full text-right pr-6">
+                        <span class="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400">%</span>
+                    </div>
+                </div>
+                <div>
+                    <label class="label-form">Non-Taxable Until</label>
+                    <input data-id="nonTaxYear" type="number" placeholder="Year" class="input-base w-full text-right">
                 </div>
             </div>
-            <div>
-                <label class="text-xs font-bold text-slate-400 uppercase">Avg Bonus</label>
-                <div class="flex items-center mt-1">
-                    <input data-id="bonusPct" type="number" value="0" class="w-full bg-slate-700/50 border border-slate-600 px-2 py-1.5 rounded font-bold text-right text-lg text-white">
-                    <span class="text-slate-400 text-lg ml-2">%</span>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 pt-4 border-t border-slate-700">
+                <div>
+                    <label class="label-form flex justify-between">Annual Increase <span>0%</span></label>
+                    <input data-id="increase" type="range" min="0" max="10" step="0.1" value="3" class="input-range">
+                </div>
+                <div>
+                    <label class="label-form flex justify-between">401k Contribution <span>0%</span></label>
+                    <input data-id="contribution" type="range" min="0" max="30" step="1" value="0" class="input-range">
+                </div>
+                <div>
+                    <label class="label-form flex justify-between">Employer Match <span>0%</span></label>
+                    <input data-id="match" type="range" min="0" max="20" step="0.5" value="0" class="input-range">
                 </div>
             </div>
-            <div>
-                <label class="text-xs font-bold text-slate-400 uppercase">Non-Taxable Until</label>
-                <input data-id="nonTaxYear" type="number" placeholder="Year" class="w-full bg-slate-700/50 border border-slate-600 px-2 py-1.5 rounded font-bold text-right text-lg text-white mt-1">
+            <div class="flex justify-between items-center pt-4 border-t border-slate-700">
+                 <label class="flex items-center gap-2 text-sm text-slate-300"><input data-id="contribIncBonus" type="checkbox" class="checkbox-base"> Include Bonus in 401k Contrib.</label>
+                 <label class="flex items-center gap-2 text-sm text-slate-300"><input data-id="matchIncBonus" type="checkbox" class="checkbox-base"> Include Bonus in Match</label>
+                 <label class="flex items-center gap-2 text-sm text-slate-300"><input data-id="remainsInRetirement" type="checkbox" class="checkbox-base"> Remains in Retirement?</label>
             </div>
-        </div>
+        </div>`,
 
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-x-8 gap-y-6 pt-4 border-t border-slate-700/60">
-            <div>
-                <div class="flex justify-between text-xs font-bold text-slate-400 uppercase mb-2">
-                    <span>Annual Increase</span>
-                    <span class="font-bold text-blue-400">0%</span>
-                </div>
-                <input data-id="increase" type="range" min="0" max="10" step="0.1" value="3" class="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer range-thumb-blue-500">
-            </div>
-            <div>
-                 <div class="flex justify-between text-xs font-bold text-slate-400 uppercase mb-2">
-                    <span>401k Contribution</span>
-                    <span class="font-bold text-blue-400">0%</span>
-                </div>
-                <input data-id="contribution" type="range" min="0" max="30" step="1" value="0" class="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer range-thumb-blue-500">
-                <label class="text-sm flex gap-2 items-center text-slate-400 mt-2"><input data-id="contribIncBonus" type="checkbox"> Include Bonus</label>
-            </div>
-            <div>
-                 <div class="flex justify-between text-xs font-bold text-slate-400 uppercase mb-2">
-                    <span>Employer Match</span>
-                    <span class="font-bold text-blue-400">0%</span>
-                </div>
-                <input data-id="match" type="range" min="0" max="20" step="0.5" value="0" class="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer range-thumb-blue-500">
-                <label class="text-sm flex gap-2 items-center text-slate-400 mt-2"><input data-id="matchIncBonus" type="checkbox"> Include Bonus</label>
-            </div>
-        </div>
-        <div class="pt-4 border-t border-slate-700/60">
-            <label class="text-sm flex gap-2 items-center text-slate-400"><input data-id="remainsInRetirement" type="checkbox"> Remains in Retirement?</label>
-        </div>
-    </div>`,
-
-    "savings-item": () => `
-        <td class="px-4 py-3"><input data-id="name" type="text" placeholder="e.g., Roth IRA" class="bg-transparent outline-none w-full text-sm font-bold"></td>
-        <td class="px-4 py-3 text-right"><input data-id="balance" type="text" data-type="currency" placeholder="0" class="w-full text-right font-bold text-emerald-600 outline-none bg-transparent text-sm"></td>
-        <td class="px-4 py-3 text-right"><input data-id="contribution" type="text" data-type="currency" placeholder="0" class="w-full text-right font-bold text-emerald-600 outline-none bg-transparent text-sm"></td>
-        <td class="px-4 py-2 text-center"><button data-action="remove" class="text-slate-300 hover:text-red-500 text-xs w-6 h-6"><i class="fas fa-times"></i></button></td>`,
+    "budget-savings": () => `
+        <td class="px-4 py-2"><input data-id="name" type="text" placeholder="e.g., Roth IRA" class="input-base w-full"></td>
+        <td class="px-4 py-2"><input data-id="contribution" type="text" data-type="currency" placeholder="$0" class="input-base w-full text-right text-green-400"></td>
+        <td class="px-4 py-2 text-center"><button data-action="remove" class="btn-icon"><i class="fas fa-times"></i></button></td>`,
     
-    "budget-item": () => `
-        <td class="px-4 py-3"><input data-id="name" type="text" placeholder="e.g., Groceries" class="bg-transparent outline-none w-full text-sm"></td>
-        <td class="px-4 py-3 text-right"><div class="flex items-center"><span class="text-slate-400 text-sm mr-1">$</span><input data-id="monthly" type="text" data-type="currency" placeholder="0" class="w-full text-right font-bold text-red-400 outline-none bg-transparent text-sm"></div></td>
-        <td class="px-4 py-3 text-right"><div class="flex items-center"><span class="text-slate-400 text-sm mr-1">$</span><input data-id="annual" type="text" data-type="currency" placeholder="0" class="w-full text-right font-bold text-red-400 outline-none bg-transparent text-sm"></div></td>
-        <td class="px-4 py-2 text-center"><button data-action="remove" class="text-slate-300 hover:text-red-500 text-xs w-6 h-6"><i class="fas fa-times"></i></button></td>`,
+    "budget-expense": () => `
+        <td class="px-4 py-2"><input data-id="name" type="text" placeholder="e.g., Groceries" class="input-base w-full"></td>
+        <td class="px-4 py-2"><input data-id="monthly" data-type="currency" type="text" placeholder="$0" class="input-base w-full text-right text-pink-500"></td>
+        <td class="px-4 py-2"><input data-id="annual" data-type="currency" type="text" placeholder="$0" class="input-base w-full text-right text-pink-500"></td>
+        <td class="px-4 py-2 text-center"><button data-action="remove" class="btn-icon"><i class="fas fa-times"></i></button></td>`,
 };

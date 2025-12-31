@@ -8,53 +8,47 @@ FinCalc is a modern, single-page web application designed to be a personal finan
 
 This section documents all design, style, and features implemented from the initial version to the current one.
 
-### 2.1. Core Architecture (as of v1.3)
-
--   **Modular JavaScript & Debouncing:** The application uses a modern module-based architecture. All `.js` files are proper ES Modules. A global debounce utility has been implemented to prevent excessive writes to the database during rapid UI interactions.
--   **Centralized Entry Point:** `main.js` serves as the single entry point.
--   **Programmatic Event Handling:** All DOM event listeners are attached programmatically in `core.js`.
--   **State Management:** User data is managed in a `window.currentData` object, which is loaded from Firestore on login and saved back on any change.
-
-### 2.2. User Authentication
-
--   **Login/Logout:** Users can sign in and out with a Google account via Firebase Authentication.
--   **UI:** A full-screen, modal login page is displayed on startup.
-
-### 2.3. Data Management & Persistence
-
--   **Database:** User financial data is stored in a Firestore database, keyed by their Firebase UID.
--   **Automatic Saving:** Any change made to the data in the UI triggers a debounced `autoSave` function, which scrapes the entire UI for data and persists it to Firestore.
--   **Default Data:** New users are automatically initialized with a default set of budget items and financial assumptions.
-
-### 2.4. UI & Design
-
--   **Layout:** A two-column layout featuring a fixed sidebar and a main content area.
--   **Styling:** The UI is styled using Tailwind CSS with a consistent dark theme.
--   **Tabs:** The main content is organized into tabs for Assets & Debts, Income, Savings, Budget, and Projection.
-
-### 2.5. Financial Features
-
--   **Net Worth Calculation:** The application calculates and displays the user's real-time net worth.
--   **Interactive Projection Chart:** The "Projection" tab features an interactive control panel allowing users to adjust assumptions (e.g., retirement age, growth rate) and instantly see the impact on a 60-year net worth projection chart. The chart visually distinguishes between the pre-retirement accumulation phase and the post-retirement drawdown phase.
+- **UI & Styling:** The app uses a dark theme with teal and pink accents, styled with Tailwind CSS. The active navigation tab is highlighted.
+- **Data Persistence:** User data is saved automatically to Firestore after changes are made in the UI.
+- **Summaries:** Key financial metrics (Net Worth, Total Assets, Liabilities, etc.) are displayed in the sidebar and at the top of relevant tabs.
+- **Asset & Liability Tracking:** Users can manage a detailed list of their investments, real estate, HELOCs, and other debts.
+- **Income Tracking:** Users can log multiple income sources with details like annual increases and bonus percentages.
+- **Budgeting:** Users can create a detailed monthly and annual budget for their expenses.
+- **Asset-Only Projection:** A dedicated tab provides a year-by-year projection of asset growth until age 80, visualized with a stacked area chart and a detailed data table.
 
 ---
 
-## 3. Current Plan: Enhanced Summaries, Styling & Projection
+## 3. Current Plan: Bug Fixes & Savings Refactor
 
 This section outlines the plan for the current requested change.
 
 ### 3.1. Goal
 
-To enhance the UI with tab-specific summaries and improved styling, and to overhaul the projection feature to be asset-focused.
+To fix several outstanding bugs related to calculations and UI functionality, and to refactor the application by merging the "Savings" functionality into the "Monthly Budget" tab for a more integrated budgeting experience.
 
 ### 3.2. Actionable Steps
 
-1.  **Add Tab Summaries & Styling:**
-    *   **Summaries:** Add summary sections to the "Income," "Savings," and "Budget" tabs in `index.html`.
-    *   **Styling:** Update the styling in `index.html` to bold and color the active tab. Incorporate the teal and pink color scheme and icons into the tab content.
-    *   **Logic:** Update `data.js` and `utils.js` to calculate and populate the new summary data.
+1.  **Fix HELOC Calculation:**
+    *   **File:** `utils.js`
+    *   **Action:** Modify the `calculateSummaries` function to correctly include the `helocs` balance in the `totalLiabilities` calculation. This will ensure the sidebar Net Worth is accurate.
 
-2.  **Overhaul Projection Feature:**
-    *   **Asset-Only Projection:** Modify the projection logic in `utils.js` to be based solely on the growth of assets (investments and savings), ignoring liabilities and budget.
-    *   **Projection Table:** In `index.html` and `utils.js`, create a new table that displays the year-by-year projected value of each individual asset until the user is 80 years old.
-    *   **Stacked Area Chart:** Replace the current line chart with a stacked area chart in `utils.js`. This chart will visually represent the growth of each asset over time, corresponding to the data in the new projection table.
+2.  **Fix Income Tab Sliders:**
+    *   **File:** `core.js` & `templates.js`
+    *   **Action:** Diagnose and repair the event listeners for the income card sliders ("Annual Increase," etc.). Ensure the percentage display updates correctly as the slider is moved.
+
+3.  **Implement Budget Tab Features:**
+    *   **File:** `core.js` & `index.html`
+    *   **Action:** Add the JavaScript logic to auto-calculate the "Annual" budget field when "Monthly" is entered, and vice-versa. Implement the click handlers and sorting logic to allow the budget table to be sorted by the "Monthly" or "Annual" columns.
+
+4.  **Reformat Real Estate Card:**
+    *   **File:** `index.html`
+    *   **Action:** Restructure the HTML for the "Real Estate" section to match the card-based design from the user-provided screenshot, ensuring consistent styling with the rest of the application.
+
+5.  **Merge Savings into Budget:**
+    *   **File:** `index.html`, `core.js`, `data.js`, `utils.js`, `templates.js`
+    *   **Action:**
+        *   Remove the "Savings" tab from the main navigation and delete its corresponding section in `index.html`.
+        *   Add a new "Annual Savings Contributions" table within the "Monthly Budget" tab, positioned above the expenses table.
+        *   Create a new template in `templates.js` for the savings rows, containing only "Name" and "Annual Contribution."
+        *   Update `data.js` and `utils.js` to scrape data from this new location and include savings contributions in the Budget tab's main summary calculation.
+        *   Remove the now-obsolete `savings` summary from `index.html` and `data.js`.

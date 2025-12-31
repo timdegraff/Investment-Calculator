@@ -30,7 +30,6 @@ export const assetClassColors = {
 export const assumptions = {
     defaults: {
         currentAge: 40,
-        retirementAge: 65,
         investmentGrowth: 7,
     }
 };
@@ -42,14 +41,12 @@ export const engine = {
         const canvas = document.getElementById('projectionChart');
         if (!canvas) return;
 
-        // Destroy existing chart
         if (window.myChart instanceof Chart) {
             window.myChart.destroy();
         }
 
         const { labels, datasets, tableData, assetNames } = engine.calculateAssetProjection(data);
 
-        // Populate the projection table
         const tableHeader = document.getElementById('projection-table-header');
         const tableBody = document.getElementById('projection-table-body');
         if (tableHeader && tableBody) {
@@ -77,7 +74,6 @@ export const engine = {
             }
         }
 
-        // Render the stacked area chart
         const ctx = canvas.getContext('2d');
         window.myChart = new Chart(ctx, {
             type: 'line',
@@ -130,7 +126,8 @@ export const engine = {
     },
 
     calculateAssetProjection: (data) => {
-        const { assumptions, investments, savings } = data;
+        const { assumptions, investments, budget } = data;
+        const savings = budget?.savings || [];
         const currentAge = parseInt(assumptions.currentAge, 10);
         const investmentGrowth = parseFloat(assumptions.investmentGrowth) / 100;
         const yearsToProject = 80 - currentAge;
@@ -145,10 +142,10 @@ export const engine = {
                 currentValue: math.fromCurrency(inv.value), 
                 annualContribution: 0 
             })),
-            ...(savings || []).map(sav => ({ 
+            ...savings.map(sav => ({ 
                 name: sav.name || 'Unnamed Savings', 
                 type: 'Savings',
-                currentValue: math.fromCurrency(sav.balance), 
+                currentValue: 0, // No current balance for savings
                 annualContribution: math.fromCurrency(sav.contribution)
             }))
         ];
@@ -196,9 +193,8 @@ export const engine = {
 
     calculateSummaries: (data) => {
         const investmentAssets = data.investments?.reduce((sum, item) => sum + math.fromCurrency(item.value), 0) || 0;
-        const savingsAssets = data.savings?.reduce((sum, item) => sum + math.fromCurrency(item.balance), 0) || 0;
         const realEstateValue = math.fromCurrency(data.realEstate?.value) || 0;
-        const totalAssets = investmentAssets + savingsAssets + realEstateValue;
+        const totalAssets = investmentAssets + realEstateValue;
 
         const debtLiabilities = data.debts?.reduce((sum, item) => sum + math.fromCurrency(item.balance), 0) || 0;
         const helocLiabilities = data.helocs?.reduce((sum, item) => sum + math.fromCurrency(item.balance), 0) || 0;
@@ -211,19 +207,17 @@ export const engine = {
             return sum + base + bonus;
         }, 0) || 0;
 
-        const totalSavingsBalance = data.savings?.reduce((sum, item) => sum + math.fromCurrency(item.balance), 0) || 0;
-        const totalAnnualContribution = data.savings?.reduce((sum, item) => sum + math.fromCurrency(item.contribution), 0) || 0;
+        const totalAnnualSavings = data.budget?.savings?.reduce((sum, item) => sum + math.fromCurrency(item.contribution), 0) || 0;
 
-        const totalMonthlyBudget = data.budget?.reduce((sum, item) => sum + math.fromCurrency(item.monthly), 0) || 0;
-        const totalAnnualBudget = data.budget?.reduce((sum, item) => sum + math.fromCurrency(item.annual), 0) || 0;
+        const totalMonthlyBudget = data.budget?.expenses?.reduce((sum, item) => sum + math.fromCurrency(item.monthly), 0) || 0;
+        const totalAnnualBudget = data.budget?.expenses?.reduce((sum, item) => sum + math.fromCurrency(item.annual), 0) || 0;
         
         return {
             netWorth: totalAssets - totalLiabilities,
             totalAssets,
             totalLiabilities,
             grossIncome,
-            totalSavingsBalance,
-            totalAnnualContribution,
+            totalAnnualSavings,
             totalMonthlyBudget,
             totalAnnualBudget
         };

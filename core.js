@@ -77,7 +77,7 @@ function attachDynamicRowListeners() {
 }
 
 function attachSortingListeners() {
-    const budgetTableHead = document.querySelector('#tab-budget thead');
+    const budgetTableHead = document.querySelector('#budget-expenses-table thead');
     if (budgetTableHead) {
         budgetTableHead.addEventListener('click', (e) => {
             const header = e.target.closest('[data-sort]');
@@ -101,7 +101,6 @@ function showTab(tabId) {
     if (tabElement) tabElement.classList.remove('hidden');
     if (btnElement) btnElement.classList.add('active');
 
-    // If the projection tab is shown, we need to re-run the engine
     if (tabId === 'projection' && window.currentData) {
         engine.runProjection(window.currentData);
     }
@@ -138,26 +137,27 @@ function attachInputListeners(element) {
     const monthlyInput = element.querySelector('[data-id="monthly"]');
     const annualInput = element.querySelector('[data-id="annual"]');
     if (monthlyInput && annualInput) {
-        monthlyInput.addEventListener('input', () => {
+        const onMonthlyInput = () => {
             const monthlyValue = math.fromCurrency(monthlyInput.value);
             annualInput.value = math.toCurrency(monthlyValue * 12, false);
-             annualInput.dispatchEvent(new Event('input', { bubbles: true }));
-        });
-        annualInput.addEventListener('input', () => {
+            debouncedAutoSave();
+        };
+        const onAnnualInput = () => {
             const annualValue = math.fromCurrency(annualInput.value);
             monthlyInput.value = math.toCurrency(annualValue / 12, false);
-             monthlyInput.dispatchEvent(new Event('input', { bubbles: true }));
-        });
+            debouncedAutoSave();
+        };
+        monthlyInput.addEventListener('input', onMonthlyInput);
+        annualInput.addEventListener('input', onAnnualInput);
     }
 
     // Income card sliders
     element.querySelectorAll('input[type="range"]').forEach(slider => {
-        const display = slider.previousElementSibling.querySelector('span');
+        const display = slider.parentElement.querySelector('span');
         if (display) {
-            display.textContent = `${slider.value}%`;
-            slider.addEventListener('input', () => {
-                display.textContent = `${slider.value}%`;
-            });
+            const updateDisplay = () => display.textContent = `${slider.value}%`;
+            slider.addEventListener('input', updateDisplay);
+            updateDisplay(); // Set initial value
         }
     });
 
@@ -166,6 +166,12 @@ function attachInputListeners(element) {
         input.addEventListener('blur', (e) => {
             const value = math.fromCurrency(e.target.value);
             e.target.value = math.toCurrency(value, false);
+        });
+         input.addEventListener('focus', (e) => {
+            const value = math.fromCurrency(e.target.value);
+            if (value !== 0) {
+                e.target.value = value;
+            }
         });
     });
 }
@@ -192,7 +198,7 @@ function sortBudgetTable(sortKey, header) {
     tableBody.dataset.sortKey = sortKey;
     tableBody.dataset.sortOrder = newOrder;
 
-    document.querySelectorAll('#tab-budget th i.fas').forEach(icon => {
+    document.querySelectorAll('#budget-expenses-table th i.fas').forEach(icon => {
         icon.className = 'fas fa-sort text-slate-500';
     });
     const headerIcon = header.querySelector('i.fas');
