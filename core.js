@@ -210,8 +210,8 @@ function createAssumptionControls(data) {
     container.innerHTML = ''; // Clear previous controls
 
     const controlDefs = {
-        currentAge: { label: 'Current Age', min: 18, max: 100, step: 1, unit: ' years', defaultValue: 40 },
-        retirementAge: { label: 'Retirement Age', min: 50, max: 80, step: 1, unit: ' years', defaultValue: 65 },
+        currentAge: { label: 'Current Age', min: 18, max: 80, step: 1, unit: ' years', defaultValue: 40 },
+        retirementAge: { label: 'Retirement Age', min: 35, max: 72, step: 1, unit: ' years', defaultValue: 65 },
         ssStartAge: { label: 'SS Start Age', min: 62, max: 70, step: 1, unit: ' years', defaultValue: 67 },
         ssMonthly: { label: 'SS Monthly', min: 0, max: 7000, step: 100, unit: '/mo', defaultValue: 2500, isCurrency: true },
         stockGrowth: { label: 'Stock Growth 📈', min: 0, max: 20, step: 0.5, unit: '%', defaultValue: 7 },
