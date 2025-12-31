@@ -1,8 +1,8 @@
 
 import { loginWithGoogle, logoutUser } from './auth.js';
 import { templates } from './templates.js';
-import { autoSave, updateSummaries } from './data.js';
-import { engine, math, assetClassColors, assumptions } from './utils.js';
+import { autoSave } from './data.js';
+import { engine, math, assumptions } from './utils.js';
 
 // --- DEBOUNCE UTILITY ---
 function debounce(func, wait) {
@@ -19,19 +19,14 @@ function debounce(func, wait) {
 
 const debouncedAutoSave = debounce(autoSave, 500); // 500ms delay
 
-// This single function is exported to main.js to initialize the entire UI.
+// --- INITIALIZATION ---
 export function initializeUI() {
     console.log("Initializing UI and event listeners...");
-
-    // Set initial tab
     showTab('assets-debts');
-
-    // Attach all event listeners
     attachGlobalListeners();
     attachNavigationListeners();
     attachDynamicRowListeners();
-    attachSortingListeners(); // New listener for sorting
-    
+    attachSortingListeners();
     console.log("UI Initialized.");
 }
 
@@ -40,6 +35,13 @@ export function initializeUI() {
 function attachGlobalListeners() {
     document.getElementById('login-btn').addEventListener('click', loginWithGoogle);
     document.getElementById('logout-btn').addEventListener('click', logoutUser);
+
+    // Global listener for inputs to trigger autosave
+    document.body.addEventListener('input', (e) => {
+        if (e.target.closest('.input-base, .income-card, #assumptions-container, .real-estate-card')) {
+            debouncedAutoSave();
+        }
+    });
 }
 
 function attachNavigationListeners() {
@@ -51,8 +53,8 @@ function attachNavigationListeners() {
     });
 }
 
+// Handles clicks for "Add" and "Remove" buttons
 function attachDynamicRowListeners() {
-    // This handles clicks for dynamically added rows (e.g., "Add Asset", "Remove Item")
     document.body.addEventListener('click', (e) => {
         const addButton = e.target.closest('[data-add-row]');
         const removeButton = e.target.closest('[data-action="remove"]');
@@ -62,9 +64,10 @@ function attachDynamicRowListeners() {
             const type = addButton.dataset.rowType;
             if (containerId && type) {
                 addRow(containerId, type);
+                debouncedAutoSave(); // Save after adding a new row
             }
         } else if (removeButton) {
-            const row = removeButton.closest('tr, .income-card, .real-estate-card');
+            const row = removeButton.closest('tr, .income-card');
             if (row) {
                 row.remove();
                 debouncedAutoSave();
@@ -74,16 +77,19 @@ function attachDynamicRowListeners() {
 }
 
 function attachSortingListeners() {
-    document.querySelector('#tab-budget thead').addEventListener('click', (e) => {
-        const header = e.target.closest('[data-sort]');
-        if (header) {
-            const sortKey = header.dataset.sort;
-            sortBudgetTable(sortKey);
-        }
-    });
+    const budgetTableHead = document.querySelector('#tab-budget thead');
+    if (budgetTableHead) {
+        budgetTableHead.addEventListener('click', (e) => {
+            const header = e.target.closest('[data-sort]');
+            if (header) {
+                sortBudgetTable(header.dataset.sort, header);
+            }
+        });
+    }
 }
 
-// --- UI MANIPULATION FUNCTIONS ---
+
+// --- UI MANIPULATION & LOGIC ---
 
 function showTab(tabId) {
     document.querySelectorAll('.tab-content').forEach(tab => tab.classList.add('hidden'));
@@ -95,6 +101,7 @@ function showTab(tabId) {
     if (tabElement) tabElement.classList.remove('hidden');
     if (btnElement) btnElement.classList.add('active');
 
+    // If the projection tab is shown, we need to re-run the engine
     if (tabId === 'projection' && window.currentData) {
         engine.runProjection(window.currentData);
     }
@@ -105,111 +112,114 @@ function addRow(containerId, type, data = null) {
     if (!container) return;
 
     const isCard = type === 'income';
-    const element = document.createElement(isCard ? 'div' : 'tr');
+    const newElement = document.createElement(isCard ? 'div' : 'tr');
     
-    element.innerHTML = templates[type]();
-    container.appendChild(element);
+    if (!isCard) {
+        newElement.className = 'border-b border-slate-700 hover:bg-slate-700/50';
+    } else {
+        newElement.className = 'income-card bg-slate-800 rounded-2xl p-5 shadow-lg'; 
+    }
 
-    attachInputListeners(element);
+    newElement.innerHTML = templates[type]();
+    container.appendChild(newElement);
+
+    attachInputListeners(newElement);
 
     if (data) {
-        fillRow(element, data);
+        window.fillRow(newElement, data);
     }
     
-    return element;
+    return newElement;
 }
 
-function attachInputListeners(element) {
-    // Attach autosave listener to all inputs within the element
-    element.querySelectorAll('input, select').forEach(input => {
-        input.addEventListener('input', debouncedAutoSave);
-    });
 
+function attachInputListeners(element) {
     // Budget auto-calculation
     const monthlyInput = element.querySelector('[data-id="monthly"]');
     const annualInput = element.querySelector('[data-id="annual"]');
     if (monthlyInput && annualInput) {
         monthlyInput.addEventListener('input', () => {
             const monthlyValue = math.fromCurrency(monthlyInput.value);
-            annualInput.value = math.toCurrency(monthlyValue * 12, true);
+            annualInput.value = math.toCurrency(monthlyValue * 12, false);
+             annualInput.dispatchEvent(new Event('input', { bubbles: true }));
         });
         annualInput.addEventListener('input', () => {
             const annualValue = math.fromCurrency(annualInput.value);
-            monthlyInput.value = math.toCurrency(annualValue / 12, true);
+            monthlyInput.value = math.toCurrency(annualValue / 12, false);
+             monthlyInput.dispatchEvent(new Event('input', { bubbles: true }));
         });
     }
 
     // Income card sliders
-    const incomeCard = element.closest('.income-card');
-    if (incomeCard) {
-        incomeCard.querySelectorAll('input[type="range"]').forEach(slider => {
-            const display = slider.previousElementSibling.querySelector('span');
+    element.querySelectorAll('input[type="range"]').forEach(slider => {
+        const display = slider.previousElementSibling.querySelector('span');
+        if (display) {
+            display.textContent = `${slider.value}%`;
             slider.addEventListener('input', () => {
                 display.textContent = `${slider.value}%`;
             });
+        }
+    });
+
+    // Currency formatting on blur
+    element.querySelectorAll('[data-type="currency"]').forEach(input => {
+        input.addEventListener('blur', (e) => {
+            const value = math.fromCurrency(e.target.value);
+            e.target.value = math.toCurrency(value, false);
         });
-    }
+    });
 }
 
-function sortBudgetTable(sortKey) {
+function sortBudgetTable(sortKey, header) {
     const tableBody = document.getElementById('budget-rows');
     const rows = Array.from(tableBody.querySelectorAll('tr'));
-    const isAscending = tableBody.dataset.sortOrder === 'asc';
-
+    
+    const currentSort = tableBody.dataset.sortKey;
+    const currentOrder = tableBody.dataset.sortOrder;
+    let newOrder = 'desc';
+    if (currentSort === sortKey && currentOrder === 'desc') {
+        newOrder = 'asc';
+    }
+    
     rows.sort((a, b) => {
         const aValue = math.fromCurrency(a.querySelector(`[data-id="${sortKey}"]`).value);
         const bValue = math.fromCurrency(b.querySelector(`[data-id="${sortKey}"]`).value);
-        return isAscending ? aValue - bValue : bValue - aValue;
+        return newOrder === 'asc' ? aValue - bValue : bValue - aValue;
     });
 
     rows.forEach(row => tableBody.appendChild(row));
-    tableBody.dataset.sortOrder = isAscending ? 'desc' : 'asc';
+    
+    tableBody.dataset.sortKey = sortKey;
+    tableBody.dataset.sortOrder = newOrder;
 
-    // Update sort icons
-    document.querySelectorAll('#tab-budget th .fa-sort, #tab-budget th .fa-sort-up, #tab-budget th .fa-sort-down').forEach(icon => {
-        icon.className = 'fas fa-sort';
+    document.querySelectorAll('#tab-budget th i.fas').forEach(icon => {
+        icon.className = 'fas fa-sort text-slate-500';
     });
-    const headerIcon = document.querySelector(`#tab-budget [data-sort="${sortKey}"] i`);
-    headerIcon.className = `fas fa-sort-${isAscending ? 'up' : 'down'}`;
+    const headerIcon = header.querySelector('i.fas');
+    headerIcon.className = `fas fa-sort-${newOrder === 'asc' ? 'up' : 'down'}`;
 }
 
-function fillRow(row, data) {
-    Object.keys(data).forEach(key => {
-        const input = row.querySelector(`[data-id="${key}"]`);
-        if (input) {
-            if (input.type === 'checkbox') {
-                input.checked = data[key];
-            } else {
-                input.value = data[key];
-            }
-            input.dispatchEvent(new Event('input', { bubbles: true }));
-        }
-    });
-}
-
-export function createAssumptionControls(data) {
+function createAssumptionControls(data) {
     const container = document.getElementById('assumptions-container');
     if (!container) return;
-    container.innerHTML = ''; // Clear existing controls
+    container.innerHTML = '';
 
     const controlDefs = {
         currentAge: { label: 'Current Age', min: 18, max: 100, step: 1, unit: ' years' },
-        retirementAge: { label: 'Retirement Age', min: 40, max: 80, step: 1, unit: ' years' },
-        investmentGrowth: { label: 'Investment Growth', min: 0, max: 20, step: 0.5, unit: '%' },
-        swr: { label: 'Safe Withdrawal Rate', min: 1, max: 10, step: 0.1, unit: '%' },
-        taxRate: { label: 'Effective Tax Rate', min: 0, max: 50, step: 1, unit: '%' },
+        investmentGrowth: { label: 'Avg. Annual Growth', min: 0, max: 20, step: 0.5, unit: '%' },
     };
 
     Object.entries(controlDefs).forEach(([key, def]) => {
-        const value = data.assumptions[key] || assumptions.defaults[key];
+        const value = data.assumptions[key] !== undefined ? data.assumptions[key] : assumptions.defaults[key];
         const controlWrapper = document.createElement('div');
+        controlWrapper.className = 'space-y-2';
 
         const controlHtml = `
-            <label class="flex justify-between items-center font-bold text-slate-300 mb-2">
+            <label class="flex justify-between items-center font-bold text-slate-300">
                 ${def.label}
                 <span class="text-lg font-black text-blue-400">${value}${def.unit}</span>
             </label>
-            <input type="range" data-id="${key}" min="${def.min}" max="${def.max}" step="${def.step}" value="${value}" class="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer">
+            <input type="range" data-id="${key}" min="${def.min}" max="${def.max}" step="${def.step}" value="${value}" class="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-blue-500">
         `;
         controlWrapper.innerHTML = controlHtml;
 
@@ -218,16 +228,28 @@ export function createAssumptionControls(data) {
 
         slider.addEventListener('input', () => {
             display.textContent = `${slider.value}${def.unit}`;
-            debouncedAutoSave();
         });
 
         container.appendChild(controlWrapper);
     });
 }
 
-
-// Make functions globally available if they need to be called from the data layer
+// Make functions globally available
 window.addRow = addRow;
-window.updateSummaries = updateSummaries;
 window.createAssumptionControls = createAssumptionControls;
-window.fillRow = fillRow;
+
+window.fillRow = (row, data) => {
+    Object.keys(data).forEach(key => {
+        const input = row.querySelector(`[data-id="${key}"]`);
+        if (input) {
+            if (input.type === 'checkbox') {
+                input.checked = !!data[key];
+            } else if (input.dataset.type === 'currency') {
+                input.value = math.toCurrency(data[key], false);
+            } else {
+                input.value = data[key];
+            }
+            input.dispatchEvent(new Event('input', { bubbles: true }));
+        }
+    });
+};
