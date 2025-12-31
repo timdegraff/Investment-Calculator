@@ -1,7 +1,8 @@
 export const templates = {
     investment: () => `
-        <td class="px-4 py-3"><input data-id="name" type="text" placeholder="e.g., Fidelity Brokerage" class="input-base w-full"></td>
-        <td class="px-4 py-3">
+        <td class="pl-2 pr-1 py-2 w-8"><i class="fas fa-bars text-slate-500 cursor-move drag-handle"></i></td>
+        <td class="px-4 py-2"><input data-id="name" type="text" placeholder="e.g., Fidelity Brokerage" class="input-base w-full"></td>
+        <td class="px-4 py-2">
             <select data-id="type" class="input-base w-full">
                 <option>Taxable</option>
                 <option>Pre-Tax (401k/IRA)</option>
@@ -13,21 +14,21 @@ export const templates = {
                 <option>Metals</option>
             </select>
         </td>
-        <td class="px-4 py-3"><input data-id="value" type="text" data-type="currency" placeholder="$0" class="input-base w-full text-right text-emerald-400"></td>
-        <td class="px-4 py-3"><input data-id="costBasis" type="text" data-type="currency" placeholder="N/A" class="input-base w-full text-right text-blue-400 disabled:text-slate-500"></td>
+        <td class="px-4 py-2"><input data-id="value" type="text" data-type="currency" placeholder="$0" class="input-base w-full text-right text-emerald-400"></td>
+        <td class="px-4 py-2"><input data-id="costBasis" type="text" data-type="currency" placeholder="N/A" class="input-base w-full text-right text-blue-400 disabled:text-slate-500 disabled:cursor-not-allowed"></td>
         <td class="px-4 py-2 text-center"><button data-action="remove" class="btn-icon"><i class="fas fa-times"></i></button></td>`,
     
     heloc: () => `
-        <td class="px-4 py-3"><input data-id="name" type="text" placeholder="e.g., Chase HELOC" class="input-base w-full"></td>
-        <td class="px-4 py-3"><input data-id="balance" type="text" data-type="currency" placeholder="$0" class="input-base w-full text-right text-red-400"></td>
-        <td class="px-4 py-3"><input data-id="limit" type="text" data-type="currency" placeholder="$0" class="input-base w-full text-right"></td>
-        <td class="px-4 py-3"><input data-id="rate" type="number" placeholder="5.0" class="input-base w-24 text-right"></td>
+        <td class="px-4 py-2"><input data-id="name" type="text" placeholder="e.g., Chase HELOC" class="input-base w-full"></td>
+        <td class="px-4 py-2"><input data-id="balance" type="text" data-type="currency" placeholder="$0" class="input-base w-full text-right text-red-400"></td>
+        <td class="px-4 py-2"><input data-id="limit" type="text" data-type="currency" placeholder="$0" class="input-base w-full text-right"></td>
+        <td class="px-4 py-2"><input data-id="rate" type="number" placeholder="5.0" class="input-base w-24 text-right"></td>
         <td class="px-4 py-2 text-center"><button data-action="remove" class="btn-icon"><i class="fas fa-times"></i></button></td>`,
 
     debt: () => `
-        <td class="px-4 py-3"><input data-id="name" type="text" placeholder="e.g., Credit Card" class="input-base w-full"></td>
-        <td class="px-4 py-3"><input data-id="balance" type="text" data-type="currency" placeholder="$0" class="input-base w-full text-right text-red-400"></td>
-        <td class="px-4 py-3"><input data-id="rate" type="number" placeholder="22.9" class="input-base w-24 text-right"></td>
+        <td class="px-4 py-2"><input data-id="name" type="text" placeholder="e.g., Credit Card" class="input-base w-full"></td>
+        <td class="px-4 py-2"><input data-id="balance" type="text" data-type="currency" placeholder="$0" class="input-base w-full text-right text-red-400"></td>
+        <td class="px-4 py-2"><input data-id="rate" type="number" placeholder="22.9" class="input-base w-24 text-right"></td>
         <td class="px-4 py-2 text-center"><button data-action="remove" class="btn-icon"><i class="fas fa-times"></i></button></td>`,
 
     income: () => `

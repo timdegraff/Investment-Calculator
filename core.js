@@ -17,17 +17,16 @@ function debounce(func, wait) {
     };
 }
 
-const debouncedAutoSave = debounce(autoSave, 500); // 500ms delay
+const debouncedAutoSave = debounce(autoSave, 500);
 
 // --- INITIALIZATION ---
 export function initializeUI() {
-    console.log("Initializing UI and event listeners...");
     showTab('assets-debts');
     attachGlobalListeners();
     attachNavigationListeners();
     attachDynamicRowListeners();
     attachSortingListeners();
-    console.log("UI Initialized.");
+    initializeSortable();
 }
 
 // --- EVENT LISTENER SETUP ---
@@ -36,9 +35,9 @@ function attachGlobalListeners() {
     document.getElementById('login-btn').addEventListener('click', loginWithGoogle);
     document.getElementById('logout-btn').addEventListener('click', logoutUser);
 
-    // Global listener for inputs to trigger autosave
     document.body.addEventListener('input', (e) => {
-        if (e.target.closest('.input-base, .income-card, #assumptions-container, .real-estate-card')) {
+        const target = e.target;
+        if (target.closest('.input-base, .income-card, #assumptions-container, .real-estate-card, .input-range')) {
             debouncedAutoSave();
         }
     });
@@ -53,7 +52,6 @@ function attachNavigationListeners() {
     });
 }
 
-// Handles clicks for "Add" and "Remove" buttons
 function attachDynamicRowListeners() {
     document.body.addEventListener('click', (e) => {
         const addButton = e.target.closest('[data-add-row]');
@@ -62,16 +60,11 @@ function attachDynamicRowListeners() {
         if (addButton) {
             const containerId = addButton.dataset.addRow;
             const type = addButton.dataset.rowType;
-            if (containerId && type) {
-                addRow(containerId, type);
-                debouncedAutoSave(); // Save after adding a new row
-            }
+            addRow(containerId, type);
+            debouncedAutoSave();
         } else if (removeButton) {
-            const row = removeButton.closest('tr, .income-card');
-            if (row) {
-                row.remove();
-                debouncedAutoSave();
-            }
+            removeButton.closest('tr, .income-card').remove();
+            debouncedAutoSave();
         }
     });
 }
@@ -81,9 +74,19 @@ function attachSortingListeners() {
     if (budgetTableHead) {
         budgetTableHead.addEventListener('click', (e) => {
             const header = e.target.closest('[data-sort]');
-            if (header) {
-                sortBudgetTable(header.dataset.sort, header);
-            }
+            if (header) sortBudgetTable(header.dataset.sort, header);
+        });
+    }
+}
+
+function initializeSortable() {
+    const investmentRows = document.getElementById('investment-rows');
+    if (investmentRows) {
+        new Sortable(investmentRows, {
+            animation: 150,
+            handle: '.drag-handle',
+            ghostClass: 'bg-slate-700',
+            onEnd: () => debouncedAutoSave()
         });
     }
 }
@@ -95,65 +98,51 @@ function showTab(tabId) {
     document.querySelectorAll('.tab-content').forEach(tab => tab.classList.add('hidden'));
     document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
 
-    const tabElement = document.getElementById(`tab-${tabId}`);
-    const btnElement = document.querySelector(`[data-tab="${tabId}"]`);
+    const tabEl = document.getElementById(`tab-${tabId}`);
+    const btnEl = document.querySelector(`[data-tab="${tabId}"]`);
 
-    if (tabElement) tabElement.classList.remove('hidden');
-    if (btnElement) btnElement.classList.add('active');
+    if (tabEl) tabEl.classList.remove('hidden');
+    if (btnEl) btnEl.classList.add('active');
 
     if (tabId === 'projection' && window.currentData) {
         engine.runProjection(window.currentData);
     }
 }
 
-function addRow(containerId, type, data = null) {
+function addRow(containerId, type, data = {}) {
     const container = document.getElementById(containerId);
     if (!container) return;
 
     const isCard = type === 'income';
     const newElement = document.createElement(isCard ? 'div' : 'tr');
     
-    if (!isCard) {
-        newElement.className = 'border-b border-slate-700 hover:bg-slate-700/50';
-    } else {
-        newElement.className = 'income-card bg-slate-800 rounded-2xl p-5 shadow-lg'; 
-    }
+    newElement.className = isCard 
+        ? 'income-card bg-slate-800 rounded-2xl p-5 shadow-lg' 
+        : 'border-b border-slate-700 hover:bg-slate-700/50';
 
-    newElement.innerHTML = templates[type]();
+    newElement.innerHTML = templates[type](data);
     container.appendChild(newElement);
 
     attachInputListeners(newElement);
-
-    if (data) {
-        window.fillRow(newElement, data);
-    }
-    
-    return newElement;
+    window.fillRow(newElement, data);
 }
-
 
 function attachInputListeners(element) {
     // Budget auto-calculation
     const monthlyInput = element.querySelector('[data-id="monthly"]');
     const annualInput = element.querySelector('[data-id="annual"]');
     if (monthlyInput && annualInput) {
-        const onMonthlyInput = () => {
-            const monthlyValue = math.fromCurrency(monthlyInput.value);
-            annualInput.value = math.toCurrency(monthlyValue * 12, false);
-            debouncedAutoSave();
-        };
-        const onAnnualInput = () => {
-            const annualValue = math.fromCurrency(annualInput.value);
-            monthlyInput.value = math.toCurrency(annualValue / 12, false);
-            debouncedAutoSave();
-        };
-        monthlyInput.addEventListener('input', onMonthlyInput);
-        annualInput.addEventListener('input', onAnnualInput);
+        monthlyInput.addEventListener('input', () => {
+            annualInput.value = math.toCurrency(math.fromCurrency(monthlyInput.value) * 12, false);
+        });
+        annualInput.addEventListener('input', () => {
+            monthlyInput.value = math.toCurrency(math.fromCurrency(annualInput.value) / 12, false);
+        });
     }
 
     // Income card sliders
     element.querySelectorAll('input[type="range"]').forEach(slider => {
-        const display = slider.parentElement.querySelector('span');
+        const display = slider.previousElementSibling.querySelector('span');
         if (display) {
             const updateDisplay = () => display.textContent = `${slider.value}%`;
             slider.addEventListener('input', updateDisplay);
@@ -161,36 +150,43 @@ function attachInputListeners(element) {
         }
     });
 
-    // Currency formatting on blur
-    element.querySelectorAll('[data-type="currency"]').forEach(input => {
-        input.addEventListener('blur', (e) => {
-            const value = math.fromCurrency(e.target.value);
-            e.target.value = math.toCurrency(value, false);
-        });
-         input.addEventListener('focus', (e) => {
-            const value = math.fromCurrency(e.target.value);
-            if (value !== 0) {
-                e.target.value = value;
-            }
-        });
+    // Investment type dependency
+    const typeSelect = element.querySelector('select[data-id="type"]');
+    if (typeSelect) {
+        const costBasisInput = element.querySelector('input[data-id="costBasis"]');
+        const handleTypeChange = () => {
+            const isRoth = typeSelect.value === 'Post-Tax (Roth)';
+            costBasisInput.disabled = !isRoth;
+            if (!isRoth) costBasisInput.value = 'N/A';
+        };
+        typeSelect.addEventListener('change', handleTypeChange);
+        handleTypeChange();
+    }
+
+    // General input formatting
+    element.querySelectorAll('input').forEach(input => {
+        if (input.dataset.type === 'currency') {
+            input.addEventListener('blur', (e) => e.target.value = math.toCurrency(math.fromCurrency(e.target.value), false));
+            input.addEventListener('focus', (e) => {
+                const value = math.fromCurrency(e.target.value);
+                if (value !== 0) e.target.value = value;
+            });
+        }
     });
 }
 
 function sortBudgetTable(sortKey, header) {
-    const tableBody = document.getElementById('budget-rows');
+    const tableBody = document.getElementById('budget-expenses-rows');
     const rows = Array.from(tableBody.querySelectorAll('tr'));
     
     const currentSort = tableBody.dataset.sortKey;
     const currentOrder = tableBody.dataset.sortOrder;
-    let newOrder = 'desc';
-    if (currentSort === sortKey && currentOrder === 'desc') {
-        newOrder = 'asc';
-    }
+    const newOrder = (currentSort === sortKey && currentOrder === 'desc') ? 'asc' : 'desc';
     
     rows.sort((a, b) => {
-        const aValue = math.fromCurrency(a.querySelector(`[data-id="${sortKey}"]`).value);
-        const bValue = math.fromCurrency(b.querySelector(`[data-id="${sortKey}"]`).value);
-        return newOrder === 'asc' ? aValue - bValue : bValue - aValue;
+        const aVal = math.fromCurrency(a.querySelector(`[data-id="${sortKey}"]`).value);
+        const bVal = math.fromCurrency(b.querySelector(`[data-id="${sortKey}"]`).value);
+        return newOrder === 'asc' ? aVal - bVal : bVal - aVal;
     });
 
     rows.forEach(row => tableBody.appendChild(row));
@@ -198,11 +194,8 @@ function sortBudgetTable(sortKey, header) {
     tableBody.dataset.sortKey = sortKey;
     tableBody.dataset.sortOrder = newOrder;
 
-    document.querySelectorAll('#budget-expenses-table th i.fas').forEach(icon => {
-        icon.className = 'fas fa-sort text-slate-500';
-    });
-    const headerIcon = header.querySelector('i.fas');
-    headerIcon.className = `fas fa-sort-${newOrder === 'asc' ? 'up' : 'down'}`;
+    document.querySelectorAll('#budget-expenses-table th i.fas').forEach(i => i.className = 'fas fa-sort text-slate-500');
+    header.querySelector('i.fas').className = `fas fa-sort-${newOrder === 'asc' ? 'up' : 'down'}`;
 }
 
 function createAssumptionControls(data) {
@@ -216,35 +209,30 @@ function createAssumptionControls(data) {
     };
 
     Object.entries(controlDefs).forEach(([key, def]) => {
-        const value = data.assumptions[key] !== undefined ? data.assumptions[key] : assumptions.defaults[key];
+        const value = data.assumptions?.[key] ?? assumptions.defaults[key];
         const controlWrapper = document.createElement('div');
         controlWrapper.className = 'space-y-2';
-
-        const controlHtml = `
+        controlWrapper.innerHTML = `
             <label class="flex justify-between items-center font-bold text-slate-300">
                 ${def.label}
                 <span class="text-lg font-black text-blue-400">${value}${def.unit}</span>
             </label>
-            <input type="range" data-id="${key}" min="${def.min}" max="${def.max}" step="${def.step}" value="${value}" class="w-full h-2 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-blue-500">
+            <input type="range" data-id="${key}" min="${def.min}" max="${def.max}" step="${def.step}" value="${value}" class="input-range">
         `;
-        controlWrapper.innerHTML = controlHtml;
-
+        
         const slider = controlWrapper.querySelector('input[type="range"]');
         const display = controlWrapper.querySelector('span');
-
-        slider.addEventListener('input', () => {
-            display.textContent = `${slider.value}${def.unit}`;
-        });
-
+        slider.addEventListener('input', () => display.textContent = `${slider.value}${def.unit}`);
+        
         container.appendChild(controlWrapper);
     });
 }
 
-// Make functions globally available
 window.addRow = addRow;
 window.createAssumptionControls = createAssumptionControls;
 
 window.fillRow = (row, data) => {
+    if (!data) return;
     Object.keys(data).forEach(key => {
         const input = row.querySelector(`[data-id="${key}"]`);
         if (input) {
