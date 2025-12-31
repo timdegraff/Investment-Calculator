@@ -1,54 +1,81 @@
-import { initializeAuth } from './auth.js';
+
+import { loginWithGoogle, logoutUser } from './auth.js';
 import { templates } from './templates.js';
+import { autoSave, updateSummaries } from './data.js';
+import { engine, math, assetClassColors } from './utils.js';
 
-/**
- * CORE.JS - UI Management & Core Application Logic
- * This is the main entry point for the application.
- */
+// This single function is exported to main.js to initialize the entire UI.
+export function initializeUI() {
+    console.log("Initializing UI and event listeners...");
 
-// 1. Tab Navigation
-window.showTab = (tabId) => {
+    // Set initial tab
+    showTab('assets-debts');
+
+    // Attach all event listeners
+    attachGlobalListeners();
+    attachNavigationListeners();
+    attachDynamicRowListeners();
+    
+    console.log("UI Initialized.");
+}
+
+// --- EVENT LISTENER SETUP ---
+
+function attachGlobalListeners() {
+    document.getElementById('login-btn').addEventListener('click', loginWithGoogle);
+    document.getElementById('logout-btn').addEventListener('click', logoutUser);
+}
+
+function attachNavigationListeners() {
+    document.getElementById('main-nav').addEventListener('click', (e) => {
+        const tabButton = e.target.closest('.tab-btn');
+        if (tabButton && tabButton.dataset.tab) {
+            showTab(tabButton.dataset.tab);
+        }
+    });
+}
+
+function attachDynamicRowListeners() {
+    // This handles clicks for dynamically added rows (e.g., "Add Asset", "Remove Item")
+    document.body.addEventListener('click', (e) => {
+        const addButton = e.target.closest('[data-add-row]');
+        const removeButton = e.target.closest('[data-action="remove"]');
+
+        if (addButton) {
+            const containerId = addButton.dataset.addRow;
+            const type = addButton.dataset.rowType;
+            if (containerId && type) {
+                addRow(containerId, type);
+            }
+        } else if (removeButton) {
+            const row = removeButton.closest('tr, .income-card');
+            if (row) {
+                row.remove();
+                autoSave();
+                updateCostBasisHeaderVisibility(); 
+            }
+        }
+    });
+}
+
+// --- UI MANIPULATION FUNCTIONS ---
+
+function showTab(tabId) {
     document.querySelectorAll('.tab-content').forEach(tab => tab.classList.add('hidden'));
     document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
-    document.getElementById(`tab-${tabId}`).classList.remove('hidden');
-    document.getElementById(`btn-${tabId}`).classList.add('active');
+
+    const tabElement = document.getElementById(`tab-${tabId}`);
+    const btnElement = document.querySelector(`[data-tab="${tabId}"]`);
+
+    if (tabElement) tabElement.classList.remove('hidden');
+    if (btnElement) btnElement.classList.add('active');
 
     if (tabId === 'projection' && window.currentData) {
         engine.runProjection(window.currentData);
     }
-};
+}
 
-window.updateCostBasisHeaderVisibility = () => {
-    const investmentRows = document.getElementById('investment-rows');
-    if (!investmentRows) return;
-
-    const typeSelects = investmentRows.querySelectorAll('[data-id="type"]');
-    const hasRoth = Array.from(typeSelects).some(select => select.value === 'Post-Tax (Roth)');
-
-    const costBasisHeader = document.querySelector('th.cost-basis-cell');
-    if (costBasisHeader) {
-        costBasisHeader.classList.toggle('hidden', !hasRoth);
-    }
-};
-
-// 2. Dynamic Summary Updates
-window.updateSummaries = (data) => {
-    if (!data) return;
-
-    const summaries = engine.calculateSummaries(data);
-
-    // Sidebar & Main Summary
-    document.getElementById('sidebar-networth').textContent = math.toCurrency(summaries.netWorth, false);
-    document.getElementById('sum-assets').textContent = math.toCurrency(summaries.totalAssets, false);
-    document.getElementById('sum-liabilities').textContent = math.toCurrency(summaries.totalLiabilities, false);
-    document.getElementById('sum-income-summary').textContent = `${math.toCurrency(summaries.grossIncome, false)}/yr`;
-    document.getElementById('sum-total-savings-summary').textContent = `${math.toCurrency(summaries.totalAnnualSavings, false)}/yr`;
-
-    // ... (rest of the function is the same)
-};
-
-// 3. Dynamic Row & Input Management
-window.addRow = (containerId, type, data = null) => {
+function addRow(containerId, type, data = null) {
     const container = document.getElementById(containerId);
     if (!container) return;
 
@@ -60,35 +87,38 @@ window.addRow = (containerId, type, data = null) => {
 
     attachInputListeners(element);
 
-    if (data) fillRow(element, data);
+    if (data) {
+        fillRow(element, data);
+    } else {
+        // If it's a new row, trigger a save immediately
+        autoSave();
+    }
     
     return element;
-};
+}
 
 function attachInputListeners(element) {
     element.querySelectorAll('input, select').forEach(input => {
-        input.addEventListener('input', window.autoSave);
+        input.addEventListener('input', autoSave);
     });
 
     element.querySelectorAll('input[type="range"]').forEach(slider => {
-        // ... (range slider logic)
+        const display = slider.previousElementSibling.querySelector('span');
+        slider.addEventListener('input', () => {
+            display.textContent = `${slider.value}%`;
+        });
     });
 
-    // Monthly/Annual field synchronization
-    // ... (logic is the same)
-
-    // Show/hide cost basis for Roth assets and apply color
     const typeSelect = element.querySelector('[data-id="type"]');
     if (typeSelect) {
-        const costBasisCell = element.querySelector('.cost-basis-cell');
-
         const updateAssetType = () => {
             const selectedValue = typeSelect.value;
+            const costBasisCell = element.querySelector('.cost-basis-cell');
             if (costBasisCell) {
                 costBasisCell.classList.toggle('hidden', selectedValue !== 'Post-Tax (Roth)');
             }
             typeSelect.style.color = assetClassColors[selectedValue] || '#e2e8f0';
-            window.updateCostBasisHeaderVisibility();
+            updateCostBasisHeaderVisibility();
         };
 
         typeSelect.addEventListener('change', updateAssetType);
@@ -100,17 +130,32 @@ function fillRow(row, data) {
     Object.keys(data).forEach(key => {
         const input = row.querySelector(`[data-id="${key}"]`);
         if (input) {
-            // ... (filling logic)
+            if (input.type === 'checkbox') {
+                input.checked = data[key];
+            } else {
+                input.value = data[key];
+            }
+            // Dispatch events to ensure sliders and other listeners update
             input.dispatchEvent(new Event('change', { bubbles: true }));
             input.dispatchEvent(new Event('input', { bubbles: true }));
         }
     });
 }
 
-// ... (rest of the file is the same)
+function updateCostBasisHeaderVisibility() {
+    const investmentRows = document.getElementById('investment-rows');
+    if (!investmentRows) return;
 
-// --- Application Entry Point ---
-document.addEventListener('DOMContentLoaded', () => {
-    showTab('assets-debts');
-    initializeAuth();
-});
+    const typeSelects = investmentRows.querySelectorAll('[data-id="type"]');
+    const hasRoth = Array.from(typeSelects).some(select => select.value === 'Post-Tax (Roth)');
+
+    const costBasisHeader = document.querySelector('th.cost-basis-cell');
+    if (costBasisHeader) {
+        costBasisHeader.classList.toggle('hidden', !hasRoth);
+    }
+}
+
+// Make functions globally available if they need to be called from the data layer
+window.addRow = addRow;
+window.updateSummaries = updateSummaries;
+window.updateCostBasisHeaderVisibility = updateCostBasisHeaderVisibility;

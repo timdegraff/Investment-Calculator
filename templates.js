@@ -1,6 +1,4 @@
-const templates = {
-    // Note: oninput events are now added dynamically in core.js
-
+export const templates = {
     investment: () => `
         <td class="px-4 py-3"><input data-id="name" type="text" placeholder="e.g., Fidelity Brokerage" class="bg-transparent outline-none w-full text-sm font-bold"></td>
         <td class="px-4 py-3">
@@ -17,24 +15,24 @@ const templates = {
         </td>
         <td class="px-4 py-3 text-right"><input data-id="value" type="text" data-type="currency" placeholder="0" class="w-full text-right font-bold outline-none bg-transparent text-sm text-emerald-600"></td>
         <td class="px-4 py-3 text-right cost-basis-cell hidden"><input data-id="costBasis" type="text" data-type="currency" placeholder="0" class="w-full text-right font-bold outline-none bg-transparent text-sm text-blue-400"></td>
-        <td class="px-4 py-2 text-center"><button onclick="this.closest('tr').remove(); window.autoSave(); window.updateCostBasisHeaderVisibility();" class="text-slate-300 hover:text-red-500 text-xs w-6 h-6"><i class="fas fa-times"></i></button></td>`,
+        <td class="px-4 py-2 text-center"><button data-action="remove" class="text-slate-300 hover:text-red-500 text-xs w-6 h-6"><i class="fas fa-times"></i></button></td>`,
     
     heloc: () => `
         <td class="px-4 py-3"><input data-id="name" type="text" placeholder="e.g., Chase HELOC" class="bg-transparent outline-none w-full text-sm font-bold"></td>
         <td class="px-4 py-3 text-right"><input data-id="balance" type="text" data-type="currency" placeholder="0" class="w-full text-right font-bold text-red-400 outline-none bg-transparent text-sm"></td>
         <td class="px-4 py-3 text-right"><input data-id="limit" type="text" data-type="currency" placeholder="0" class="w-full text-right font-bold outline-none bg-transparent text-sm"></td>
         <td class="px-4 py-3 text-right"><input data-id="rate" type="number" placeholder="5.0" class="w-20 text-right font-bold outline-none bg-transparent text-sm"></td>
-        <td class="px-4 py-2 text-center"><button onclick="this.closest('tr').remove(); window.autoSave()" class="text-slate-300 hover:text-red-500 text-xs w-6 h-6"><i class="fas fa-times"></i></button></td>`,
+        <td class="px-4 py-2 text-center"><button data-action="remove" class="text-slate-300 hover:text-red-500 text-xs w-6 h-6"><i class="fas fa-times"></i></button></td>`,
 
     debt: () => `
         <td class="px-4 py-3"><input data-id="name" type="text" placeholder="e.g., Credit Card" class="bg-transparent outline-none w-full text-sm font-bold text-red-400"></td>
         <td class="px-4 py-3 text-right"><input data-id="balance" type="text" data-type="currency" placeholder="0" class="w-full text-right font-bold text-red-500 outline-none bg-transparent text-sm"></td>
         <td class="px-4 py-3 text-right"><input data-id="rate" type="number" placeholder="22.9" class="w-20 text-right font-bold outline-none bg-transparent text-sm"></td>
-        <td class="px-4 py-2 text-center"><button onclick="this.closest('tr').remove(); window.autoSave()" class="text-slate-300 hover:text-red-500 text-xs w-6 h-6"><i class="fas fa-times"></i></button></td>`,
+        <td class="px-4 py-2 text-center"><button data-action="remove" class="text-slate-300 hover:text-red-500 text-xs w-6 h-6"><i class="fas fa-times"></i></button></td>`,
 
     income: () => `
     <div class="income-card p-5 bg-slate-800 rounded-xl border border-slate-700 space-y-4 relative group">
-        <button onclick="this.parentElement.remove(); window.autoSave()" class="absolute top-3 right-3 text-slate-500 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"><i class="fas fa-times text-sm"></i></button>
+        <button data-action="remove" class="absolute top-3 right-3 text-slate-500 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"><i class="fas fa-times text-sm"></i></button>
         
         <div class="grid grid-cols-2 md:grid-cols-4 gap-x-6 gap-y-4 items-end">
             <div class="col-span-2 md:col-span-1">
@@ -92,11 +90,11 @@ const templates = {
         <td class="px-4 py-3"><input data-id="name" type="text" placeholder="e.g., Roth IRA" class="bg-transparent outline-none w-full text-sm font-bold"></td>
         <td class="px-4 py-3 text-right"><input data-id="balance" type="text" data-type="currency" placeholder="0" class="w-full text-right font-bold text-emerald-600 outline-none bg-transparent text-sm"></td>
         <td class="px-4 py-3 text-right"><input data-id="contribution" type="text" data-type="currency" placeholder="0" class="w-full text-right font-bold text-emerald-600 outline-none bg-transparent text-sm"></td>
-        <td class="px-4 py-2 text-center"><button onclick="this.closest('tr').remove(); window.autoSave()" class="text-slate-300 hover:text-red-500 text-xs w-6 h-6"><i class="fas fa-times"></i></button></td>`,
+        <td class="px-4 py-2 text-center"><button data-action="remove" class="text-slate-300 hover:text-red-500 text-xs w-6 h-6"><i class="fas fa-times"></i></button></td>`,
     
     "budget-item": () => `
         <td class="px-4 py-3"><input data-id="name" type="text" placeholder="e.g., Groceries" class="bg-transparent outline-none w-full text-sm"></td>
         <td class="px-4 py-3 text-right"><div class="flex items-center"><span class="text-slate-400 text-sm mr-1">$</span><input data-id="monthly" type="text" data-type="currency" placeholder="0" class="w-full text-right font-bold text-red-400 outline-none bg-transparent text-sm"></div></td>
         <td class="px-4 py-3 text-right"><div class="flex items-center"><span class="text-slate-400 text-sm mr-1">$</span><input data-id="annual" type="text" data-type="currency" placeholder="0" class="w-full text-right font-bold text-red-400 outline-none bg-transparent text-sm"></div></td>
-        <td class="px-4 py-2 text-center"><button onclick="this.closest('tr').remove(); window.autoSave()" class="text-slate-300 hover:text-red-500 text-xs w-6 h-6"><i class="fas fa-times"></i></button></td>`,
+        <td class="px-4 py-2 text-center"><button data-action="remove" class="text-slate-300 hover:text-red-500 text-xs w-6 h-6"><i class="fas fa-times"></i></button></td>`,
 };
