@@ -1,6 +1,8 @@
+import { initializeAuth } from './auth.js';
+
 /**
  * CORE.JS - UI Management & Core Application Logic
- * Handles Tab navigation, UI updates, and acts as a controller between other modules.
+ * This is the main entry point for the application.
  */
 
 // 1. Tab Navigation
@@ -137,7 +139,12 @@ window.sortBudget = (column) => {
 };
 
 
-// Initial setup
+// --- Application Entry Point ---
 document.addEventListener('DOMContentLoaded', () => {
+    // First, set up the basic UI (e.g., show the default tab)
     showTab('assets-debts');
+
+    // Now, initialize the authentication and data loading process.
+    // This ensures the UI is ready before we try to populate it with data.
+    initializeAuth();
 });

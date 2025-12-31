@@ -1,10 +1,11 @@
 # Project Blueprint
 
-## Open Tasks
+## Open Tasks TO DO
 1. add roth cost basis on investment page
 2. projections should have each of the asset types like taxable and roth cost basis and roth earnings and metals, crypto etc
 3. dont round the budget summary, make it exact dollars (monthly) but round the years as you have it
 4. move assumptions to the tab menu, but maybe just a few key ones like retirement age, stock apy, and both draw rates, duplicate them so they are linked with each other so you can edit from either location and it live updates the other.
+5. remove the bypass in auth.js for google login
 
 
 ## Overview

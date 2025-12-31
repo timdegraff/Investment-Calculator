@@ -1,40 +1,18 @@
 /**
- * DATA.JS - Firestore Data Persistence and UI Binding
- * Handles saving data to Firebase and loading it back into the UI.
+ * DATA.JS - Data-related functionalities
+ * Handles gathering data from the UI and loading it back in.
  */
 
-// Debounced auto-save function
-const debounce = (func, delay) => {
-    let timeout;
-    return function(...args) {
-        const context = this;
-        clearTimeout(timeout);
-        timeout = setTimeout(() => func.apply(context, args), delay);
-    };
-};
+import { addRow, updateSummaries } from './core.js';
+import { assumptions as engineAssumptions, getNewUserDefaultData } from './engine.js';
+import * as formatter from './formatter.js';
 
-window.autoSave = debounce(() => {
-    const user = window.auth ? window.auth.currentUser : null;
-    if (!user) return;
-
-    const data = gatherData();
-    window.currentData = data; // Keep a global reference
-
-    if (window.saveUserData) {
-        window.saveUserData(data);
-        console.log("Auto-saving data...", data);
-    }
-
-    window.updateSummaries(data);
-}, 500);
-
-
-function gatherData() {
+export function gatherDataFromUI() {
     const data = { lastUpdated: new Date().toISOString() };
 
     // 1. Gather Assumptions
     data.assumptions = {};
-    for (const key in assumptions.sliders) {
+    for (const key in engineAssumptions) {
         const input = document.getElementById(`input-${key}`);
         if (input) {
             data.assumptions[key] = parseFloat(input.value);
@@ -48,20 +26,26 @@ function gatherData() {
     data.debts = getTableData('debt-rows', ['name', 'balance']);
     data.income = getCardData('income-list');
     data.manualSavings = getTableData('savings-list', ['name', 'class', 'monthly', 'annual']);
-    data.expenses = getTableData('budget-rows', ['name', 'monthly', 'annual']);
+    data.expenses = getTableData('budget-rows', ['name', 'monthly', 'annual', 'endYear']);
 
     return data;
 }
 
-window.loadUserDataIntoUI = (data) => {
+export function loadUserDataIntoUI(data) {
     if (!data) {
         console.log("No data found, loading defaults for new user.");
         data = getNewUserDefaultData();
     }
-    window.currentData = data;
 
     // 1. Load Assumptions
-    assumptions.load(data.assumptions);
+    for (const key in data.assumptions) {
+        const input = document.getElementById(`input-${key}`);
+        if (input) {
+            input.value = data.assumptions[key];
+            // Manually trigger input event for sliders to update their display
+            input.dispatchEvent(new Event('input')); 
+        }
+    }
 
     // 2. Load Tables
     const tables = {
@@ -79,30 +63,13 @@ window.loadUserDataIntoUI = (data) => {
         if (container) {
             container.innerHTML = ''; // Clear existing rows
             if (items && Array.isArray(items)) {
-                items.forEach(item => window.addRow(id, type, item));
+                items.forEach(item => addRow(id, type, item));
             }
         }
     }
 
     // 3. Initial full summary calculation and projection run
-    window.updateSummaries(data);
-};
-
-function getNewUserDefaultData() {
-    return {
-        assumptions: assumptions.defaults,
-        investments: [],
-        realEstate: [],
-        otherAssets: [],
-        debts: [],
-        income: [],
-        manualSavings: [],
-        expenses: [
-            { name: "Mortgage / Rent", monthly: "1,500", annual: "18,000" },
-            { name: "Car Payment", monthly: "500", annual: "6,000" },
-            { name: "Utilities", monthly: "300", annual: "3,600" },
-        ]
-    };
+    updateSummaries(data);
 }
 
 function getTableData(containerId, fields) {
