@@ -18,6 +18,12 @@ export const templates = {
         <td class="px-4 py-2"><input data-id="costBasis" type="text" data-type="currency" placeholder="N/A" class="input-base w-full text-right text-blue-400 disabled:text-slate-500 disabled:cursor-not-allowed"></td>
         <td class="px-4 py-2 text-center"><button data-action="remove" class="btn-icon"><i class="fas fa-times"></i></button></td>`,
     
+    realEstate: () => `
+        <td class="px-4 py-2"><input data-id="name" type="text" placeholder="e.g., Primary Home" class="input-base w-full"></td>
+        <td class="px-4 py-2"><input data-id="value" type="text" data-type="currency" placeholder="$500,000" class="input-base w-full text-right text-teal-400"></td>
+        <td class="px-4 py-2"><input data-id="mortgage" type="text" data-type="currency" placeholder="$300,000" class="input-base w-full text-right text-pink-500"></td>
+        <td class="px-4 py-2 text-center"><button data-action="remove" class="btn-icon"><i class="fas fa-times"></i></button></td>`,
+
     heloc: () => `
         <td class="px-4 py-2"><input data-id="name" type="text" placeholder="e.g., Chase HELOC" class="input-base w-full"></td>
         <td class="px-4 py-2"><input data-id="balance" type="text" data-type="currency" placeholder="$0" class="input-base w-full text-right text-pink-500"></td>
@@ -32,7 +38,7 @@ export const templates = {
         <td class="px-4 py-2 text-center"><button data-action="remove" class="btn-icon"><i class="fas fa-times"></i></button></td>`,
 
     income: () => `
-        <div class="space-y-4 relative group">
+        <div class="p-5 space-y-4 relative group">
              <i class="fas fa-money-bill-wave absolute top-5 left-5 text-teal-400 text-lg"></i>
             <button data-action="remove" class="btn-icon absolute top-2 right-2 opacity-50 group-hover:opacity-100"><i class="fas fa-times"></i></button>
             <div class="grid grid-cols-2 md:grid-cols-4 gap-4 pl-12">

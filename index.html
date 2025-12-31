@@ -41,7 +41,7 @@
                 <p class="text-sm text-slate-400">Your financial co-pilot.</p>
             </div>
             <nav class="flex-grow p-4 space-y-2 overflow-y-auto" id="main-nav">
-                <button data-tab="assets-debts" class="tab-btn w-full text-left p-3 rounded-lg flex items-center gap-3"><i class="fas fa-wallet w-6 text-teal-400"></i><span>Assets & Debts</span></button>
+                <button data-tab="assets-debts" class="tab-btn w-full text-left p-3 rounded-lg flex items-center gap-3"><i class="fas fa-wallet w-6 text-orange-400"></i><span>Assets & Debts</span></button>
                 <button data-tab="income" class="tab-btn w-full text-left p-3 rounded-lg flex items-center gap-3"><i class="fas fa-money-bill-wave w-6 text-teal-400"></i><span>Income</span></button>
                 <button data-tab="budget" class="tab-btn w-full text-left p-3 rounded-lg flex items-center gap-3"><i class="fas fa-chart-pie w-6 text-pink-500"></i><span>Budget</span></button>
                 <button data-tab="projection" class="tab-btn w-full text-left p-3 rounded-lg flex items-center gap-3"><i class="fas fa-chart-line w-6 text-blue-400"></i><span>Projection</span></button>
@@ -94,22 +94,22 @@
                 </div>
 
                 <!-- Real Estate -->
-                <div class="card-container p-5 mb-8">
-                    <h2 class="card-title mb-4"><i class="fas fa-home text-teal-400 mr-2"></i>Real Estate</h2>
-                    <div id="real-estate-card" class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                         <div>
-                            <label class="label-form">Property Name</label>
-                            <input type="text" data-id="name" placeholder="e.g., Primary Home" class="input-base w-full">
-                        </div>
-                         <div>
-                            <label class="label-form">Property Value</label>
-                            <input type="text" data-id="value" data-type="currency" placeholder="$500,000" class="input-base w-full text-teal-400">
-                        </div>
-                        <div>
-                            <label class="label-form">Mortgage Balance</label>
-                            <input type="text" data-id="mortgage" data-type="currency" placeholder="$300,000" class="input-base w-full text-pink-500">
-                        </div>
+                <div class="card-container mb-8">
+                    <div class="card-header">
+                        <h2 class="card-title"><i class="fas fa-home text-teal-400 mr-2"></i>Real Estate</h2>
+                        <button data-add-row="real-estate-rows" data-row-type="realEstate" class="btn btn-blue"><i class="fas fa-plus"></i> Add</button>
                     </div>
+                    <table class="w-full">
+                        <thead>
+                            <tr class="table-header-row">
+                                <th class="px-4 py-3">Name</th>
+                                <th class="px-4 py-3 text-right">Value</th>
+                                <th class="px-4 py-3 text-right">Mortgage Balance</th>
+                                <th class="w-16"></th>
+                            </tr>
+                        </thead>
+                        <tbody id="real-estate-rows"></tbody>
+                    </table>
                 </div>
 
                 <!-- HELOCs -->
@@ -153,14 +153,13 @@
             </section>
 
             <section id="tab-income" class="tab-content hidden max-w-4xl mx-auto">
-                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8 text-center">
-                    <div class="card-summary"><p class="label-summary">Total Gross Income</p><p id="sum-income" class="text-2xl font-bold text-teal-400"></p></div>
+                <div class="card-container">
+                    <div class="card-header">
+                        <h2 class="card-title"><i class="fas fa-money-bill-wave text-teal-400 mr-2"></i>Income</h2>
+                        <button data-add-row="income-rows" data-row-type="income" class="btn btn-blue"><i class="fas fa-plus"></i> Add Source</button>
+                    </div>
+                    <div id="income-rows" class="p-5 space-y-6"></div>
                 </div>
-                 <div class="flex justify-between items-center mb-6">
-                    <h2 class="text-3xl font-bold">Income</h2>
-                    <button data-add-row="income-rows" data-row-type="income" class="btn btn-blue"><i class="fas fa-plus"></i> Add Source</button>
-                </div>
-                <div id="income-rows" class="space-y-6"></div>
             </section>
 
             <section id="tab-budget" class="tab-content hidden max-w-4xl mx-auto">

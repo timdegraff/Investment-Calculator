@@ -19,20 +19,20 @@ This section documents all design, style, and features implemented from the init
 
 ---
 
-## 3. Current Plan: UI & Style Refinements
+## 3. Current Plan: Add Multi-Property Support
 
-This section outlines the plan for the current requested change, which focuses on fixing visual inconsistencies and bugs in the UI.
+This section outlines the plan for the current requested change, which focuses on adding support for multiple real estate properties.
 
 ### 3.1. Goal
 
-To polish the user interface by fixing the styling of input fields to match the dark theme and correcting a layout bug in the income card's checkbox section.
+To enhance the "Assets & Debts" tab by allowing users to add and manage multiple real estate properties, bringing its functionality in line with the "Investments" and "Debts" sections.
 
 ### 3.2. Actionable Steps
 
-1.  **Correct Income Card Checkbox:**
-    *   **File:** `templates.js`
-    *   **Action:** Locate the `income` template and find the third checkbox (`<input data-id="matchIncBonus" ...>`). Correct the typo in its `type-` attribute to `type="checkbox"` to fix the layout.
+1.  **Update `index.html`:**
+    *   **File:** `index.html`
+    *   **Action:** Restructure the "Real Estate" card. Replace the current single-entry form with a table structure. Add a `card-header` containing a title and a `+ Add` button (`<button data-add-row="real-estate-rows" ...>`). The table will have a `<tbody>` with the ID `real-estate-rows` to dynamically hold the property entries.
 
-2.  **Fix Input Field Styles:**
-    *   **File:** `public/css/style.css`
-    *   **Action:** Add a new CSS rule to explicitly set the `background-color` and `color` for the `.input-base` class, which is used for most text inputs and select elements. This will override any default browser styles and ensure all input fields have the correct dark background and light text, resolving the white-background issue.
+2.  **Create New Template:**
+    *   **File:** `templates.js`
+    *   **Action:** Add a new `realEstate` template function. This function will generate the HTML for a table row (`<tr>`) that includes input fields for "Property Name", "Property Value", and "Mortgage Balance", along with a "Remove" button.
