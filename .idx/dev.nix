@@ -5,8 +5,7 @@
   channel = "stable-24.05"; # or "unstable"
   # Use https://search.nixos.org/packages to find packages
   packages = [
-    pkgs.php82
-    pkgs.php82Packages.composer
+    pkgs.python3
     pkgs.nodejs_20
   ];
   # Sets environment variables in the workspace
@@ -32,7 +31,7 @@
       enable = true;
       previews = {
         web = {
-          command = ["php" "artisan" "serve" "--port" "$PORT" "--host" "0.0.0.0"];
+          command = [ "python3" "-m" "http.server" "$PORT" "--bind" "0.0.0.0" ];
           manager = "web";
         };
       };
