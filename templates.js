@@ -27,6 +27,7 @@ export const templates = {
     otherAsset: () => `
         <td class="px-4 py-2"><input data-id="name" type="text" placeholder="e.g., Tractor" class="input-base w-full"></td>
         <td class="px-4 py-2"><input data-id="value" type="text" data-type="currency" placeholder="$25,000" class="input-base w-full text-right text-teal-400"></td>
+        <td class="px-4 py-2"><input data-id="loan" type="text" data-type="currency" placeholder="$10,000" class="input-base w-full text-right text-pink-500"></td>
         <td class="px-4 py-2 text-center"><button data-action="remove" class="btn-icon"><i class="fas fa-times"></i></button></td>`,
 
     heloc: () => `

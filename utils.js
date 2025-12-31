@@ -192,7 +192,8 @@ export const engine = {
         const debtLiabilities = data.debts?.reduce((sum, item) => sum + math.fromCurrency(item.balance), 0) || 0;
         const helocLiabilities = data.helocs?.reduce((sum, item) => sum + math.fromCurrency(item.balance), 0) || 0;
         const mortgageLiability = data.realEstate?.reduce((sum, item) => sum + math.fromCurrency(item.mortgage), 0) || 0;
-        const totalLiabilities = debtLiabilities + helocLiabilities + mortgageLiability;
+        const otherAssetLoans = data.otherAssets?.reduce((sum, item) => sum + math.fromCurrency(item.loan), 0) || 0;
+        const totalLiabilities = debtLiabilities + helocLiabilities + mortgageLiability + otherAssetLoans;
 
         const grossIncome = data.income?.reduce((sum, item) => {
             const base = math.fromCurrency(item.amount) || 0;
