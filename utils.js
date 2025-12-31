@@ -185,12 +185,13 @@ export const engine = {
 
     calculateSummaries: (data) => {
         const investmentAssets = data.investments?.reduce((sum, item) => sum + math.fromCurrency(item.value), 0) || 0;
-        const realEstateValue = math.fromCurrency(data.realEstate?.value) || 0;
-        const totalAssets = investmentAssets + realEstateValue;
+        const realEstateValue = data.realEstate?.reduce((sum, item) => sum + math.fromCurrency(item.value), 0) || 0;
+        const otherAssetsValue = data.otherAssets?.reduce((sum, item) => sum + math.fromCurrency(item.value), 0) || 0;
+        const totalAssets = investmentAssets + realEstateValue + otherAssetsValue;
 
         const debtLiabilities = data.debts?.reduce((sum, item) => sum + math.fromCurrency(item.balance), 0) || 0;
         const helocLiabilities = data.helocs?.reduce((sum, item) => sum + math.fromCurrency(item.balance), 0) || 0;
-        const mortgageLiability = math.fromCurrency(data.realEstate?.mortgage) || 0;
+        const mortgageLiability = data.realEstate?.reduce((sum, item) => sum + math.fromCurrency(item.mortgage), 0) || 0;
         const totalLiabilities = debtLiabilities + helocLiabilities + mortgageLiability;
 
         const grossIncome = data.income?.reduce((sum, item) => {

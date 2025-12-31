@@ -43,6 +43,7 @@ export function loadUserDataIntoUI(data) {
 
     populateOrAddBlank(data.investments, 'investment-rows', 'investment');
     populateOrAddBlank(data.realEstate, 'real-estate-rows', 'realEstate');
+    populateOrAddBlank(data.otherAssets, 'other-assets-rows', 'otherAsset');
     populateOrAddBlank(data.helocs, 'heloc-rows', 'heloc');
     populateOrAddBlank(data.debts, 'debt-rows', 'debt');
     populateOrAddBlank(data.income, 'income-rows', 'income');
@@ -58,7 +59,7 @@ export function loadUserDataIntoUI(data) {
 }
 
 function clearDynamicContent() {
-    ['investment-rows', 'real-estate-rows', 'heloc-rows', 'debt-rows', 'income-rows', 'budget-savings-rows', 'budget-expenses-rows'].forEach(id => {
+    ['investment-rows', 'real-estate-rows', 'other-assets-rows', 'heloc-rows', 'debt-rows', 'income-rows', 'budget-savings-rows', 'budget-expenses-rows'].forEach(id => {
         const el = document.getElementById(id);
         if (el) el.innerHTML = '';
     });
@@ -91,6 +92,7 @@ function scrapeDataFromUI() {
         assumptions: {}, 
         investments: [], 
         realEstate: [],
+        otherAssets: [],
         helocs: [], 
         debts: [], 
         income: [], 
@@ -103,6 +105,7 @@ function scrapeDataFromUI() {
 
     document.querySelectorAll('#investment-rows tr').forEach(row => data.investments.push(scrapeRow(row)));
     document.querySelectorAll('#real-estate-rows tr').forEach(row => data.realEstate.push(scrapeRow(row)));
+    document.querySelectorAll('#other-assets-rows tr').forEach(row => data.otherAssets.push(scrapeRow(row)));
     document.querySelectorAll('#heloc-rows tr').forEach(row => data.helocs.push(scrapeRow(row)));
     document.querySelectorAll('#debt-rows tr').forEach(row => data.debts.push(scrapeRow(row)));
     document.querySelectorAll('#income-rows .income-card').forEach(card => data.income.push(scrapeRow(card)));
@@ -135,6 +138,7 @@ function getInitialData() {
         assumptions: assumptions.defaults,
         investments: [],
         realEstate: [],
+        otherAssets: [],
         helocs: [],
         debts: [],
         income: [],
