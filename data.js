@@ -47,7 +47,9 @@ export function loadUserDataIntoUI(data) {
     populateOrAddBlank(data.helocs, 'heloc-rows', 'heloc');
     populateOrAddBlank(data.debts, 'debt-rows', 'debt');
     populateOrAddBlank(data.income, 'income-rows', 'income');
-    populateOrAddBlank(data.budget?.savings, 'budget-savings-rows', 'budget-savings');
+    
+    const savings = data.budget?.savings?.filter(s => s.name !== '401k / 403b') || [];
+    populateOrAddBlank(savings, 'budget-savings-rows', 'budget-savings');
     populateOrAddBlank(data.budget?.expenses, 'budget-expenses-rows', 'budget-expense');
 
     if (data.assumptions) {
@@ -109,7 +111,15 @@ function scrapeDataFromUI() {
     document.querySelectorAll('#heloc-rows tr').forEach(row => data.helocs.push(scrapeRow(row)));
     document.querySelectorAll('#debt-rows tr').forEach(row => data.debts.push(scrapeRow(row)));
     document.querySelectorAll('#income-rows .income-card').forEach(card => data.income.push(scrapeRow(card)));
-    document.querySelectorAll('#budget-savings-rows tr').forEach(row => data.budget.savings.push(scrapeRow(row)));
+    
+    document.querySelectorAll('#budget-savings-rows tr').forEach(row => {
+        const nameInput = row.querySelector('[data-id="name"]');
+        if (nameInput && nameInput.value === '401k / 403b') {
+            return; 
+        }
+        data.budget.savings.push(scrapeRow(row));
+    });
+
     document.querySelectorAll('#budget-expenses-rows tr').forEach(row => data.budget.expenses.push(scrapeRow(row)));
 
     return data;
@@ -144,7 +154,9 @@ function getInitialData() {
         income: [],
         budget: {
             savings: [],
-            expenses: []
+            expenses: [
+                { name: 'Mortgage', monthly: 0, annual: 0 }
+            ]
         }
     };
 }
@@ -170,4 +182,24 @@ export function updateSummaries(data) {
     updateText('sum-budget-savings', summaries.totalAnnualSavings);
     updateText('sum-budget-annual', summaries.totalAnnualBudget);
     updateText('sum-budget-total', summaries.totalAnnualSavings + summaries.totalAnnualBudget);
+
+    const savingsTable = document.getElementById('budget-savings-rows');
+    if (savingsTable) {
+        const existing401kRow = savingsTable.querySelector('[data-name="401k"]');
+        if (existing401kRow) {
+            existing401kRow.remove();
+        }
+
+        if (summaries.total401kContribution > 0) {
+            const row = document.createElement('tr');
+            row.setAttribute('data-name', '401k');
+            row.innerHTML = `
+                <td class="px-4 py-2"><input data-id="name" type="text" value="401k / 403b" class="input-base w-full font-bold" readonly></td>
+                <td class="px-4 py-2"><input data-id="monthly" type="text" data-type="currency" value="${math.toCurrency(summaries.total401kContribution / 12)}" class="input-base w-full text-right text-teal-400" readonly></td>
+                <td class="px-4 py-2"><input data-id="annual" type="text" data-type="currency" value="${math.toCurrency(summaries.total401kContribution)}" class="input-base w-full text-right text-teal-400" readonly></td>
+                <td class="px-4 py-2 text-center"></td>
+            `;
+            savingsTable.prepend(row);
+        }
+    }
 }

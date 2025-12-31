@@ -112,7 +112,7 @@ export const engine = {
 
         const allAssets = [
             ...(investments || []).map(inv => ({ name: inv.name, type: inv.type, currentValue: math.fromCurrency(inv.value), annualContribution: 0 })),
-            ...(budget?.savings || []).map(sav => ({ name: sav.name, type: 'Savings', currentValue: 0, annualContribution: math.fromCurrency(sav.contribution) }))
+            ...(budget?.savings || []).map(sav => ({ name: sav.name, type: 'Savings', currentValue: 0, annualContribution: math.fromCurrency(sav.annual) }))
         ];
         
         if (allAssets.length === 0) return { labels: [], datasets: [], tableData: [], assetDetails: [] };
@@ -200,7 +200,15 @@ export const engine = {
             return sum + base + bonus;
         }, 0) || 0;
 
-        const totalAnnualSavings = data.budget?.savings?.reduce((sum, item) => sum + math.fromCurrency(item.contribution), 0) || 0;
+        const total401kContribution = data.income?.reduce((sum, item) => {
+            const base = math.fromCurrency(item.amount) || 0;
+            const bonus = base * (parseFloat(item.bonusPct) / 100 || 0);
+            const personalContrib = (item.contribIncBonus ? base + bonus : base) * (parseFloat(item.contribution) / 100 || 0);
+            const companyMatch = (item.matchIncBonus ? base + bonus : base) * (parseFloat(item.match) / 100 || 0);
+            return sum + personalContrib + companyMatch;
+        }, 0) || 0;
+
+        const totalAnnualSavings = (data.budget?.savings?.reduce((sum, item) => sum + math.fromCurrency(item.annual), 0) || 0) + total401kContribution;
         const totalAnnualBudget = data.budget?.expenses?.reduce((sum, item) => sum + math.fromCurrency(item.annual), 0) || 0;
 
         return {
@@ -208,6 +216,7 @@ export const engine = {
             totalAssets,
             totalLiabilities,
             grossIncome,
+            total401kContribution,
             totalAnnualSavings,
             totalMonthlyBudget: totalAnnualBudget / 12,
             totalAnnualBudget

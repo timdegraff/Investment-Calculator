@@ -171,6 +171,15 @@
             </section>
 
             <section id="tab-income" class="tab-content hidden max-w-4xl mx-auto">
+                <!-- Gross Income Summary -->
+                <div class="card-container mb-8 text-center p-6 bg-slate-800 rounded-2xl flex items-center justify-center gap-6">
+                    <i class="fas fa-dollar-sign text-teal-400 text-5xl"></i>
+                    <div>
+                        <p class="label-summary">Total Gross Income</p>
+                        <p id="sum-income" class="text-4xl font-black text-white"></p>
+                    </div>
+                </div>
+
                 <div class="card-container">
                     <div class="card-header">
                         <h2 class="card-title"><i class="fas fa-money-bill-wave text-teal-400 mr-2"></i>Income</h2>
@@ -197,7 +206,8 @@
                         <thead>
                             <tr class="table-header-row">
                                 <th class="px-4 py-3">Account Name</th>
-                                <th class="px-4 py-3 text-right">Annual Contribution</th>
+                                <th class="px-4 py-3 text-right cursor-pointer" data-sort="monthly">Monthly <i class="fas fa-sort text-slate-500"></i></th>
+                                <th class="px-4 py-3 text-right cursor-pointer" data-sort="annual">Annual <i class="fas fa-sort text-slate-500"></i></th>
                                 <th class="w-16"></th>
                             </tr>
                         </thead>
