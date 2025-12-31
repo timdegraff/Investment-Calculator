@@ -205,15 +205,17 @@ function sortBudgetTable(sortKey, header) {
 function createAssumptionControls(data) {
     const container = document.getElementById('assumptions-container');
     if (!container) return;
-    container.innerHTML = '';
+    container.innerHTML = ''; // Clear previous controls
 
     const controlDefs = {
-        currentAge: { label: 'Current Age', min: 18, max: 100, step: 1, unit: ' years' },
-        investmentGrowth: { label: 'Avg. Annual Growth', min: 0, max: 20, step: 0.5, unit: '%' },
+        currentAge: { label: 'Current Age', min: 18, max: 100, step: 1, unit: ' years', defaultValue: 40 },
+        stockGrowth: { label: 'Stock Growth 📈', min: 0, max: 20, step: 0.5, unit: '%', defaultValue: 7 },
+        cryptoGrowth: { label: 'Crypto Growth ₿', min: -20, max: 50, step: 1, unit: '%', defaultValue: 10 },
+        metalsGrowth: { label: 'Metals Growth 🪙', min: -10, max: 20, step: 0.5, unit: '%', defaultValue: 2 },
     };
 
     Object.entries(controlDefs).forEach(([key, def]) => {
-        const value = data.assumptions?.[key] ?? assumptions.defaults[key];
+        const value = data.assumptions?.[key] ?? def.defaultValue;
         const controlWrapper = document.createElement('div');
         controlWrapper.className = 'space-y-2';
         controlWrapper.innerHTML = `
@@ -223,12 +225,19 @@ function createAssumptionControls(data) {
             </label>
             <input type="range" data-id="${key}" min="${def.min}" max="${def.max}" step="${def.step}" value="${value}" class="input-range">
         `;
-
+        
         const slider = controlWrapper.querySelector('input[type="range"]');
         const display = controlWrapper.querySelector('span');
-        slider.addEventListener('input', () => display.textContent = `${slider.value}${def.unit}`);
+        
+        const updateDisplay = () => display.textContent = `${slider.value}${def.unit}`;
+        
+        slider.addEventListener('input', () => {
+            updateDisplay();
+            // No need to call runProjection here as the global input listener handles it via debouncedAutoSave
+        });
 
         container.appendChild(controlWrapper);
+        updateDisplay(); // Set initial text
     });
 }
 
