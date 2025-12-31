@@ -1,5 +1,9 @@
 # Project Blueprint
 
+## Open Tasks
+1. add roth cost basis on investment page
+2. 
+
 ## Overview
 
 This project is a comprehensive Investment and Retirement Calculator designed to help users project their financial future. It allows users to input their assets, debts, income, and expenses, and then projects their net worth over time based on a set of assumptions. The application is built with vanilla JavaScript and Firebase for data persistence.
