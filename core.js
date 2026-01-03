@@ -1,3 +1,4 @@
+
 import { signInWithGoogle, logoutUser } from './auth.js';
 import { templates } from './templates.js';
 import { autoSave } from './data.js';
@@ -28,6 +29,7 @@ export function initializeUI() {
     attachDynamicRowListeners();
     attachSortingListeners();
     initializeSortable();
+    window.autoSave = debouncedAutoSave; // Fix 1: Make autoSave globally available
 }
 
 // --- EVENT LISTENER SETUP ---
@@ -38,17 +40,18 @@ function attachGlobalListeners() {
 
     document.body.addEventListener('input', (e) => {
         const target = e.target;
-        if (target.closest('.input-base, .income-card, #assumptions-container, .input-range')) {
+        if (target.closest('.input-base, .income-card, #assumptions-container, .input-range, .benefit-slider')) {
             debouncedAutoSave();
         }
     });
 }
 
+// Fix 2a: Make navigation asynchronous to await data scraping
 function attachNavigationListeners() {
-    document.getElementById('main-nav').addEventListener('click', (e) => {
+    document.getElementById('main-nav').addEventListener('click', async (e) => {
         const tabButton = e.target.closest('.tab-btn');
         if (tabButton && tabButton.dataset.tab) {
-            showTab(tabButton.dataset.tab);
+            await showTab(tabButton.dataset.tab);
         }
     });
 }
@@ -97,7 +100,8 @@ function initializeSortable() {
 
 // --- UI MANIPULATION & LOGIC ---
 
-function showTab(tabId) {
+// Fix 2b: Make showTab asynchronous
+async function showTab(tabId) {
     document.querySelectorAll('.tab-content').forEach(tab => tab.classList.add('hidden'));
     document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
 
@@ -107,12 +111,10 @@ function showTab(tabId) {
     if (tabEl) tabEl.classList.remove('hidden');
     if (btnEl) btnEl.classList.add('active');
 
-    if (tabId === 'projection' && window.currentData) {
-        engine.runProjection(window.currentData);
-    }
-
-    if (tabId === 'burndown' && window.currentData) {
-        burndown.run();
+    // Fix 2c: Scrape fresh data before running simulations
+    if ((tabId === 'projection' || tabId === 'burndown') && window.currentData) {
+        await autoSave(true); // Scrape UI, update window.currentData, and save.
+                               // This also triggers the simulation run inside autoSave.
     }
 }
 
@@ -135,12 +137,10 @@ function addRow(containerId, type, data = {}) {
     attachInputListeners(newElement);
     window.fillRow(newElement, data);
 
-    // Bind currency formatting to new row inputs
     newElement.querySelectorAll('[data-type="currency"]').forEach(formatter.bindCurrencyEventListeners);
 }
 
 function attachInputListeners(element) {
-    // Budget auto-calculation
     const monthlyInput = element.querySelector('[data-id="monthly"]');
     const annualInput = element.querySelector('[data-id="annual"]');
     if (monthlyInput && annualInput) {
@@ -154,31 +154,24 @@ function attachInputListeners(element) {
         });
     }
     
-    // Income card sliders
     element.querySelectorAll('input[type="range"]').forEach(slider => {
         const display = slider.previousElementSibling.querySelector('span');
         if (display) {
             const updateDisplay = () => display.textContent = `${slider.value}%`;
             slider.addEventListener('input', updateDisplay);
-            updateDisplay(); // Set initial value
+            updateDisplay();
         }
     });
 
-    // Investment type dependency
     const typeSelect = element.querySelector('select[data-id="type"]');
     if (typeSelect) {
         const costBasisInput = element.querySelector('input[data-id="costBasis"]');
         const handleTypeChange = () => {
             const selectedType = typeSelect.value;
             const isRoth = selectedType === 'Post-Tax (Roth)';
-
             costBasisInput.disabled = !isRoth;
-
-            if (!isRoth) {
-                costBasisInput.value = 'N/A';
-            } else if (costBasisInput.value === 'N/A') {
-                costBasisInput.value = ''; // Clear N/A if it becomes enabled
-            }
+            if (!isRoth) costBasisInput.value = 'N/A';
+            else if (costBasisInput.value === 'N/A') costBasisInput.value = '';
         };
         typeSelect.addEventListener('change', handleTypeChange);
         handleTypeChange();
@@ -211,7 +204,7 @@ function sortBudgetTable(sortKey, header) {
 function createAssumptionControls(data) {
     const container = document.getElementById('assumptions-container');
     if (!container) return;
-    container.innerHTML = ''; // Clear previous controls
+    container.innerHTML = '';
 
     const controlDefs = {
         currentAge: { label: 'Current Age', min: 18, max: 80, step: 1, unit: ' years', defaultValue: 40 },
@@ -227,9 +220,7 @@ function createAssumptionControls(data) {
         const value = data.assumptions?.[key] ?? def.defaultValue;
         const controlWrapper = document.createElement('div');
         controlWrapper.className = 'space-y-2';
-        
         const displayValue = def.isCurrency ? formatter.formatCurrency(value, false) : `${value}${def.unit}`;
-
         controlWrapper.innerHTML = `
             <label class="flex justify-between items-center font-bold text-slate-300">
                 ${def.label}
@@ -237,29 +228,21 @@ function createAssumptionControls(data) {
             </label>
             <input type="range" data-id="${key}" min="${def.min}" max="${def.max}" step="${def.step}" value="${value}" class="input-range">
         `;
-        
         const slider = controlWrapper.querySelector('input[type="range"]');
         const display = controlWrapper.querySelector('span');
-        
         const updateDisplay = () => {
             const sliderValue = parseFloat(slider.value);
             display.textContent = def.isCurrency ? formatter.formatCurrency(sliderValue, false) : `${sliderValue}${def.unit}`;
         };
-
         if (key === 'retirementAge') {
             const currentAgeSlider = document.querySelector('[data-id="currentAge"]');
             slider.addEventListener('input', () => {
-                if (slider.value < currentAgeSlider.value) {
-                    slider.value = currentAgeSlider.value;
-                }
+                if (slider.value < currentAgeSlider.value) slider.value = currentAgeSlider.value;
                 updateDisplay();
             });
         } else {
-             slider.addEventListener('input', () => {
-                updateDisplay();
-            });
+             slider.addEventListener('input', updateDisplay);
         }
-
         container.appendChild(controlWrapper);
         updateDisplay(); 
     });
@@ -267,7 +250,6 @@ function createAssumptionControls(data) {
 
 window.addRow = addRow;
 window.createAssumptionControls = createAssumptionControls;
-
 window.fillRow = (row, data) => {
     if (!data) return;
     Object.keys(data).forEach(key => {
