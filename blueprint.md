@@ -18,12 +18,14 @@ FinCalc is a comprehensive financial dashboard designed to help users track thei
     *   Net worth projection chart based on user-defined assumptions.
     *   Detailed year-by-year data breakdown.
 
-## Current Task: Robust Google Login
+## Current Task: Add Burndown Feature
 
-The goal is to make the Google login process more robust so that it is not affected by any other potential errors in the application.
+I will add a new "Burndown" page to the application. This will serve as a placeholder for future functionality.
 
 ### Plan
 
-1.  **Isolate Authentication Logic:** Create a dedicated JavaScript file (`auth.js`) that will exclusively handle user authentication with Firebase.
-2.  **Prioritize Script Loading:** Modify `index.html` to load the Firebase and authentication scripts before any other application logic. This ensures the login button is always responsive.
-3.  **Defer Main Application:** The main application script (`main.js`) will be loaded with the `defer` attribute to ensure it executes after the DOM is fully parsed and doesn't block the rendering of the login screen.
+1.  **Update `index.html`:**
+    *   Add a new "Burndown" button to the sidebar navigation with a purple, downward-trending stair icon.
+    *   Create a new, blank `section` for the Burndown page content.
+2.  **Update `blueprint.md`:**
+    *   Document the new Burndown feature in the project blueprint.
