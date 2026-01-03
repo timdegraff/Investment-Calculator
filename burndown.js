@@ -28,7 +28,7 @@ export const burndown = {
     assetMeta: {
         'cash': { label: 'Cash', color: '#f472b6', growthKey: null },
         'taxable': { label: 'Taxable Brokerage', color: '#34d399', growthKey: 'stockGrowth' },
-        'roth-basis': { label: 'Roth Basis', color: '#fbbf24', growthKey: null }, // Roth basis is static and does not grow
+        'roth-basis': { label: 'Roth Basis', color: '#fbbf24', growthKey: null },
         'metals': { label: 'Metals', color: '#a78bfa', growthKey: 'metalsGrowth' },
         'crypto': { label: 'Bitcoin', color: '#f97316', growthKey: 'cryptoGrowth' },
         'heloc': { label: 'HELOC', color: '#ef4444', growthKey: null },
@@ -58,7 +58,14 @@ export const burndown = {
 
     renderTable: (data) => {
         const results = burndown.calculate(data);
-        const staticHeaders = `<th class="sticky left-0 bg-slate-700 p-3">Age</th><th class="p-3">Budget</th><th class="p-3">SS</th><th class="p-3">Ret. Inc.</th><th class="p-3">SNAP</th>`;
+        const staticHeaders = `
+            <th class="sticky left-0 bg-slate-700 p-3">Age</th>
+            <th class="p-3">Budget</th>
+            <th class="p-3">Income</th>
+            <th class="p-3">SS</th>
+            <th class="p-3 text-red-400">Req. Draw</th>
+            <th class="p-3">SNAP</th>
+        `;
         const draggableHeaders = burndown.priorityOrder.map(key => `<th class="p-3 cursor-move drag-handle" data-asset-key="${key}" style="color: ${burndown.assetMeta[key].color};">${burndown.assetMeta[key].label}</th>`).join('');
         const summaryHeaders = `<th class="p-3">Total Draw</th><th class="p-3">Assets (ex. RE)</th>`;
         const bodyRows = results.map(row => {
@@ -72,8 +79,9 @@ export const burndown = {
                 <tr class="border-b border-slate-800 align-top">
                     <td class="sticky left-0 bg-slate-900 p-2 text-center font-bold">${row.age}</td>
                     <td class="p-2 text-right">${formatter.formatCurrency(row.budget, 0)}</td>
+                    <td class="p-2 text-right">${formatter.formatCurrency(row.income, 0)}</td>
                     <td class="p-2 text-right">${formatter.formatCurrency(row.ss, 0)}</td>
-                    <td class="p-2 text-right">${formatter.formatCurrency(row.retIncome, 0)}</td>
+                    <td class="p-2 text-right text-red-400 font-bold">${formatter.formatCurrency(row.requiredDraw, 0)}</td>
                     <td class="p-2 text-right">${formatter.formatCurrency(row.snap, 0)}</td>
                     ${draggableCells}
                     <td class="p-2 text-right font-bold">${formatter.formatCurrency(row.totalDraw, 0)}</td>
@@ -105,7 +113,6 @@ export const burndown = {
             '401k': investments.filter(i => i.type === 'Pre-Tax (401k/IRA)').reduce((sum, i) => sum + i.value, 0),
             'heloc': helocs.reduce((sum, h) => sum + ((h.limit || 0) - (h.balance || 0)), 0),
         };
-        balances['401k-72t'] = balances['401k'];
 
         const preRetirementIncomeSources = income.filter(i => !i.remainsInRetirement);
         const postRetirementIncomeSources = income.filter(i => i.remainsInRetirement);
@@ -114,7 +121,7 @@ export const burndown = {
         let ssBenefit = (assumptions.ssMonthly || 0) * 12;
         const results = [];
 
-        for (let age = assumptions.currentAge; age <= assumptions.retirementAge + 35; age++) {
+        for (let age = assumptions.currentAge; age <= 100; age++) {
             const yearResult = { age, draws: {}, balances: {}, totalDraw: 0 };
             const isRetired = age >= assumptions.retirementAge;
 
@@ -129,7 +136,6 @@ export const burndown = {
                         balances[key] *= (1 + growthRate);
                     }
                 }
-                balances['401k-72t'] = balances['401k'];
             }
             yearResult.budget = currentBudget;
 
@@ -143,34 +149,51 @@ export const burndown = {
                 }
                 currentYearTotalIncome += incomeForYear;
             });
-            yearResult.retIncome = currentYearTotalIncome;
+            yearResult.income = currentYearTotalIncome;
 
             const ssIncomeForYear = age >= assumptions.ssStartAge ? ssBenefit : 0;
             yearResult.ss = ssIncomeForYear;
 
-            let shortfall = currentBudget - currentYearTotalIncome - ssIncomeForYear;
-            
-            const snapIncomeForCalc = currentYearTotalIncome + ssIncomeForYear;
-            const snapBenefit = burndown.calculateSnapForYear(snapIncomeForCalc, benefitsData);
-            shortfall -= snapBenefit;
+            const requiredDraw = Math.max(0, currentBudget - currentYearTotalIncome - ssIncomeForYear);
+            yearResult.requiredDraw = requiredDraw;
+
+            const retirementIncomeForSnap = (isRetired ? currentYearTotalIncome : 0) + ssIncomeForYear;
+            const snapBenefit = burndown.calculateSnapForYear(retirementIncomeForSnap, benefitsData);
             yearResult.snap = snapBenefit;
 
-            shortfall = Math.max(0, shortfall);
+            let shortfall = requiredDraw - snapBenefit;
 
-            const activePriority = [...burndown.priorityOrder];
-            if (age < 60) {
-                const idx401k = activePriority.indexOf('401k');
-                if (idx401k > -1) activePriority.splice(idx401k, 1);
-                const idxRoth = activePriority.indexOf('roth-earnings');
-                if (idxRoth > -1) activePriority.splice(idxRoth, 1);
-            } else {
-                const idx72t = activePriority.indexOf('401k-72t');
-                if (idx72t > -1) activePriority.splice(idx72t, 1);
+            if (shortfall < 0) shortfall = 0;
+
+            // Handle surplus cashflow pre-retirement
+            const surplus = Math.max(0, currentYearTotalIncome + ssIncomeForYear - currentBudget);
+            if (surplus > 0) {
+                balances.cash += surplus;
             }
 
+            const activePriority = [...burndown.priorityOrder];
+            if (isRetired) {
+                 if (age < 60) {
+                    const idx401k = activePriority.indexOf('401k');
+                    if (idx401k > -1) activePriority.splice(idx401k, 1);
+                    const idxRoth = activePriority.indexOf('roth-earnings');
+                    if (idxRoth > -1) activePriority.splice(idxRoth, 1);
+                } else {
+                    const idx72t = activePriority.indexOf('401k-72t');
+                    if (idx72t > -1) activePriority.splice(idx72t, 1);
+                }
+            } else {
+                // Pre-retirement, only draw from cash and taxable
+                const preRetirementPriority = ['cash', 'taxable'];
+                // Filter activePriority to only include these
+                burndown.priorityOrder.forEach(p => { if(!preRetirementPriority.includes(p)) activePriority.splice(activePriority.indexOf(p), 1) });
+            }
+            
             for (const key of activePriority) {
                 if (shortfall <= 0) break;
                 let balanceKey = key.replace('-72t', '');
+                if (!balances[balanceKey]) continue;
+
                 const available = balances[balanceKey];
                 const draw = Math.min(shortfall, available);
                 balances[balanceKey] -= draw;
@@ -180,7 +203,7 @@ export const burndown = {
             }
 
             yearResult.balances = { ...balances };
-            yearResult.totalAssets = Object.values(balances).reduce((s, v) => s + v, 0) - (balances.heloc || 0); // Exclude HELOC from total assets
+            yearResult.totalAssets = Object.values(balances).reduce((s, v) => s + v, 0);
             results.push(yearResult);
         }
         return results;
