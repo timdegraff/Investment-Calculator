@@ -165,12 +165,11 @@ function attachInputListeners(element) {
         const costBasisInput = element.querySelector('input[data-id="costBasis"]');
         const handleTypeChange = () => {
             const selectedType = typeSelect.value;
-            const isTaxable = selectedType === 'Taxable';
             const isRoth = selectedType === 'Post-Tax (Roth)';
 
-            costBasisInput.disabled = !(isTaxable || isRoth);
+            costBasisInput.disabled = !isRoth;
 
-            if (!isTaxable && !isRoth) {
+            if (!isRoth) {
                 costBasisInput.value = 'N/A';
             } else if (costBasisInput.value === 'N/A') {
                 costBasisInput.value = ''; // Clear N/A if it becomes enabled
@@ -241,10 +240,20 @@ function createAssumptionControls(data) {
             const sliderValue = parseFloat(slider.value);
             display.textContent = def.isCurrency ? formatter.formatCurrency(sliderValue, false) : `${sliderValue}${def.unit}`;
         };
-        
-        slider.addEventListener('input', () => {
-            updateDisplay();
-        });
+
+        if (key === 'retirementAge') {
+            const currentAgeSlider = document.querySelector('[data-id="currentAge"]');
+            slider.addEventListener('input', () => {
+                if (slider.value < currentAgeSlider.value) {
+                    slider.value = currentAgeSlider.value;
+                }
+                updateDisplay();
+            });
+        } else {
+             slider.addEventListener('input', () => {
+                updateDisplay();
+            });
+        }
 
         container.appendChild(controlWrapper);
         updateDisplay(); 

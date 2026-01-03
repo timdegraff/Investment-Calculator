@@ -151,6 +151,7 @@ export const engine = {
             const isRetired = age >= retirementAge;
             let totalAnnualIncome = 0;
             let total401kContribution = 0;
+            let totalTaxableIncome = 0;
 
             if (!isRetired) {
                 (income || []).forEach(inc => {
@@ -168,6 +169,9 @@ export const engine = {
                         const companyMatch = (inc.contribIncBonus ? currentYearIncome + bonus : currentYearIncome) * (parseFloat(inc.match) / 100 || 0);
                         total401kContribution += personalContrib + companyMatch;
                     }
+
+                    const writeOffs = math.fromCurrency(inc.writeOffs) || 0;
+                    totalTaxableIncome += (currentYearIncome + bonus - writeOffs);
                 });
             }
 
