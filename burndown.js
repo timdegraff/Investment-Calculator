@@ -117,19 +117,25 @@ export const burndown = {
     },
     
     calculate: (data) => {
-        const { assumptions, investments, income, budget, helocs, benefits: benefitsData } = data;
-        const annualSpend = budget.expenses.reduce((sum, item) => sum + (item.monthly * 12) + item.annual, 0);
+        const assumptions = data.assumptions;
+        const investments = data.investments || [];
+        const income = data.income || [];
+        const budget = data.budget || {};
+        const helocs = data.helocs || [];
+        const benefitsData = data.benefits;
+
+        const annualSpend = (budget.expenses || []).reduce((sum, item) => sum + (item.monthly * 12) + (item.annual || 0), 0);
 
         let balances = {
             'cash': investments.filter(i => i.type === 'Cash').reduce((sum, i) => sum + i.value, 0),
             'taxable': investments.filter(i => i.type === 'Taxable').reduce((sum, i) => sum + i.value, 0),
-            'roth-basis': investments.filter(i => i.type === 'Post-Tax (Roth)').reduce((sum, i) => sum + i.costBasis, 0),
-            'roth-earnings': investments.filter(i => i.type === 'Post-Tax (Roth)').reduce((sum, i) => sum + Math.max(0, i.value - i.costBasis), 0),
+            'roth-basis': investments.filter(i => i.type === 'Post-Tax (Roth)').reduce((sum, i) => sum + (i.costBasis || 0), 0),
+            'roth-earnings': investments.filter(i => i.type === 'Post-Tax (Roth)').reduce((sum, i) => sum + Math.max(0, i.value - (i.costBasis || 0)), 0),
             'metals': investments.filter(i => i.type === 'Metals').reduce((sum, i) => sum + i.value, 0),
             'crypto': investments.filter(i => i.type === 'Crypto').reduce((sum, i) => sum + i.value, 0),
             '401k': investments.filter(i => i.type === 'Pre-Tax (401k/IRA)').reduce((sum, i) => sum + i.value, 0),
-            '401k-72t': 0, // This is just a proxy for the 401k balance, not a separate account
-            'heloc': helocs.reduce((sum, h) => sum + (h.limit - h.balance), 0),
+            '401k-72t': 0,
+            'heloc': helocs.reduce((sum, h) => sum + ((h.limit || 0) - (h.balance || 0)), 0),
         };
         balances['401k-72t'] = balances['401k'];
 
@@ -141,9 +147,8 @@ export const burndown = {
         for (let age = assumptions.currentAge; age <= assumptions.retirementAge + 35; age++) {
             const yearResult = { age, draws: {}, balances: {}, totalDraw: 0 };
 
-            // Grow assets
             for (const key in balances) {
-                if (key !== 'heloc' && key !== 'cash') { // HELOCs and cash don't grow
+                if (key !== 'heloc' && key !== 'cash') {
                      balances[key] *= (1 + assumptions.growthRate / 100);
                 }
             }
@@ -154,12 +159,10 @@ export const burndown = {
 
             let shortfall = currentBudget;
 
-            // 1. Social Security
             const ssIncome = age >= assumptions.ssStartAge ? assumptions.ssBenefit : 0;
             shortfall -= ssIncome;
             yearResult.ss = ssIncome;
 
-            // 2. Retirement Income
             let retIncome = 0;
             if (age >= assumptions.retirementAge) {
                 retIncome = retIncomeSources.reduce((sum, i) => sum + i.base - (i.writeOffs || 0), 0);
@@ -167,16 +170,13 @@ export const burndown = {
             }
             yearResult.retIncome = retIncome;
 
-            // 3. SNAP
             const snapIncomeForCalc = ssIncome + retIncome;
             const snapBenefit = burndown.calculateSnapForYear(snapIncomeForCalc, benefitsData);
             shortfall -= snapBenefit;
             yearResult.snap = snapBenefit;
 
-            // 4. Draw from prioritized assets
-            const activePriority = burndown.priorityOrder.slice(); // Use a copy
+            const activePriority = burndown.priorityOrder.slice();
 
-            // Handle age-based restrictions
             if (age < 60) {
                 const index = activePriority.indexOf('401k');
                 if (index > -1) activePriority.splice(index, 1);
@@ -184,7 +184,7 @@ export const burndown = {
                 const index = activePriority.indexOf('401k-72t');
                 if (index > -1) activePriority.splice(index, 1);
             }
-            if (age < 60) { // Roth earnings penalty before 59.5, simplified to 60
+            if (age < 60) {
                  const index = activePriority.indexOf('roth-earnings');
                 if (index > -1) activePriority.splice(index, 1);
             }
@@ -228,7 +228,7 @@ export const burndown = {
         const halfAdjIncome = adjIncome * 0.5;
         let excessShelter = Math.max(0, snapDeductions - halfAdjIncome);
 
-        const shelterCap = 700; // Placeholder, might need to be dynamic
+        const shelterCap = 700;
         if (!snapDisability && excessShelter > shelterCap) {
             excessShelter = shelterCap;
         }
@@ -243,6 +243,6 @@ export const burndown = {
             if (hhSize <= 2 && finalBenefit < 23 && finalBenefit > 0) finalBenefit = 23;
         }
 
-        return finalBenefit * 12; // Return annual amount
+        return finalBenefit * 12;
     }
 };

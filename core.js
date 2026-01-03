@@ -3,6 +3,7 @@ import { templates } from './templates.js';
 import { autoSave } from './data.js';
 import { engine, math } from './utils.js';
 import { formatter } from './formatter.js';
+import { burndown } from './burndown.js';
 
 // --- DEBOUNCE UTILITY ---
 function debounce(func, wait) {
@@ -108,6 +109,10 @@ function showTab(tabId) {
 
     if (tabId === 'projection' && window.currentData) {
         engine.runProjection(window.currentData);
+    }
+
+    if (tabId === 'burndown' && window.currentData) {
+        burndown.run();
     }
 }
 

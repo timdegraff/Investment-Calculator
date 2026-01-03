@@ -21,10 +21,19 @@ async function loadData() {
     if (docSnap.exists() && Object.keys(docSnap.data()).length > 0) {
         console.log("Found user data, loading...");
         window.currentData = docSnap.data();
+        
+        // This is the critical data migration fix.
+        // It ensures that if an old data structure without assumptions is loaded,
+        // the defaults are added in, preventing errors in features that depend on them.
+        if (!window.currentData.assumptions) {
+            console.log("No assumptions found in loaded data. Adding default assumptions.");
+            window.currentData.assumptions = assumptions.defaults;
+        }
+
     } else {
-        console.log("No data found, initializing with defaults.");
+        console.log("No data found for user, initializing with a fresh default dataset.");
         window.currentData = getInitialData();
-        await autoSave(false); // Do an initial save without scraping
+        await autoSave(false); // Do an initial save without scraping to establish the record
     }
     
     loadUserDataIntoUI(window.currentData);
@@ -41,7 +50,7 @@ export function loadUserDataIntoUI(data) {
         if (items.length > 0) {
             items.forEach(item => window.addRow(containerId, rowType, item));
         } else {
-            window.addRow(containerId, rowType, {}); // Add a single blank row
+            window.addRow(containerId, rowType, {}); // Add a single blank row for new users
         }
     };
 
@@ -56,9 +65,8 @@ export function loadUserDataIntoUI(data) {
     populateOrAddBlank(savings, 'budget-savings-rows', 'budget-savings');
     populateOrAddBlank(data.budget?.expenses, 'budget-expenses-rows', 'budget-expense');
 
-    if (data.assumptions) {
-        window.createAssumptionControls(data);
-    }
+    // This is now guaranteed to have the data it needs
+    window.createAssumptionControls(data);
 
     updateSummaries(data);
     console.log("UI Population complete.");
@@ -78,6 +86,7 @@ export async function autoSave(scrape = true) {
 
     updateSummaries(window.currentData);
 
+    // Trigger re-run of projection/burndown if they are the active tab
     const projectionTab = document.getElementById('tab-projection');
     if (projectionTab && !projectionTab.classList.contains('hidden')) {
         engine.runProjection(window.currentData);
@@ -91,9 +100,9 @@ export async function autoSave(scrape = true) {
     if (user && db) {
         try {
             await setDoc(doc(db, "users", user.uid), window.currentData, { merge: true });
-            console.log("Data saved to Firestore.");
+            console.log("Data successfully saved to Firestore.");
         } catch (error) {
-            console.error("Error saving data:", error);
+            console.error("Error saving data to Firestore:", error);
         }
     }
 };
@@ -125,6 +134,7 @@ function scrapeDataFromUI() {
     
     document.querySelectorAll('#budget-savings-rows tr').forEach(row => {
         const nameInput = row.querySelector('[data-id="name"]');
+        // Exclude the dynamically calculated 401k row from being saved
         if (nameInput && nameInput.value === '401k / 403b') {
             return; 
         }
@@ -196,6 +206,7 @@ export function updateSummaries(data) {
     updateText('sum-budget-annual', summaries.totalAnnualBudget);
     updateText('sum-budget-total', summaries.totalAnnualSavings + summaries.totalAnnualBudget);
 
+    // Dynamically update the 401k savings row
     const savingsTable = document.getElementById('budget-savings-rows');
     if (savingsTable) {
         const existing401kRow = savingsTable.querySelector('[data-name="401k"]');

@@ -9,7 +9,10 @@
     pkgs.nodejs_20
   ];
   # Sets environment variables in the workspace
-  env = {};
+  env = {
+    # This is the critical fix. It exposes the workspace slug as an environment variable.
+    WORKSPACE_SLUG = "investment-calculator-931f2";
+  };
   idx = {
     # Search for the extensions you want on https://open-vsx.org/ and use "publisher.id"
     extensions = [
@@ -21,21 +24,21 @@
       # Runs when a workspace is first created with this `dev.nix` file
       onCreate = {
         # Example: install JS dependencies from NPM
-        # npm-install = "npm install";
-        # Open editors for the following files by default, if they exist:
-        default.openFiles = [ "README.md" "resources/views/welcome.blade.php" ];
+        npm-install = "npm install";
       };
-      # To run something each time the workspace is (re)started, use the `onStart` hook
-    };
-    # Enable previews and customize configuration
-    previews = {
-      enable = true;
-      previews = {
-        web = {
-          command = [ "python3" "-m" "http.server" "$PORT" "--bind" "0.0.0.0" ];
-          manager = "web";
-        };
+      # Runs when a workspace is opened
+      onOpen = {
+        # Example: start a dev server
+        # start-dev-server = "npm run dev";
       };
     };
+    # The ports your application uses. This will be published to the cloud.
+    ports = [
+      {
+        port = 8000;
+        # Applies when the port is opened in the web preview.
+        onOpen = "open-preview";
+      }
+    ];
   };
 }
