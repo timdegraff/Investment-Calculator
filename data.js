@@ -3,6 +3,7 @@ import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/fireb
 import { assumptions, math, engine } from './utils.js';
 import { formatter } from './formatter.js';
 import { benefits } from './benefits.js';
+import { burndown } from './burndown.js';
 
 let db;
 let user;
@@ -28,6 +29,7 @@ async function loadData() {
     
     loadUserDataIntoUI(window.currentData);
     benefits.load(window.currentData.benefits);
+    burndown.load(window.currentData.burndown);
 }
 
 export function loadUserDataIntoUI(data) {
@@ -80,6 +82,11 @@ export async function autoSave(scrape = true) {
     if (projectionTab && !projectionTab.classList.contains('hidden')) {
         engine.runProjection(window.currentData);
     }
+    
+    const burndownTab = document.getElementById('tab-burndown');
+    if (burndownTab && !burndownTab.classList.contains('hidden')) {
+        burndown.run();
+    }
 
     if (user && db) {
         try {
@@ -102,6 +109,7 @@ function scrapeDataFromUI() {
         income: [], 
         budget: { savings: [], expenses: [] },
         benefits: benefits.scrape(),
+        burndown: burndown.scrape(),
     };
 
     document.querySelectorAll('#assumptions-container [data-id]').forEach(input => {
@@ -162,6 +170,7 @@ function getInitialData() {
             ]
         },
         benefits: {},
+        burndown: {},
     };
 }
 
