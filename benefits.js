@@ -17,19 +17,19 @@ export const benefits = {
             target.value = source.value;
             benefits.calculateHealth();
             benefits.calculateSnap();
-            window.autoSave(); // Save on change
+            window.debouncedAutoSave(); // Save on change
         };
 
         bhHhSize.addEventListener('input', () => syncHhSize(bhHhSize, bsHhSize));
         bsHhSize.addEventListener('input', () => syncHhSize(bsHhSize, bhHhSize));
 
-        document.getElementById('bh-annual-income').addEventListener('input', () => { benefits.calculateHealth(); window.autoSave(); });
-        document.getElementById('bh-preg-check').addEventListener('change', () => { benefits.calculateHealth(); window.autoSave(); });
+        document.getElementById('bh-annual-income').addEventListener('input', () => { benefits.calculateHealth(); window.debouncedAutoSave(); });
+        document.getElementById('bh-preg-check').addEventListener('change', () => { benefits.calculateHealth(); window.debouncedAutoSave(); });
 
-        document.getElementById('bs-annual-income').addEventListener('input', () => { benefits.calculateSnap(); window.autoSave(); });
-        document.getElementById('bs-monthly-deductions').addEventListener('input', () => { benefits.calculateSnap(); window.autoSave(); });
-        document.getElementById('bs-auto-max-deductions').addEventListener('change', () => { benefits.calculateSnap(); window.autoSave(); });
-        document.getElementById('bs-disability-check').addEventListener('change', () => { benefits.calculateSnap(); window.autoSave(); });
+        document.getElementById('bs-annual-income').addEventListener('input', () => { benefits.calculateSnap(); window.debouncedAutoSave(); });
+        document.getElementById('bs-monthly-deductions').addEventListener('input', () => { benefits.calculateSnap(); window.debouncedAutoSave(); });
+        document.getElementById('bs-auto-max-deductions').addEventListener('change', () => { benefits.calculateSnap(); window.debouncedAutoSave(); });
+        document.getElementById('bs-disability-check').addEventListener('change', () => { benefits.calculateSnap(); window.debouncedAutoSave(); });
 
         benefits.calculateHealth();
         benefits.calculateSnap();
@@ -78,6 +78,7 @@ export const benefits = {
         if (size == 5) return 244;
         return 279;
     },
+    getShelterCap: () => 700, // Added missing function
 
     updateTrackGradient: (size, isPreg) => {
         const fpl = benefits.getFPL(size);
@@ -191,7 +192,7 @@ export const benefits = {
         const halfAdjIncome = adjIncome * 0.5;
         let excessShelter = Math.max(0, deductions - halfAdjIncome);
         
-        const shelterCap = 700; 
+        const shelterCap = benefits.getShelterCap(); 
         if (!isDisabled && excessShelter > shelterCap) {
             excessShelter = shelterCap;
         }
