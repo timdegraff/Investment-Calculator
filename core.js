@@ -19,8 +19,9 @@ function debounce(func, wait) {
     };
 }
 
-// Create a debounced version of the autoSave function.
+// Create a debounced version of the autoSave function and expose it globally.
 const debouncedAutoSave = debounce(autoSave, 500);
+window.debouncedAutoSave = debouncedAutoSave;
 
 // --- INITIALIZATION ---
 export function initializeUI() {
@@ -30,9 +31,6 @@ export function initializeUI() {
     attachDynamicRowListeners();
     attachSortingListeners();
     initializeSortable();
-    
-    // Correctly expose the debounced autoSave function to the global window object.
-    window.debouncedAutoSave = debouncedAutoSave;
 }
 
 // --- EVENT LISTENER SETUP ---
@@ -42,15 +40,15 @@ function attachGlobalListeners() {
     document.getElementById('logout-btn').addEventListener('click', logoutUser);
 
     // A global input listener to trigger auto-save on any data change.
+    // Excludes linked sliders, which have their own specific handler.
     document.body.addEventListener('input', (e) => {
         const target = e.target;
-        if (target.closest('.input-base, .income-card, #assumptions-container, .input-range, .benefit-slider')) {
+        if (target.closest('.input-base, .income-card, #assumptions-container .input-range:not([data-linked-source])')) {
             window.debouncedAutoSave();
         }
     });
 }
 
-// Attach listeners to the main navigation tabs.
 function attachNavigationListeners() {
     document.getElementById('main-nav').addEventListener('click', async (e) => {
         const tabButton = e.target.closest('.tab-btn');
@@ -60,39 +58,28 @@ function attachNavigationListeners() {
     });
 }
 
-// Attach listeners for adding/removing dynamic rows (investments, debts, etc.).
 function attachDynamicRowListeners() {
     document.body.addEventListener('click', (e) => {
         const addButton = e.target.closest('[data-add-row]');
         const removeButton = e.target.closest('[data-action="remove"]');
-
         if (addButton) {
-            const containerId = addButton.dataset.addRow;
-            const type = addButton.dataset.rowType;
-            addRow(containerId, type);
+            addRow(addButton.dataset.addRow, addButton.dataset.rowType);
             window.debouncedAutoSave();
         } else if (removeButton) {
-            const row = removeButton.closest('tr, .income-card');
-            if (row) {
-                row.remove();
-                window.debouncedAutoSave();
-            }
+            removeButton.closest('tr, .income-card')?.remove();
+            window.debouncedAutoSave();
         }
     });
 }
 
-// Attach listeners for sorting budget table columns.
 function attachSortingListeners() {
     const budgetTableHead = document.querySelector('#budget-expenses-table thead');
-    if (budgetTableHead) {
-        budgetTableHead.addEventListener('click', (e) => {
-            const header = e.target.closest('[data-sort]');
-            if (header) sortBudgetTable(header.dataset.sort, header);
-        });
-    }
+    budgetTableHead?.addEventListener('click', (e) => {
+        const header = e.target.closest('[data-sort]');
+        if (header) sortBudgetTable(header.dataset.sort, header);
+    });
 }
 
-// Initialize drag-and-drop sorting for investment rows.
 function initializeSortable() {
     const investmentRows = document.getElementById('investment-rows');
     if (investmentRows) {
@@ -107,63 +94,41 @@ function initializeSortable() {
 
 // --- UI MANIPULATION & LOGIC ---
 
-// Handles switching between the main application tabs.
 async function showTab(tabId) {
     document.querySelectorAll('.tab-content').forEach(tab => tab.classList.add('hidden'));
     document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+    document.getElementById(`tab-${tabId}`)?.classList.remove('hidden');
+    document.querySelector(`[data-tab="${tabId}"]`)?.classList.add('active');
 
-    const tabEl = document.getElementById(`tab-${tabId}`);
-    const btnEl = document.querySelector(`[data-tab="${tabId}"]`);
-
-    if (tabEl) tabEl.classList.remove('hidden');
-    if (btnEl) btnEl.classList.add('active');
-
-    // When switching to a simulation tab, scrape the latest data first.
     if ((tabId === 'projection' || tabId === 'burndown') && window.currentData) {
-        await autoSave(true); // Force a scrape and save before running the simulation.
+        await autoSave(true);
     }
 }
 
-// Adds a new row to a specified container using a template.
 function addRow(containerId, type, data = {}) {
     const container = document.getElementById(containerId);
     if (!container) return;
-
     const isCard = type === 'income';
     const newElement = document.createElement(isCard ? 'div' : 'tr');
-
-    if (type === 'income') {
-        newElement.className = 'income-card bg-slate-800 rounded-2xl p-5 shadow-lg';
-    } else {
-        newElement.className = 'border-b border-slate-700 hover:bg-slate-700/50';
-    }
-
+    newElement.className = isCard ? 'income-card bg-slate-800 rounded-2xl p-5 shadow-lg' : 'border-b border-slate-700 hover:bg-slate-700/50';
     newElement.innerHTML = templates[type](data);
     container.appendChild(newElement);
-
     attachInputListeners(newElement);
     window.fillRow(newElement, data);
-
     newElement.querySelectorAll('[data-type="currency"]').forEach(formatter.bindCurrencyEventListeners);
 }
 
-// Attaches specific input listeners to a newly created element.
 function attachInputListeners(element) {
-    // Auto-calculate annual/monthly values in budget rows.
     const monthlyInput = element.querySelector('[data-id="monthly"]');
     const annualInput = element.querySelector('[data-id="annual"]');
     if (monthlyInput && annualInput) {
-        monthlyInput.addEventListener('input', () => {
-            const monthlyValue = math.fromCurrency(monthlyInput.value);
-            annualInput.value = formatter.formatCurrency(monthlyValue * 12, false);
-        });
-        annualInput.addEventListener('input', () => {
-            const annualValue = math.fromCurrency(annualInput.value);
-            monthlyInput.value = formatter.formatCurrency(annualValue / 12, false);
-        });
+        const onInput = (source, target, multiplier) => {
+            const value = math.fromCurrency(source.value);
+            target.value = formatter.formatCurrency(value * multiplier, false);
+        };
+        monthlyInput.addEventListener('input', () => onInput(monthlyInput, annualInput, 12));
+        annualInput.addEventListener('input', () => onInput(annualInput, monthlyInput, 1 / 12));
     }
-    
-    // Update display for range sliders in income cards.
     element.querySelectorAll('input[type="range"]').forEach(slider => {
         const display = slider.previousElementSibling.querySelector('span');
         if (display) {
@@ -172,14 +137,11 @@ function attachInputListeners(element) {
             updateDisplay();
         }
     });
-
-    // Handle dependent fields for investment types (e.g., cost basis for Roth).
     const typeSelect = element.querySelector('select[data-id="type"]');
     if (typeSelect) {
         const costBasisInput = element.querySelector('input[data-id="costBasis"]');
         const handleTypeChange = () => {
-            const selectedType = typeSelect.value;
-            const isRoth = selectedType === 'Post-Tax (Roth)';
+            const isRoth = typeSelect.value === 'Post-Tax (Roth)';
             costBasisInput.disabled = !isRoth;
             if (!isRoth) costBasisInput.value = 'N/A';
             else if (costBasisInput.value === 'N/A') costBasisInput.value = '';
@@ -189,40 +151,86 @@ function attachInputListeners(element) {
     }
 }
 
-// Sorts the budget expenses table by a given key.
 function sortBudgetTable(sortKey, header) {
     const tableBody = document.getElementById('budget-expenses-rows');
     const rows = Array.from(tableBody.querySelectorAll('tr'));
-
     const currentSort = tableBody.dataset.sortKey;
     const currentOrder = tableBody.dataset.sortOrder;
     const newOrder = (currentSort === sortKey && currentOrder === 'desc') ? 'asc' : 'desc';
-
     rows.sort((a, b) => {
         const aVal = math.fromCurrency(a.querySelector(`[data-id="${sortKey}"]`).value);
         const bVal = math.fromCurrency(b.querySelector(`[data-id="${sortKey}"]`).value);
         return newOrder === 'asc' ? aVal - bVal : bVal - aVal;
     });
-
     rows.forEach(row => tableBody.appendChild(row));
-
     tableBody.dataset.sortKey = sortKey;
     tableBody.dataset.sortOrder = newOrder;
-
     document.querySelectorAll('#budget-expenses-table th i.fas').forEach(i => i.className = 'fas fa-sort text-slate-500');
     header.querySelector('i.fas').className = `fas fa-sort-${newOrder === 'asc' ? 'up' : 'down'}`;
 }
 
-// Creates the assumption control sliders in the projection tab.
-function createAssumptionControls(data) {
-    const container = document.getElementById('assumptions-container');
+// --- SLIDER & ASSUMPTION LOGIC ---
+
+const handleAgeSliderChange = (event) => {
+    const slider = event.target;
+    const key = slider.dataset.id;
+    const value = parseFloat(slider.value);
+
+    document.querySelectorAll(`input[data-id="${key}"]`).forEach(s => s.value = value);
+    document.querySelectorAll(`span[data-display-for="${key}"]`).forEach(d => d.textContent = `${value} years`);
+    
+    const currentAge = parseFloat(document.querySelector('input[data-id="currentAge"]').value);
+    let retirementAge = parseFloat(document.querySelector('input[data-id="retirementAge"]').value);
+
+    if (retirementAge < currentAge) {
+        retirementAge = currentAge;
+        document.querySelectorAll('input[data-id="retirementAge"]').forEach(s => s.value = retirementAge);
+        document.querySelectorAll('span[data-display-for="retirementAge"]').forEach(d => d.textContent = `${retirementAge} years`);
+    }
+
+    window.debouncedAutoSave();
+};
+
+window.createLinkedAgeSliders = (containerId, data) => {
+    const container = document.getElementById(containerId);
     if (!container) return;
     container.innerHTML = '';
 
     const controlDefs = {
         currentAge: { label: 'Current Age', min: 18, max: 80, step: 1, unit: ' years', defaultValue: 40 },
         retirementAge: { label: 'Retirement Age', min: 35, max: 72, step: 1, unit: ' years', defaultValue: 65 },
-        inflation: { label: 'Inflation  inflación', min: 0, max: 10, step: 0.25, unit: '%', defaultValue: 3 },
+    };
+
+    Object.entries(controlDefs).forEach(([key, def]) => {
+        const value = data?.[key] ?? def.defaultValue;
+        const controlWrapper = document.createElement('div');
+        controlWrapper.className = 'space-y-2';
+        controlWrapper.innerHTML = `
+            <label class="flex justify-between items-center font-bold text-slate-300">
+                ${def.label}
+                <span class="text-lg font-black text-blue-400" data-display-for="${key}">${value}${def.unit}</span>
+            </label>
+            <input type="range" data-id="${key}" data-linked-source="true" min="${def.min}" max="${def.max}" step="${def.step}" value="${value}" class="input-range">
+        `;
+        controlWrapper.querySelector('input[type="range"]').addEventListener('input', handleAgeSliderChange);
+        container.appendChild(controlWrapper);
+    });
+};
+
+function createAssumptionControls(data) {
+    const container = document.getElementById('assumptions-container');
+    if (!container) return;
+    container.innerHTML = ''; 
+
+    const ageSliderContainer = document.createElement('div');
+    ageSliderContainer.id = 'assumptions-age-sliders';
+    ageSliderContainer.className = 'grid grid-cols-1 md:grid-cols-2 gap-4';
+    container.appendChild(ageSliderContainer);
+    
+    window.createLinkedAgeSliders('assumptions-age-sliders', data.assumptions);
+
+    const otherControlDefs = {
+        inflation: { label: 'Inflation', min: 0, max: 10, step: 0.25, unit: '%', defaultValue: 3 },
         ssStartAge: { label: 'SS Start Age', min: 62, max: 70, step: 1, unit: ' years', defaultValue: 67 },
         ssMonthly: { label: 'SS Monthly', min: 0, max: 7000, step: 100, unit: '/mo', defaultValue: 2500, isCurrency: true },
         stockGrowth: { label: 'Stock Growth 📈', min: 0, max: 20, step: 0.5, unit: '%', defaultValue: 7 },
@@ -230,7 +238,7 @@ function createAssumptionControls(data) {
         metalsGrowth: { label: 'Metals Growth 🪙', min: -10, max: 20, step: 0.5, unit: '%', defaultValue: 2 },
     };
 
-    Object.entries(controlDefs).forEach(([key, def]) => {
+    Object.entries(otherControlDefs).forEach(([key, def]) => {
         const value = data.assumptions?.[key] ?? def.defaultValue;
         const controlWrapper = document.createElement('div');
         controlWrapper.className = 'space-y-2';
@@ -244,31 +252,18 @@ function createAssumptionControls(data) {
         `;
         const slider = controlWrapper.querySelector('input[type="range"]');
         const display = controlWrapper.querySelector('span');
-        const updateDisplay = () => {
+
+        slider.addEventListener('input', () => {
             const sliderValue = parseFloat(slider.value);
             display.textContent = def.isCurrency ? formatter.formatCurrency(sliderValue, false) : `${sliderValue}${def.unit}`;
-        };
-        if (key === 'retirementAge') {
-            const currentAgeSlider = document.querySelector('[data-id="currentAge"]');
-            slider.addEventListener('input', () => {
-                if (slider.value < currentAgeSlider.value) slider.value = currentAgeSlider.value;
-                updateDisplay();
-            });
-        } else {
-             slider.addEventListener('input', updateDisplay);
-        }
+        });
         container.appendChild(controlWrapper);
-        updateDisplay(); 
     });
 }
 
 // --- GLOBAL FUNCTIONS ---
-// Expose functions to the global scope for use across different modules and for inline event handlers.
-
 window.addRow = addRow;
 window.createAssumptionControls = createAssumptionControls;
-
-// Fills a newly created row with data.
 window.fillRow = (row, data) => {
     if (!data) return;
     Object.keys(data).forEach(key => {

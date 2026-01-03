@@ -8,6 +8,7 @@ export const burndown = {
         const burndownTab = document.getElementById('tab-burndown');
         burndownTab.innerHTML = `
             <div class="card-container p-5">
+                 <div id="burndown-sliders-container" class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4"></div>
                  <h3 class="text-xl font-bold mb-4">Retirement Burndown</h3>
                  <div id="burndown-table-container" class="max-h-[75vh] overflow-auto"></div>
                  <div id="burndown-debug-container" class="mt-8 p-5 bg-slate-900 rounded-lg"></div>
@@ -42,6 +43,11 @@ export const burndown = {
         const data = window.currentData;
         if (!data || !data.assumptions) return;
         
+        // Create the linked sliders at the top of the burndown page
+        if (window.createLinkedAgeSliders) {
+            window.createLinkedAgeSliders('burndown-sliders-container', data.assumptions);
+        }
+
         const results = burndown.calculate(data);
         
         const tableContainer = document.getElementById('burndown-table-container');
