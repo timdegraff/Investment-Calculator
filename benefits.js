@@ -17,21 +17,57 @@ export const benefits = {
             target.value = source.value;
             benefits.calculateHealth();
             benefits.calculateSnap();
+            window.autoSave(); // Save on change
         };
 
         bhHhSize.addEventListener('input', () => syncHhSize(bhHhSize, bsHhSize));
         bsHhSize.addEventListener('input', () => syncHhSize(bsHhSize, bhHhSize));
 
-        document.getElementById('bh-annual-income').addEventListener('input', benefits.calculateHealth);
-        document.getElementById('bh-preg-check').addEventListener('change', benefits.calculateHealth);
+        document.getElementById('bh-annual-income').addEventListener('input', () => { benefits.calculateHealth(); window.autoSave(); });
+        document.getElementById('bh-preg-check').addEventListener('change', () => { benefits.calculateHealth(); window.autoSave(); });
 
-        document.getElementById('bs-annual-income').addEventListener('input', benefits.calculateSnap);
-        document.getElementById('bs-monthly-deductions').addEventListener('input', benefits.calculateSnap);
-        document.getElementById('bs-auto-max-deductions').addEventListener('change', benefits.calculateSnap);
-        document.getElementById('bs-disability-check').addEventListener('change', benefits.calculateSnap);
+        document.getElementById('bs-annual-income').addEventListener('input', () => { benefits.calculateSnap(); window.autoSave(); });
+        document.getElementById('bs-monthly-deductions').addEventListener('input', () => { benefits.calculateSnap(); window.autoSave(); });
+        document.getElementById('bs-auto-max-deductions').addEventListener('change', () => { benefits.calculateSnap(); window.autoSave(); });
+        document.getElementById('bs-disability-check').addEventListener('change', () => { benefits.calculateSnap(); window.autoSave(); });
 
         benefits.calculateHealth();
         benefits.calculateSnap();
+    },
+
+    load: (data) => {
+        if (!data) return;
+        const setValue = (id, value) => {
+            const el = document.getElementById(id);
+            if (el) {
+                if (el.type === 'checkbox') el.checked = value;
+                else el.value = value;
+            }
+        };
+
+        setValue('bh-hh-size', data.hhSize || 1);
+        setValue('bs-hh-size', data.hhSize || 1);
+        setValue('bh-annual-income', data.healthIncome || 0);
+        setValue('bh-preg-check', data.isPregnant || false);
+        setValue('bs-annual-income', data.snapIncome || 0);
+        setValue('bs-monthly-deductions', data.snapDeductions || 0);
+        setValue('bs-auto-max-deductions', data.snapAutoMax || false);
+        setValue('bs-disability-check', data.snapDisability || false);
+
+        benefits.calculateHealth();
+        benefits.calculateSnap();
+    },
+
+    scrape: () => {
+        return {
+            hhSize: parseInt(document.getElementById('bh-hh-size').value, 10),
+            healthIncome: parseInt(document.getElementById('bh-annual-income').value, 10),
+            isPregnant: document.getElementById('bh-preg-check').checked,
+            snapIncome: parseInt(document.getElementById('bs-annual-income').value, 10),
+            snapDeductions: parseInt(document.getElementById('bs-monthly-deductions').value, 10),
+            snapAutoMax: document.getElementById('bs-auto-max-deductions').checked,
+            snapDisability: document.getElementById('bs-disability-check').checked,
+        };
     },
 
     getFPL: (size) => 15650 + ((size - 1) * 5500),

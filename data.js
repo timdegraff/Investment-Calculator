@@ -2,6 +2,7 @@
 import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
 import { assumptions, math, engine } from './utils.js';
 import { formatter } from './formatter.js';
+import { benefits } from './benefits.js';
 
 let db;
 let user;
@@ -26,6 +27,7 @@ async function loadData() {
     }
     
     loadUserDataIntoUI(window.currentData);
+    benefits.load(window.currentData.benefits);
 }
 
 export function loadUserDataIntoUI(data) {
@@ -98,7 +100,8 @@ function scrapeDataFromUI() {
         helocs: [], 
         debts: [], 
         income: [], 
-        budget: { savings: [], expenses: [] } 
+        budget: { savings: [], expenses: [] },
+        benefits: benefits.scrape(),
     };
 
     document.querySelectorAll('#assumptions-container [data-id]').forEach(input => {
@@ -157,7 +160,8 @@ function getInitialData() {
             expenses: [
                 { name: 'Mortgage', monthly: 0, annual: 0 }
             ]
-        }
+        },
+        benefits: {},
     };
 }
 
