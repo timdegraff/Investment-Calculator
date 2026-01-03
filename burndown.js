@@ -26,15 +26,15 @@ export const burndown = {
     priorityOrder: [],
 
     assetMeta: {
-        'cash': { label: 'Cash', color: '#f472b6' }, // pink-400
-        'taxable': { label: 'Taxable Brokerage', color: '#34d399' }, // emerald-400
-        'roth-basis': { label: 'Roth Basis', color: '#fbbf24' }, // amber-400
-        'metals': { label: 'Metals', color: '#a78bfa' }, // violet-400
-        'crypto': { label: 'Bitcoin', color: '#f97316' }, // orange-500
-        'heloc': { label: 'HELOC', color: '#ef4444' }, // red-500
-        '401k': { label: '401k/IRA', color: '#60a5fa' }, // blue-400
-        '401k-72t': { label: '401k (72t)', color: '#60a5fa' }, // blue-400
-        'roth-earnings': { label: 'Roth Earnings', color: '#fbbf24' }, // amber-400
+        'cash': { label: 'Cash', color: '#f472b6', growthKey: null },
+        'taxable': { label: 'Taxable Brokerage', color: '#34d399', growthKey: 'stockGrowth' },
+        'roth-basis': { label: 'Roth Basis', color: '#fbbf24', growthKey: 'stockGrowth' },
+        'metals': { label: 'Metals', color: '#a78bfa', growthKey: 'metalsGrowth' },
+        'crypto': { label: 'Bitcoin', color: '#f97316', growthKey: 'cryptoGrowth' },
+        'heloc': { label: 'HELOC', color: '#ef4444', growthKey: null },
+        '401k': { label: '401k/IRA', color: '#60a5fa', growthKey: 'stockGrowth' },
+        '401k-72t': { label: '401k (72t)', color: '#60a5fa', growthKey: 'stockGrowth' },
+        'roth-earnings': { label: 'Roth Earnings', color: '#fbbf24', growthKey: 'stockGrowth' },
     },
 
     run: () => {
@@ -124,7 +124,8 @@ export const burndown = {
         const helocs = data.helocs || [];
         const benefitsData = data.benefits;
 
-        const annualSpend = (budget.expenses || []).reduce((sum, item) => sum + (item.monthly * 12) + (item.annual || 0), 0);
+        const annualSpend = (budget.expenses || []).reduce((sum, item) => sum + (item.annual || (item.monthly * 12)), 0);
+        const inflationRate = (assumptions.inflation || 3) / 100;
 
         let balances = {
             'cash': investments.filter(i => i.type === 'Cash').reduce((sum, i) => sum + i.value, 0),
@@ -134,11 +135,9 @@ export const burndown = {
             'metals': investments.filter(i => i.type === 'Metals').reduce((sum, i) => sum + i.value, 0),
             'crypto': investments.filter(i => i.type === 'Crypto').reduce((sum, i) => sum + i.value, 0),
             '401k': investments.filter(i => i.type === 'Pre-Tax (401k/IRA)').reduce((sum, i) => sum + i.value, 0),
-            '401k-72t': 0,
             'heloc': helocs.reduce((sum, h) => sum + ((h.limit || 0) - (h.balance || 0)), 0),
         };
-        balances['401k-72t'] = balances['401k'];
-
+        
         const retIncomeSources = income.filter(i => i.remainsInRetirement);
 
         let currentBudget = annualSpend;
@@ -146,26 +145,35 @@ export const burndown = {
 
         for (let age = assumptions.currentAge; age <= assumptions.retirementAge + 35; age++) {
             const yearResult = { age, draws: {}, balances: {}, totalDraw: 0 };
-
-            for (const key in balances) {
-                if (key !== 'heloc' && key !== 'cash') {
-                     balances[key] *= (1 + assumptions.growthRate / 100);
+            
+            if (age > assumptions.currentAge) {
+                for (const key in balances) {
+                    const meta = burndown.assetMeta[key];
+                    if (meta && meta.growthKey) {
+                        const growthRate = (assumptions[meta.growthKey] || 0) / 100;
+                        balances[key] *= (1 + growthRate);
+                    }
                 }
             }
-            balances['401k-72t'] = balances['401k'];
+            
+            let shortfall = 0;
+            if (age >= assumptions.retirementAge) {
+                if (age > assumptions.retirementAge) {
+                     currentBudget *= (1 + inflationRate);
+                }
+                yearResult.budget = currentBudget;
+                shortfall = currentBudget;
+            } else {
+                 yearResult.budget = 0;
+            }
 
-            currentBudget *= (1 + assumptions.inflation / 100);
-            yearResult.budget = currentBudget;
-
-            let shortfall = currentBudget;
-
-            const ssIncome = age >= assumptions.ssStartAge ? assumptions.ssBenefit : 0;
+            const ssIncome = age >= assumptions.ssStartAge ? (assumptions.ssMonthly * 12) : 0;
             shortfall -= ssIncome;
             yearResult.ss = ssIncome;
 
             let retIncome = 0;
             if (age >= assumptions.retirementAge) {
-                retIncome = retIncomeSources.reduce((sum, i) => sum + i.base - (i.writeOffs || 0), 0);
+                retIncome = retIncomeSources.reduce((sum, i) => sum + (i.annual || (i.monthly * 12)), 0);
                 shortfall -= retIncome;
             }
             yearResult.retIncome = retIncome;
@@ -180,20 +188,21 @@ export const burndown = {
             if (age < 60) {
                 const index = activePriority.indexOf('401k');
                 if (index > -1) activePriority.splice(index, 1);
-            } else {
-                const index = activePriority.indexOf('401k-72t');
-                if (index > -1) activePriority.splice(index, 1);
+                const rothIndex = activePriority.indexOf('roth-earnings');
+                if (rothIndex > -1) activePriority.splice(rothIndex, 1);
             }
-            if (age < 60) {
-                 const index = activePriority.indexOf('roth-earnings');
-                if (index > -1) activePriority.splice(index, 1);
+            
+            if (activePriority.includes('401k') && !activePriority.includes('401k-72t')) {
+                // no op
+            } else if (!activePriority.includes('401k') && activePriority.includes('401k-72t')) {
+                const index = activePriority.indexOf('401k-72t');
+                activePriority.splice(index, 1, '401k');
             }
 
             for (const key of activePriority) {
                 if (shortfall <= 0) break;
                 
-                let balanceKey = key === '401k-72t' ? '401k' : key;
-
+                let balanceKey = key.replace('-72t', '');
                 const available = balances[balanceKey];
                 const draw = Math.min(shortfall, available);
                 

@@ -6,7 +6,7 @@ import { engine, math } from './utils.js';
 import { formatter } from './formatter.js';
 import { burndown } from './burndown.js';
 
-// --- DEBOUNCE UTILITY ---
+// Debounce utility to limit how often a function is called.
 function debounce(func, wait) {
     let timeout;
     return function executedFunction(...args) {
@@ -19,6 +19,7 @@ function debounce(func, wait) {
     };
 }
 
+// Create a debounced version of the autoSave function.
 const debouncedAutoSave = debounce(autoSave, 500);
 
 // --- INITIALIZATION ---
@@ -29,7 +30,9 @@ export function initializeUI() {
     attachDynamicRowListeners();
     attachSortingListeners();
     initializeSortable();
-    window.autoSave = debouncedAutoSave; // Fix 1: Make autoSave globally available
+    
+    // Correctly expose the debounced autoSave function to the global window object.
+    window.debouncedAutoSave = debouncedAutoSave;
 }
 
 // --- EVENT LISTENER SETUP ---
@@ -38,15 +41,16 @@ function attachGlobalListeners() {
     document.getElementById('login-btn').addEventListener('click', signInWithGoogle);
     document.getElementById('logout-btn').addEventListener('click', logoutUser);
 
+    // A global input listener to trigger auto-save on any data change.
     document.body.addEventListener('input', (e) => {
         const target = e.target;
         if (target.closest('.input-base, .income-card, #assumptions-container, .input-range, .benefit-slider')) {
-            debouncedAutoSave();
+            window.debouncedAutoSave();
         }
     });
 }
 
-// Fix 2a: Make navigation asynchronous to await data scraping
+// Attach listeners to the main navigation tabs.
 function attachNavigationListeners() {
     document.getElementById('main-nav').addEventListener('click', async (e) => {
         const tabButton = e.target.closest('.tab-btn');
@@ -56,6 +60,7 @@ function attachNavigationListeners() {
     });
 }
 
+// Attach listeners for adding/removing dynamic rows (investments, debts, etc.).
 function attachDynamicRowListeners() {
     document.body.addEventListener('click', (e) => {
         const addButton = e.target.closest('[data-add-row]');
@@ -65,17 +70,18 @@ function attachDynamicRowListeners() {
             const containerId = addButton.dataset.addRow;
             const type = addButton.dataset.rowType;
             addRow(containerId, type);
-            debouncedAutoSave();
+            window.debouncedAutoSave();
         } else if (removeButton) {
             const row = removeButton.closest('tr, .income-card');
             if (row) {
                 row.remove();
-                debouncedAutoSave();
+                window.debouncedAutoSave();
             }
         }
     });
 }
 
+// Attach listeners for sorting budget table columns.
 function attachSortingListeners() {
     const budgetTableHead = document.querySelector('#budget-expenses-table thead');
     if (budgetTableHead) {
@@ -86,6 +92,7 @@ function attachSortingListeners() {
     }
 }
 
+// Initialize drag-and-drop sorting for investment rows.
 function initializeSortable() {
     const investmentRows = document.getElementById('investment-rows');
     if (investmentRows) {
@@ -93,14 +100,14 @@ function initializeSortable() {
             animation: 150,
             handle: '.drag-handle',
             ghostClass: 'bg-slate-700',
-            onEnd: () => debouncedAutoSave()
+            onEnd: () => window.debouncedAutoSave()
         });
     }
 }
 
 // --- UI MANIPULATION & LOGIC ---
 
-// Fix 2b: Make showTab asynchronous
+// Handles switching between the main application tabs.
 async function showTab(tabId) {
     document.querySelectorAll('.tab-content').forEach(tab => tab.classList.add('hidden'));
     document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
@@ -111,13 +118,13 @@ async function showTab(tabId) {
     if (tabEl) tabEl.classList.remove('hidden');
     if (btnEl) btnEl.classList.add('active');
 
-    // Fix 2c: Scrape fresh data before running simulations
+    // When switching to a simulation tab, scrape the latest data first.
     if ((tabId === 'projection' || tabId === 'burndown') && window.currentData) {
-        await autoSave(true); // Scrape UI, update window.currentData, and save.
-                               // This also triggers the simulation run inside autoSave.
+        await autoSave(true); // Force a scrape and save before running the simulation.
     }
 }
 
+// Adds a new row to a specified container using a template.
 function addRow(containerId, type, data = {}) {
     const container = document.getElementById(containerId);
     if (!container) return;
@@ -140,7 +147,9 @@ function addRow(containerId, type, data = {}) {
     newElement.querySelectorAll('[data-type="currency"]').forEach(formatter.bindCurrencyEventListeners);
 }
 
+// Attaches specific input listeners to a newly created element.
 function attachInputListeners(element) {
+    // Auto-calculate annual/monthly values in budget rows.
     const monthlyInput = element.querySelector('[data-id="monthly"]');
     const annualInput = element.querySelector('[data-id="annual"]');
     if (monthlyInput && annualInput) {
@@ -154,6 +163,7 @@ function attachInputListeners(element) {
         });
     }
     
+    // Update display for range sliders in income cards.
     element.querySelectorAll('input[type="range"]').forEach(slider => {
         const display = slider.previousElementSibling.querySelector('span');
         if (display) {
@@ -163,6 +173,7 @@ function attachInputListeners(element) {
         }
     });
 
+    // Handle dependent fields for investment types (e.g., cost basis for Roth).
     const typeSelect = element.querySelector('select[data-id="type"]');
     if (typeSelect) {
         const costBasisInput = element.querySelector('input[data-id="costBasis"]');
@@ -178,6 +189,7 @@ function attachInputListeners(element) {
     }
 }
 
+// Sorts the budget expenses table by a given key.
 function sortBudgetTable(sortKey, header) {
     const tableBody = document.getElementById('budget-expenses-rows');
     const rows = Array.from(tableBody.querySelectorAll('tr'));
@@ -201,6 +213,7 @@ function sortBudgetTable(sortKey, header) {
     header.querySelector('i.fas').className = `fas fa-sort-${newOrder === 'asc' ? 'up' : 'down'}`;
 }
 
+// Creates the assumption control sliders in the projection tab.
 function createAssumptionControls(data) {
     const container = document.getElementById('assumptions-container');
     if (!container) return;
@@ -209,6 +222,7 @@ function createAssumptionControls(data) {
     const controlDefs = {
         currentAge: { label: 'Current Age', min: 18, max: 80, step: 1, unit: ' years', defaultValue: 40 },
         retirementAge: { label: 'Retirement Age', min: 35, max: 72, step: 1, unit: ' years', defaultValue: 65 },
+        inflation: { label: 'Inflation  inflación', min: 0, max: 10, step: 0.25, unit: '%', defaultValue: 3 },
         ssStartAge: { label: 'SS Start Age', min: 62, max: 70, step: 1, unit: ' years', defaultValue: 67 },
         ssMonthly: { label: 'SS Monthly', min: 0, max: 7000, step: 100, unit: '/mo', defaultValue: 2500, isCurrency: true },
         stockGrowth: { label: 'Stock Growth 📈', min: 0, max: 20, step: 0.5, unit: '%', defaultValue: 7 },
@@ -248,8 +262,13 @@ function createAssumptionControls(data) {
     });
 }
 
+// --- GLOBAL FUNCTIONS ---
+// Expose functions to the global scope for use across different modules and for inline event handlers.
+
 window.addRow = addRow;
 window.createAssumptionControls = createAssumptionControls;
+
+// Fills a newly created row with data.
 window.fillRow = (row, data) => {
     if (!data) return;
     Object.keys(data).forEach(key => {
