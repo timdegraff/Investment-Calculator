@@ -28,8 +28,12 @@ I will make several minor adjustments to the UI and logic to improve usability a
 
 1.  **Add "Annual Write-offs" to Income:** Modify the income card template to include a new field for annual write-offs, allowing users to reduce their taxable income.
 2.  **Adjust "Cost Basis" Input:** Change the logic to only enable the "Cost Basis" input field when the investment type is "Post-Tax (Roth)."
-3.  **Restyle Income Card:** Update the styling of the income card to make the source name larger and apply a green color to the labels for "Base Salary," "Avg Bonus," and "Non-Taxable Until."
+3.  **Restyle Income Card:** Update the styling of the income card, including:
+    *   Changing the "Avg Bonus" label to "Bonus."
+    *   Setting all labels in the top section to white.
+    *   Color-coding the input fields: green for most, and reddish-pink for "Annual Write-offs."
 4.  **Enforce Retirement Age Logic:** Add logic to the projection controls to ensure the retirement age cannot be set lower than the current age.
 5.  **Fix Interest Rate Alignment:** Correct the text justification for the interest rate cells in the "Other Debts" and "HELOCs" tables.
 6.  **Update Projection Engine:** Update the projection engine to factor in the new "Annual Write-offs" field when calculating taxable income.
-7.  **Update Blueprint:** Document these changes in the `blueprint.md` file.
+7.  **Correct Burndown Icon:** Flip the "Burndown" icon horizontally to show a downward trend.
+8.  **Update Blueprint:** Document all these changes in the `blueprint.md` file.

@@ -49,27 +49,27 @@ export const templates = {
             <button data-action="remove" class="btn-icon absolute top-2 right-2 opacity-50 group-hover:opacity-100"><i class="fas fa-times"></i></button>
             <div class="grid grid-cols-2 md:grid-cols-5 gap-4 pl-12">
                 <div class="col-span-2 md:col-span-1">
-                    <label class="label-form text-teal-400">Source Name</label>
-                    <input data-id="name" type="text" placeholder="e.g., W2 Job" class="input-base w-full font-bold text-lg">
+                    <label class="label-form text-white">Source Name</label>
+                    <input data-id="name" type="text" placeholder="e.g., W2 Job" class="input-base w-full font-bold text-lg text-teal-400">
                 </div>
                 <div>
-                    <label class="label-form text-teal-400">Base Salary</label>
+                    <label class="label-form text-white">Base Salary</label>
                     <input data-id="amount" type="text" data-type="currency" value="$0" class="input-base w-full text-right text-teal-400">
                 </div>
                 <div>
-                    <label class="label-form text-teal-400">Annual Write-offs</label>
+                    <label class="label-form text-white">Annual Write-offs</label>
                     <input data-id="writeOffs" type="text" data-type="currency" value="$0" class="input-base w-full text-right text-pink-500">
                 </div>
                 <div>
-                    <label class="label-form text-teal-400">Avg Bonus</label>
+                    <label class="label-form text-white">Bonus</label>
                      <div class="relative">
-                        <input data-id="bonusPct" type="text" value="0" class="input-base w-full text-right pr-6">
+                        <input data-id="bonusPct" type="text" value="0" class="input-base w-full text-right pr-6 text-teal-400">
                         <span class="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400">%</span>
                     </div>
                 </div>
                 <div>
-                    <label class="label-form text-teal-400">Non-Taxable Until</label>
-                    <input data-id="nonTaxYear" type="number" placeholder="Year" class="input-base w-full text-right">
+                    <label class="label-form text-white">Non-Taxable Until</label>
+                    <input data-id="nonTaxYear" type="number" placeholder="Year" class="input-base w-full text-right text-teal-400">
                 </div>
             </div>
             <div class="grid grid-cols-1 md:grid-cols-3 gap-6 pt-4 border-t border-slate-700">
