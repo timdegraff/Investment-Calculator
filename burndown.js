@@ -10,6 +10,7 @@ export const burndown = {
             <div class="card-container p-5">
                  <h3 class="text-xl font-bold mb-4">Retirement Burndown</h3>
                  <div id="burndown-table-container" class="max-h-[75vh] overflow-auto"></div>
+                 <div id="burndown-debug-container" class="mt-8 p-5 bg-slate-900 rounded-lg"></div>
             </div>
         `;
     },
@@ -40,8 +41,15 @@ export const burndown = {
     run: () => {
         const data = window.currentData;
         if (!data || !data.assumptions) return;
+        
+        const results = burndown.calculate(data);
+        
         const tableContainer = document.getElementById('burndown-table-container');
-        tableContainer.innerHTML = burndown.renderTable(data);
+        tableContainer.innerHTML = burndown.renderTable(results);
+
+        const debugContainer = document.getElementById('burndown-debug-container');
+        debugContainer.innerHTML = burndown.renderDebugTable(results);
+
         const headerRow = document.getElementById('burndown-header-row');
         if (headerRow) {
             new Sortable(headerRow, {
@@ -56,8 +64,7 @@ export const burndown = {
         }
     },
 
-    renderTable: (data) => {
-        const results = burndown.calculate(data);
+    renderTable: (results) => {
         const staticHeaders = `
             <th class="sticky left-0 bg-slate-700 p-3">Age</th>
             <th class="p-3">Budget</th>
@@ -99,6 +106,31 @@ export const burndown = {
         `;
     },
 
+    renderDebugTable: (results) => {
+        let html = `<h4 class="text-lg font-bold mb-2 text-amber-400">Debug Output</h4>`;
+        html += `<table class="w-full text-xs text-left"><thead><tr class="bg-slate-800">`;
+        const headers = ['Age', 'Budget', 'Income', 'Surplus', 'Req. Draw', 'SNAP', 'Shortfall', 'Total Draw', 'Cash'];
+        headers.forEach(h => html += `<th class="p-2">${h}</th>`);
+        html += `</tr></thead><tbody>`;
+
+        results.forEach(row => {
+            html += `<tr class="border-b border-slate-700 font-mono">`;
+            html += `<td class="p-1">${row.age}</td>`;
+            html += `<td class="p-1">${formatter.formatCurrency(row.debug.budget, 0)}</td>`;
+            html += `<td class="p-1">${formatter.formatCurrency(row.debug.income, 0)}</td>`;
+            html += `<td class="p-1 text-green-400">${formatter.formatCurrency(row.debug.surplus, 0)}</td>`;
+            html += `<td class="p-1 text-red-400">${formatter.formatCurrency(row.debug.requiredDraw, 0)}</td>`;
+            html += `<td class="p-1">${formatter.formatCurrency(row.debug.snap, 0)}</td>`;
+            html += `<td class="p-1 text-red-500">${formatter.formatCurrency(row.debug.shortfall, 0)}</td>`;
+            html += `<td class="p-1 font-bold">${formatter.formatCurrency(row.totalDraw, 0)}</td>`;
+            html += `<td class="p-1 text-pink-400">${formatter.formatCurrency(row.balances.cash, 0)}</td>`;
+            html += `</tr>`;
+        });
+
+        html += `</tbody></table>`;
+        return html;
+    },
+    
     calculate: (data) => {
         const { assumptions, investments = [], income = [], budget = {}, helocs = [], benefits: benefitsData } = data;
         const inflationRate = (assumptions.inflation || 3) / 100;
@@ -122,8 +154,8 @@ export const burndown = {
         const results = [];
 
         for (let age = assumptions.currentAge; age <= 100; age++) {
-            const yearResult = { age, draws: {}, balances: {}, totalDraw: 0 };
             const isRetired = age >= assumptions.retirementAge;
+            const yearResult = { age, draws: {}, balances: {}, totalDraw: 0, debug: {} };
 
             if (age > assumptions.currentAge) {
                 currentBudget *= (1 + inflationRate);
@@ -138,61 +170,67 @@ export const burndown = {
                 }
             }
             yearResult.budget = currentBudget;
+            yearResult.debug.budget = currentBudget;
 
             let currentYearTotalIncome = 0;
             const incomeSources = isRetired ? postRetirementIncomeSources : preRetirementIncomeSources;
             incomeSources.forEach(inc => {
                 let incomeForYear = inc.annual || (inc.monthly * 12);
                 const yearsSinceStart = age - assumptions.currentAge;
-                if (!isRetired && yearsSinceStart > 0) {
-                   incomeForYear *= Math.pow(1 + ((inc.increase || 0) / 100), yearsSinceStart);
+                if (!isRetired && yearsSinceStart > 0 && inc.increase > 0) {
+                   incomeForYear *= Math.pow(1 + (inc.increase / 100), yearsSinceStart);
                 }
                 currentYearTotalIncome += incomeForYear;
             });
             yearResult.income = currentYearTotalIncome;
+            yearResult.debug.income = currentYearTotalIncome;
 
             const ssIncomeForYear = age >= assumptions.ssStartAge ? ssBenefit : 0;
             yearResult.ss = ssIncomeForYear;
 
-            const requiredDraw = Math.max(0, currentBudget - currentYearTotalIncome - ssIncomeForYear);
+            const cashflow = currentYearTotalIncome + ssIncomeForYear - currentBudget;
+            const surplus = Math.max(0, cashflow);
+            const requiredDraw = Math.max(0, -cashflow);
             yearResult.requiredDraw = requiredDraw;
+            yearResult.debug.requiredDraw = requiredDraw;
+            yearResult.debug.surplus = surplus;
 
-            const retirementIncomeForSnap = (isRetired ? currentYearTotalIncome : 0) + ssIncomeForYear;
-            const snapBenefit = burndown.calculateSnapForYear(retirementIncomeForSnap, benefitsData);
-            yearResult.snap = snapBenefit;
-
-            let shortfall = requiredDraw - snapBenefit;
-
-            if (shortfall < 0) shortfall = 0;
-
-            // Handle surplus cashflow pre-retirement
-            const surplus = Math.max(0, currentYearTotalIncome + ssIncomeForYear - currentBudget);
             if (surplus > 0) {
                 balances.cash += surplus;
             }
 
+            const retirementIncomeForSnap = (isRetired ? currentYearTotalIncome : 0) + ssIncomeForYear;
+            const snapBenefit = burndown.calculateSnapForYear(retirementIncomeForSnap, benefitsData);
+            yearResult.snap = snapBenefit;
+            yearResult.debug.snap = snapBenefit;
+
+            let shortfall = requiredDraw - snapBenefit;
+            if (shortfall < 0) shortfall = 0;
+            yearResult.debug.shortfall = shortfall;
+
             const activePriority = [...burndown.priorityOrder];
             if (isRetired) {
                  if (age < 60) {
-                    const idx401k = activePriority.indexOf('401k');
-                    if (idx401k > -1) activePriority.splice(idx401k, 1);
-                    const idxRoth = activePriority.indexOf('roth-earnings');
-                    if (idxRoth > -1) activePriority.splice(idxRoth, 1);
+                    activePriority.splice(activePriority.indexOf('401k'), 1);
+                    activePriority.splice(activePriority.indexOf('roth-earnings'), 1);
                 } else {
-                    const idx72t = activePriority.indexOf('401k-72t');
-                    if (idx72t > -1) activePriority.splice(idx72t, 1);
+                    activePriority.splice(activePriority.indexOf('401k-72t'), 1);
                 }
             } else {
-                // Pre-retirement, only draw from cash and taxable
-                const preRetirementPriority = ['cash', 'taxable'];
-                // Filter activePriority to only include these
-                burndown.priorityOrder.forEach(p => { if(!preRetirementPriority.includes(p)) activePriority.splice(activePriority.indexOf(p), 1) });
+                const allowedSources = ['cash', 'taxable'];
+                const filteredPriority = activePriority.filter(p => allowedSources.includes(p));
+                 for (const key of activePriority) {
+                    if (!allowedSources.includes(key)) {
+                        const index = activePriority.indexOf(key);
+                        if (index > -1) activePriority.splice(index, 1);
+                    }
+                 }
             }
             
             for (const key of activePriority) {
                 if (shortfall <= 0) break;
                 let balanceKey = key.replace('-72t', '');
-                if (!balances[balanceKey]) continue;
+                if (!balances[balanceKey] || balances[balanceKey] <= 0) continue;
 
                 const available = balances[balanceKey];
                 const draw = Math.min(shortfall, available);
