@@ -14,26 +14,30 @@ FinCalc is a comprehensive financial dashboard designed to help users track thei
 *   **Financial Overview:**
     *   Dashboard with summaries for net worth, assets, and liabilities.
     *   Calculations for total gross income and budget summaries.
+*   **Benefits Calculator:**
+    *   Calculators for Medicaid and SNAP (food stamps) benefits based on household size, income, and other factors.
+    *   Real-time calculations and clear result displays.
 *   **Projection:**
     *   Net worth projection chart based on user-defined assumptions.
     *   Detailed year-by-year data breakdown.
 *   **Burndown:**
     *   A dedicated page for future burndown chart functionality.
 
-## Current Task: Minor UI and Logic Updates
+## Current Task: Implement Benefits Calculator
 
-I will make several minor adjustments to the UI and logic to improve usability and accuracy.
+I will add a new "Benefits Calculator" tab to the application, providing users with tools to estimate their eligibility for Medicaid and SNAP benefits.
 
 ### Plan
 
-1.  **Add "Annual Write-offs" to Income:** Modify the income card template to include a new field for annual write-offs, allowing users to reduce their taxable income.
-2.  **Adjust "Cost Basis" Input:** Change the logic to only enable the "Cost Basis" input field when the investment type is "Post-Tax (Roth)."
-3.  **Restyle Income Card:** Update the styling of the income card, including:
-    *   Changing the "Avg Bonus" label to "Bonus."
-    *   Setting all labels in the top section to white.
-    *   Color-coding the input fields: green for most, and reddish-pink for "Annual Write-offs."
-4.  **Enforce Retirement Age Logic:** Add logic to the projection controls to ensure the retirement age cannot be set lower than the current age.
-5.  **Fix Interest Rate Alignment:** Correct the text justification for the interest rate cells in the "Other Debts" and "HELOCs" tables.
-6.  **Update Projection Engine:** Update the projection engine to factor in the new "Annual Write-offs" field when calculating taxable income.
-7.  **Correct Burndown Icon:** Flip the "Burndown" icon horizontally to show a downward trend.
-8.  **Update Blueprint:** Document all these changes in the `blueprint.md` file.
+1.  **Update `index.html`:**
+    *   Add a new "Benefits" button to the sidebar navigation.
+    *   Create a new section for the calculator with two sub-tabs: "Health Coverage" (Medicaid) and "SNAP (Food)."
+    *   Add the necessary HTML for sliders, input fields, checkboxes, and result displays for both calculators.
+2.  **Create `benefits.js`:**
+    *   Create a new JavaScript file to house the logic for the benefits calculators.
+    *   Implement the calculation logic for both Medicaid and SNAP based on the provided guidelines.
+    *   Add event listeners to update the UI in real-time as the user interacts with the controls.
+3.  **Update `main.js`:**
+    *   Import and initialize the new `benefits.js` module.
+4.  **Update `blueprint.md`:**
+    *   Document the new "Benefits Calculator" feature.

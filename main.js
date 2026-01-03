@@ -11,9 +11,11 @@ import { onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/9.6.1/fir
 import { auth } from './firebase-config.js';
 import { initializeUI } from './core.js';
 import { initializeData } from './data.js';
+import { benefits } from './benefits.js';
 
 // Initialize the static UI elements and event listeners (tabs, buttons, etc.)
 initializeUI();
+benefits.init();
 
 // Set up a listener that reacts to changes in the user's login state.
 onAuthStateChanged(auth, async (user) => {

@@ -44,6 +44,7 @@
                 <button data-tab="assets-debts" class="tab-btn w-full text-left p-3 rounded-lg flex items-center gap-3"><i class="fas fa-wallet w-6 text-orange-400"></i><span>Assets & Debts</span></button>
                 <button data-tab="income" class="tab-btn w-full text-left p-3 rounded-lg flex items-center gap-3"><i class="fas fa-money-bill-wave w-6 text-teal-400"></i><span>Income</span></button>
                 <button data-tab="budget" class="tab-btn w-full text-left p-3 rounded-lg flex items-center gap-3"><i class="fas fa-chart-pie w-6 text-pink-500"></i><span>Budget</span></button>
+                <button data-tab="benefits" class="tab-btn w-full text-left p-3 rounded-lg flex items-center gap-3"><i class="fas fa-hand-holding-heart w-6 text-amber-400"></i><span>Benefits</span></button>
                 <button data-tab="projection" class="tab-btn w-full text-left p-3 rounded-lg flex items-center gap-3"><i class="fas fa-chart-line w-6 text-blue-400"></i><span>Projection</span></button>
                 <button data-tab="burndown" class="tab-btn w-full text-left p-3 rounded-lg flex items-center gap-3"><i class="fas fa-stairs w-6 text-purple-400" style="transform: scaleX(-1);"></i><span>Burndown</span></button>
             </nav>
@@ -234,6 +235,63 @@
                         </thead>
                         <tbody id="budget-expenses-rows"></tbody>
                     </table>
+                </div>
+            </section>
+
+            <section id="tab-benefits" class="tab-content hidden max-w-xl mx-auto">
+                <h1 class="text-2xl font-bold mb-4">Benefits Calculator (Michigan 2026)</h1>
+                <div class="tabs flex bg-slate-800 rounded-lg p-1 mb-6">
+                    <button class="benefit-tab tab-btn flex-1 p-2 rounded-md active" data-benefit-tab="health">Health Coverage</button>
+                    <button class="benefit-tab tab-btn flex-1 p-2 rounded-md" data-benefit-tab="snap">SNAP (Food)</button>
+                </div>
+
+                <div id="benefit-tab-health">
+                    <div class="card-container p-6">
+                        <label class="label-form">Household Size: <span id="bh-hh-size-val" class="font-bold text-white float-right">1</span></label>
+                        <input id="bh-hh-size" type="range" min="1" max="10" value="1" class="input-range mt-2">
+                    </div>
+                    <div class="card-container p-6 mt-4">
+                        <label class="label-form">Annual Income: <span id="bh-income-val" class="font-bold text-white float-right">$0</span></label>
+                        <input id="bh-annual-income" type="range" min="0" max="300000" step="1000" value="0" class="input-range mt-2">
+                         <div class="mt-4">
+                            <label class="flex items-center gap-2 text-sm text-slate-400"><input id="bh-preg-check" type="checkbox" class="checkbox-base"> Household member is pregnant?</label>
+                        </div>
+                    </div>
+                    <div id="bh-health-result" class="card-container p-6 mt-4 text-center hidden">
+                        <h3 id="bh-health-title" class="text-xl font-bold"></h3>
+                        <p id="bh-health-desc" class="text-slate-400"></p>
+                    </div>
+                </div>
+
+                <div id="benefit-tab-snap" class="hidden">
+                     <div class="card-container p-6">
+                        <label class="label-form">Household Size: <span id="bs-hh-size-val" class="font-bold text-white float-right">1</span></label>
+                        <input id="bs-hh-size" type="range" min="1" max="10" value="1" class="input-range mt-2">
+                    </div>
+                    <div class="card-container p-6 mt-4">
+                        <label class="label-form">Annual Gross Income: <span id="bs-income-val" class="font-bold text-white float-right">$0</span></label>
+                        <input id="bs-annual-income" type="range" min="0" max="100000" step="1000" value="0" class="input-range mt-2">
+                        <p id="bs-snap-limit-text" class="text-sm text-pink-500 text-right mt-1"></p>
+                    </div>
+                     <div class="card-container p-6 mt-4">
+                        <label class="label-form">Monthly Shelter & Utility Costs: <span id="bs-deduct-val" class="font-bold text-white float-right">$0</span></label>
+                        <input id="bs-monthly-deductions" type="range" min="0" max="5000" step="100" value="0" class="input-range mt-2">
+                         <div class="mt-4 flex justify-between">
+                            <p class="text-sm text-slate-400">Rent, mortgage, utilities, etc.</p>
+                            <label class="flex items-center gap-2 text-sm text-slate-400"><input id="bs-auto-max-deductions" type="checkbox" class="checkbox-base"> Auto-Set Max</label>
+                        </div>
+                    </div>
+                     <div class="card-container p-6 mt-4">
+                        <label class="flex items-center gap-2 text-sm text-slate-400"><input id="bs-disability-check" type="checkbox" class="checkbox-base"> Household member is disabled or 60+?</label>
+                    </div>
+                    <div id="bs-snap-result" class="card-container p-6 mt-4 text-center hidden">
+                        <h3 id="bs-snap-title" class="text-xl font-bold"></h3>
+                        <p id="bs-snap-desc" class="text-slate-400"></p>
+                        <details class="text-left mt-4 text-sm">
+                            <summary class="cursor-pointer text-blue-400">Show Calculation</summary>
+                            <div id="bs-math-content" class="mt-2 p-4 bg-slate-800 rounded-lg"></div>
+                        </details>
+                    </div>
                 </div>
             </section>
 
