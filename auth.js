@@ -1,47 +1,16 @@
+import { GoogleAuthProvider, signInWithPopup } from 'https://www.gstatic.com/firebasejs/9.6.1/firebase-auth.js';
+import { auth } from './firebase-config.js';
 
-import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
-import { getAuth, onAuthStateChanged, GoogleAuthProvider, signInWithPopup, signOut } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-auth.js";
-import { getFirestore } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
-import { firebaseConfig } from './firebase-config.js';
+const provider = new GoogleAuthProvider();
 
-let auth;
-let db;
-
-// This function initializes Firebase and returns the auth and firestore instances.
-export function initializeAuth() {
+export async function signInWithGoogle() {
     try {
-        const app = initializeApp(firebaseConfig);
-        auth = getAuth(app);
-        db = getFirestore(app);
-        console.log("Firebase Auth Initialized.");
-        return { auth, db };
-    } catch (error) {
-        console.error("Error initializing Firebase:", error);
-        // Handle initialization error appropriately
-    }
-}
-
-// This function handles the Google login popup flow.
-export async function loginWithGoogle() {
-    const provider = new GoogleAuthProvider();
-    try {
-        console.log("Attempting to sign in with Google...");
         const result = await signInWithPopup(auth, provider);
-        console.log("Sign-in successful:", result.user.displayName);
+        const user = result.user;
+        return user;
     } catch (error) {
-        console.error("Google Sign-In Error:", error.message);
+        console.error('Error signing in with Google:', error);
+        // Optionally, display a user-friendly error message on the UI
+        return null;
     }
 }
-
-// This function handles the user logout.
-export async function logoutUser() {
-    try {
-        await signOut(auth);
-        console.log("User signed out successfully.");
-    } catch (error) {
-        console.error("Logout Error:", error);
-    }
-}
-
-// We re-export onAuthStateChanged so main.js can import it directly from here.
-export { onAuthStateChanged };
