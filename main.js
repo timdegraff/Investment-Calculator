@@ -9,23 +9,11 @@
 
 import { onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/9.6.1/firebase-auth.js';
 import { auth } from './firebase-config.js';
-import { signInWithGoogle } from './auth.js';
 import { initializeUI } from './core.js';
 import { initializeData } from './data.js';
 
 // Initialize the static UI elements and event listeners (tabs, buttons, etc.)
 initializeUI();
-
-// Set up the login button listener.
-const loginButton = document.getElementById('login-btn');
-loginButton.addEventListener('click', async () => {
-    const user = await signInWithGoogle();
-    if (user) {
-        console.log("Sign-in successful for:", user.displayName);
-    } else {
-        console.log("Sign-in failed or was cancelled.");
-    }
-});
 
 // Set up a listener that reacts to changes in the user's login state.
 onAuthStateChanged(auth, async (user) => {

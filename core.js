@@ -1,4 +1,4 @@
-import { loginWithGoogle, logoutUser } from './auth.js';
+import { signInWithGoogle, logoutUser } from './auth.js';
 import { templates } from './templates.js';
 import { autoSave } from './data.js';
 import { engine, math } from './utils.js';
@@ -32,7 +32,7 @@ export function initializeUI() {
 // --- EVENT LISTENER SETUP ---
 
 function attachGlobalListeners() {
-    document.getElementById('login-btn').addEventListener('click', loginWithGoogle);
+    document.getElementById('login-btn').addEventListener('click', signInWithGoogle);
     document.getElementById('logout-btn').addEventListener('click', logoutUser);
 
     document.body.addEventListener('input', (e) => {
