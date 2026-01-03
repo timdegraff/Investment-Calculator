@@ -17,27 +17,24 @@ FinCalc is a comprehensive financial dashboard designed to help users track thei
 *   **Benefits Calculator:**
     *   Calculators for Medicaid and SNAP (food stamps) benefits based on household size, income, and other factors.
     *   Real-time calculations and clear result displays.
+    *   Synchronized household size sliders across both calculators.
+    *   Color-coded income slider for the health calculator to visually represent FPL tiers.
 *   **Projection:**
     *   Net worth projection chart based on user-defined assumptions.
     *   Detailed year-by-year data breakdown.
 *   **Burndown:**
     *   A dedicated page for future burndown chart functionality.
 
-## Current Task: Implement Benefits Calculator
+## Current Task: Refine UI and UX
 
-I will add a new "Benefits Calculator" tab to the application, providing users with tools to estimate their eligibility for Medicaid and SNAP benefits.
+I will make several small but impactful changes to the UI to improve usability and visual clarity.
 
 ### Plan
 
-1.  **Update `index.html`:**
-    *   Add a new "Benefits" button to the sidebar navigation.
-    *   Create a new section for the calculator with two sub-tabs: "Health Coverage" (Medicaid) and "SNAP (Food)."
-    *   Add the necessary HTML for sliders, input fields, checkboxes, and result displays for both calculators.
-2.  **Create `benefits.js`:**
-    *   Create a new JavaScript file to house the logic for the benefits calculators.
-    *   Implement the calculation logic for both Medicaid and SNAP based on the provided guidelines.
-    *   Add event listeners to update the UI in real-time as the user interacts with the controls.
-3.  **Update `main.js`:**
-    *   Import and initialize the new `benefits.js` module.
-4.  **Update `blueprint.md`:**
-    *   Document the new "Benefits Calculator" feature.
+1.  **Right-Align Income Headers:** Adjust the CSS for the income cards to right-align the headers for "Base Salary," "Annual Write-offs," and "Bonus," ensuring they align with the input fields below them.
+2.  **Enhance Benefits Calculator UI:**
+    *   Improve the styling of the active sub-tab (Health Coverage or SNAP) to make it more visually distinct.
+    *   Increase the width of the sliders in the Benefits Calculator to make them easier to interact with.
+3.  **Synchronize Household Size Sliders:** Link the "Household Size" sliders in the Health and SNAP calculators so that they update in unison.
+4.  **Implement Color-Coded Health Income Slider:** Add a dynamic gradient to the background of the annual income slider in the Health Coverage calculator. The colors will represent the different Federal Poverty Level (FPL) tiers, providing immediate visual feedback to the user.
+5.  **Update Blueprint:** Document these UI and functionality enhancements in the `blueprint.md` file.

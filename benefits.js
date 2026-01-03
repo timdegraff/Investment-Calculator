@@ -1,5 +1,8 @@
 export const benefits = {
     init: () => {
+        const bhHhSize = document.getElementById('bh-hh-size');
+        const bsHhSize = document.getElementById('bs-hh-size');
+
         document.querySelectorAll('.benefit-tab').forEach(tab => {
             tab.addEventListener('click', () => {
                 document.querySelectorAll('.benefit-tab').forEach(t => t.classList.remove('active'));
@@ -10,13 +13,18 @@ export const benefits = {
             });
         });
 
-        // --- Health Listeners ---
-        document.getElementById('bh-hh-size').addEventListener('input', benefits.calculateHealth);
+        const syncHhSize = (source, target) => {
+            target.value = source.value;
+            benefits.calculateHealth();
+            benefits.calculateSnap();
+        };
+
+        bhHhSize.addEventListener('input', () => syncHhSize(bhHhSize, bsHhSize));
+        bsHhSize.addEventListener('input', () => syncHhSize(bsHhSize, bhHhSize));
+
         document.getElementById('bh-annual-income').addEventListener('input', benefits.calculateHealth);
         document.getElementById('bh-preg-check').addEventListener('change', benefits.calculateHealth);
 
-        // --- SNAP Listeners ---
-        document.getElementById('bs-hh-size').addEventListener('input', benefits.calculateSnap);
         document.getElementById('bs-annual-income').addEventListener('input', benefits.calculateSnap);
         document.getElementById('bs-monthly-deductions').addEventListener('input', benefits.calculateSnap);
         document.getElementById('bs-auto-max-deductions').addEventListener('change', benefits.calculateSnap);
@@ -35,13 +43,33 @@ export const benefits = {
         return 279;
     },
 
+    updateTrackGradient: (size, isPreg) => {
+        const fpl = benefits.getFPL(size);
+        const maxSlider = 300000;
+        const platLimit = isPreg ? 1.95 : 1.38;
+
+        const pPlat = ((fpl * platLimit) / maxSlider) * 100;
+        const pSilver = ((fpl * 2.50) / maxSlider) * 100;
+        const pGold = ((fpl * 4.00) / maxSlider) * 100;
+
+        const slider = document.getElementById('bh-annual-income');
+        slider.style.background = `linear-gradient(to right, 
+            #a855f7 ${pPlat}%, 
+            #64748b ${pPlat}%, #64748b ${pSilver}%, 
+            #f59e0b ${pSilver}%, #f59e0b ${pGold}%, 
+            #ef4444 ${pGold}%, #ef4444 100%)`;
+    },
+
     calculateHealth: () => {
         const size = parseInt(document.getElementById('bh-hh-size').value, 10);
         const income = parseInt(document.getElementById('bh-annual-income').value, 10);
         const isPreg = document.getElementById('bh-preg-check').checked;
 
         document.getElementById('bh-hh-size-val').textContent = size;
+        document.getElementById('bs-hh-size-val').textContent = size;
         document.getElementById('bh-income-val').textContent = `$${income.toLocaleString()}`;
+
+        benefits.updateTrackGradient(size, isPreg);
 
         const resultBox = document.getElementById('bh-health-result');
         const title = document.getElementById('bh-health-title');
@@ -58,36 +86,37 @@ export const benefits = {
             desc.textContent = isPreg 
                 ? "Extended coverage limit (195% FPL). $0 premiums."
                 : "State-sponsored. $0 premiums.";
-            resultBox.style.borderColor = '#a78bfa'; // violet-400
-            title.style.color = '#a78bfa';
+            resultBox.style.borderColor = '#a855f7';
+            title.style.color = '#a855f7';
         } else if (fplPercent <= 250) {
             title.textContent = "Silver Plus (High Value)";
             desc.textContent = "Eligible for CSR (Lower deductibles).";
-            resultBox.style.borderColor = '#60a5fa'; // blue-400
-            title.style.color = '#60a5fa';
+            resultBox.style.borderColor = '#64748b';
+            title.style.color = '#64748b';
         } else if (fplPercent <= 400) {
             title.textContent = "Standard Marketplace";
             desc.textContent = "Eligible for Premium Tax Credits.";
-            resultBox.style.borderColor = '#fbbf24'; // amber-400
-            title.style.color = '#fbbf24';
+            resultBox.style.borderColor = '#f59e0b';
+            title.style.color = '#f59e0b';
         } else {
             title.textContent = "Subsidy Cliff";
             desc.textContent = "Full price premiums apply.";
-            resultBox.style.borderColor = '#f87171'; // red-400
-            title.style.color = '#f87171';
+            resultBox.style.borderColor = '#ef4444';
+            title.style.color = '#ef4444';
         }
     },
 
     calculateSnap: () => {
         const size = parseInt(document.getElementById('bs-hh-size').value, 10);
         const income = parseInt(document.getElementById('bs-annual-income').value, 10);
-        const deductions = parseInt(document.getElementById('bs-monthly-deductions').value, 10);
+        let deductions = parseInt(document.getElementById('bs-monthly-deductions').value, 10);
         const isAutoMax = document.getElementById('bs-auto-max-deductions').checked;
         const isDisabled = document.getElementById('bs-disability-check').checked;
 
         document.getElementById('bs-hh-size-val').textContent = size;
+        document.getElementById('bh-hh-size-val').textContent = size;
         document.getElementById('bs-income-val').textContent = `$${income.toLocaleString()}`;
-        document.getElementById('bs-deduct-val').textContent = `$${deductions.toLocaleString()}`;
+        
 
         const resultBox = document.getElementById('bs-snap-result');
         const title = document.getElementById('bs-snap-title');
@@ -115,6 +144,8 @@ export const benefits = {
                 deductSlider.value = maxDeduction;
             }
         }
+        deductions = parseInt(deductSlider.value, 10);
+        document.getElementById('bs-deduct-val').textContent = `$${deductions.toLocaleString()}`;
 
         resultBox.classList.remove('hidden');
         const maxBenefit = benefits.getMaxSnap(size);

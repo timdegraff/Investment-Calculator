@@ -52,15 +52,15 @@ export const templates = {
                     <label class="label-form text-white">Source Name</label>
                     <input data-id="name" type="text" placeholder="e.g., W2 Job" class="input-base w-full font-bold text-lg text-teal-400">
                 </div>
-                <div>
+                <div class="text-right">
                     <label class="label-form text-white">Base Salary</label>
                     <input data-id="amount" type="text" data-type="currency" value="$0" class="input-base w-full text-right text-teal-400">
                 </div>
-                <div>
+                <div class="text-right">
                     <label class="label-form text-white">Annual Write-offs</label>
                     <input data-id="writeOffs" type="text" data-type="currency" value="$0" class="input-base w-full text-right text-pink-500">
                 </div>
-                <div>
+                <div class="text-right">
                     <label class="label-form text-white">Bonus</label>
                      <div class="relative">
                         <input data-id="bonusPct" type="text" value="0" class="input-base w-full text-right pr-6 text-teal-400">

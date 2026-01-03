@@ -16,6 +16,13 @@
             background-color: #1e293b; /* slate-800 */
             color: #cbd5e1; /* slate-300 */
         }
+        .benefit-tab.active {
+            background-color: #3b82f6 !important; /* blue-500 */
+            color: white !important;
+        }
+        #bh-annual-income {
+            background: linear-gradient(to right, #a78bfa, #a78bfa 50%, #64748b 50%, #64748b 100%);
+        }
     </style>
 </head>
 <body class="text-slate-300 bg-slate-900">
@@ -238,7 +245,7 @@
                 </div>
             </section>
 
-            <section id="tab-benefits" class="tab-content hidden max-w-xl mx-auto">
+            <section id="tab-benefits" class="tab-content hidden max-w-2xl mx-auto">
                 <h1 class="text-2xl font-bold mb-4">Benefits Calculator (Michigan 2026)</h1>
                 <div class="tabs flex bg-slate-800 rounded-lg p-1 mb-6">
                     <button class="benefit-tab tab-btn flex-1 p-2 rounded-md active" data-benefit-tab="health">Health Coverage</button>
@@ -248,11 +255,11 @@
                 <div id="benefit-tab-health">
                     <div class="card-container p-6">
                         <label class="label-form">Household Size: <span id="bh-hh-size-val" class="font-bold text-white float-right">1</span></label>
-                        <input id="bh-hh-size" type="range" min="1" max="10" value="1" class="input-range mt-2">
+                        <input id="bh-hh-size" type="range" min="1" max="10" value="1" class="input-range mt-2 w-full">
                     </div>
                     <div class="card-container p-6 mt-4">
                         <label class="label-form">Annual Income: <span id="bh-income-val" class="font-bold text-white float-right">$0</span></label>
-                        <input id="bh-annual-income" type="range" min="0" max="300000" step="1000" value="0" class="input-range mt-2">
+                        <input id="bh-annual-income" type="range" min="0" max="300000" step="1000" value="0" class="input-range mt-2 w-full">
                          <div class="mt-4">
                             <label class="flex items-center gap-2 text-sm text-slate-400"><input id="bh-preg-check" type="checkbox" class="checkbox-base"> Household member is pregnant?</label>
                         </div>
@@ -266,16 +273,16 @@
                 <div id="benefit-tab-snap" class="hidden">
                      <div class="card-container p-6">
                         <label class="label-form">Household Size: <span id="bs-hh-size-val" class="font-bold text-white float-right">1</span></label>
-                        <input id="bs-hh-size" type="range" min="1" max="10" value="1" class="input-range mt-2">
+                        <input id="bs-hh-size" type="range" min="1" max="10" value="1" class="input-range mt-2 w-full">
                     </div>
                     <div class="card-container p-6 mt-4">
                         <label class="label-form">Annual Gross Income: <span id="bs-income-val" class="font-bold text-white float-right">$0</span></label>
-                        <input id="bs-annual-income" type="range" min="0" max="100000" step="1000" value="0" class="input-range mt-2">
+                        <input id="bs-annual-income" type="range" min="0" max="100000" step="1000" value="0" class="input-range mt-2 w-full">
                         <p id="bs-snap-limit-text" class="text-sm text-pink-500 text-right mt-1"></p>
                     </div>
                      <div class="card-container p-6 mt-4">
                         <label class="label-form">Monthly Shelter & Utility Costs: <span id="bs-deduct-val" class="font-bold text-white float-right">$0</span></label>
-                        <input id="bs-monthly-deductions" type="range" min="0" max="5000" step="100" value="0" class="input-range mt-2">
+                        <input id="bs-monthly-deductions" type="range" min="0" max="5000" step="100" value="0" class="input-range mt-2 w-full">
                          <div class="mt-4 flex justify-between">
                             <p class="text-sm text-slate-400">Rent, mortgage, utilities, etc.</p>
                             <label class="flex items-center gap-2 text-sm text-slate-400"><input id="bs-auto-max-deductions" type="checkbox" class="checkbox-base"> Auto-Set Max</label>
