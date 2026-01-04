@@ -42,28 +42,19 @@ export const burndown = {
     run: () => {
         const data = window.currentData;
         if (!data || !data.assumptions) return;
-        
-        // Create the linked sliders at the top of the burndown page
         if (window.createLinkedAgeSliders) {
             window.createLinkedAgeSliders('burndown-sliders-container', data.assumptions);
         }
-
         const results = burndown.calculate(data);
-        
-        const tableContainer = document.getElementById('burndown-table-container');
-        tableContainer.innerHTML = burndown.renderTable(results);
-
-        const debugContainer = document.getElementById('burndown-debug-container');
-        debugContainer.innerHTML = burndown.renderDebugTable(results);
-
+        document.getElementById('burndown-table-container').innerHTML = burndown.renderTable(results);
+        document.getElementById('burndown-debug-container').innerHTML = burndown.renderDebugTable(results);
         const headerRow = document.getElementById('burndown-header-row');
         if (headerRow) {
             new Sortable(headerRow, {
                 animation: 150,
                 handle: '.drag-handle',
                 onEnd: (evt) => {
-                    const newOrder = Array.from(evt.to.children).map(th => th.dataset.assetKey).filter(Boolean);
-                    burndown.priorityOrder = newOrder;
+                    burndown.priorityOrder = Array.from(evt.to.children).map(th => th.dataset.assetKey).filter(Boolean);
                     window.debouncedAutoSave();
                 }
             });
@@ -71,14 +62,7 @@ export const burndown = {
     },
 
     renderTable: (results) => {
-        const staticHeaders = `
-            <th class="sticky left-0 bg-slate-700 p-3">Age</th>
-            <th class="p-3">Budget</th>
-            <th class="p-3">Income</th>
-            <th class="p-3">SS</th>
-            <th class="p-3 text-red-400">Req. Draw</th>
-            <th class="p-3">SNAP</th>
-        `;
+        const staticHeaders = `<th class="sticky left-0 bg-slate-700 p-3">Age</th><th class="p-3">Budget</th><th class="p-3">Income</th><th class="p-3">SS</th><th class="p-3 text-red-400">Req. Draw</th><th class="p-3">SNAP</th>`;
         const draggableHeaders = burndown.priorityOrder.map(key => `<th class="p-3 cursor-move drag-handle" data-asset-key="${key}" style="color: ${burndown.assetMeta[key].color};">${burndown.assetMeta[key].label}</th>`).join('');
         const summaryHeaders = `<th class="p-3">Total Draw</th><th class="p-3">Assets (ex. RE)</th>`;
         const bodyRows = results.map(row => {
@@ -99,42 +83,23 @@ export const burndown = {
                     ${draggableCells}
                     <td class="p-2 text-right font-bold">${formatter.formatCurrency(row.totalDraw, 0)}</td>
                     <td class="p-2 text-right text-teal-400 font-bold">${formatter.formatCurrency(row.totalAssets, 0)}</td>
-                </tr>
-            `;
+                </tr>`;
         }).join('');
-        return `
-            <table class="w-full text-sm text-left">
-                <thead class="sticky top-0 bg-slate-700 uppercase text-xs text-slate-300">
-                    <tr id="burndown-header-row">${staticHeaders}${draggableHeaders}${summaryHeaders}</tr>
-                </thead>
-                <tbody>${bodyRows}</tbody>
-            </table>
-        `;
+        return `<table class="w-full text-sm text-left"><thead class="sticky top-0 bg-slate-700 uppercase text-xs text-slate-300"><tr id="burndown-header-row">${staticHeaders}${draggableHeaders}${summaryHeaders}</tr></thead><tbody>${bodyRows}</tbody></table>`;
     },
 
     renderDebugTable: (results) => {
-        let html = `<h4 class="text-lg font-bold mb-2 text-amber-400">Debug Output</h4>`;
-        html += `<table class="w-full text-xs text-left"><thead><tr class="bg-slate-800">`;
-        const headers = ['Age', 'Budget', 'Income', 'Surplus', 'Req. Draw', 'SNAP', 'Shortfall', 'Total Draw', 'Cash'];
+        let html = `<h4 class="text-lg font-bold mb-2 text-amber-400">Debug Output</h4><table class="w-full text-xs text-left"><thead><tr class="bg-slate-800">`;
+        const headers = ['Age', 'Budget', 'Income', 'SS', 'Cashflow', 'Surplus', 'Req. Draw', 'SNAP', 'Shortfall', 'Total Draw', 'Cash'];
         headers.forEach(h => html += `<th class="p-2">${h}</th>`);
         html += `</tr></thead><tbody>`;
-
         results.forEach(row => {
             html += `<tr class="border-b border-slate-700 font-mono">`;
-            html += `<td class="p-1">${row.age}</td>`;
-            html += `<td class="p-1">${formatter.formatCurrency(row.debug.budget, 0)}</td>`;
-            html += `<td class="p-1">${formatter.formatCurrency(row.debug.income, 0)}</td>`;
-            html += `<td class="p-1 text-green-400">${formatter.formatCurrency(row.debug.surplus, 0)}</td>`;
-            html += `<td class="p-1 text-red-400">${formatter.formatCurrency(row.debug.requiredDraw, 0)}</td>`;
-            html += `<td class="p-1">${formatter.formatCurrency(row.debug.snap, 0)}</td>`;
-            html += `<td class="p-1 text-red-500">${formatter.formatCurrency(row.debug.shortfall, 0)}</td>`;
-            html += `<td class="p-1 font-bold">${formatter.formatCurrency(row.totalDraw, 0)}</td>`;
-            html += `<td class="p-1 text-pink-400">${formatter.formatCurrency(row.balances.cash, 0)}</td>`;
+            html += [row.age, row.debug.budget, row.debug.income, row.debug.ss, row.debug.cashflow, row.debug.surplus, row.debug.requiredDraw, row.debug.snap, row.debug.shortfall, row.totalDraw, row.balances.cash]
+                .map((val, i) => `<td class="p-1 ${[2,4,5].includes(i) ? 'text-green-400' : [6,8].includes(i) ? 'text-red-400' : ''}">${formatter.formatCurrency(val, 0)}</td>`).join('');
             html += `</tr>`;
         });
-
-        html += `</tbody></table>`;
-        return html;
+        return html + `</tbody></table>`;
     },
     
     calculate: (data) => {
@@ -142,14 +107,14 @@ export const burndown = {
         const inflationRate = (assumptions.inflation || 3) / 100;
 
         let balances = {
-            'cash': investments.filter(i => i.type === 'Cash').reduce((sum, i) => sum + i.value, 0),
-            'taxable': investments.filter(i => i.type === 'Taxable').reduce((sum, i) => sum + i.value, 0),
-            'roth-basis': investments.filter(i => i.type === 'Post-Tax (Roth)').reduce((sum, i) => sum + (i.costBasis || 0), 0),
-            'roth-earnings': investments.filter(i => i.type === 'Post-Tax (Roth)').reduce((sum, i) => sum + Math.max(0, i.value - (i.costBasis || 0)), 0),
-            'metals': investments.filter(i => i.type === 'Metals').reduce((sum, i) => sum + i.value, 0),
-            'crypto': investments.filter(i => i.type === 'Crypto').reduce((sum, i) => sum + i.value, 0),
-            '401k': investments.filter(i => i.type === 'Pre-Tax (401k/IRA)').reduce((sum, i) => sum + i.value, 0),
-            'heloc': helocs.reduce((sum, h) => sum + ((h.limit || 0) - (h.balance || 0)), 0),
+            'cash': investments.find(i => i.type === 'Cash')?.value || 0,
+            'taxable': investments.find(i => i.type === 'Taxable')?.value || 0,
+            'roth-basis': investments.find(i => i.type === 'Post-Tax (Roth)')?.costBasis || 0,
+            'roth-earnings': Math.max(0, (investments.find(i => i.type === 'Post-Tax (Roth)')?.value || 0) - (investments.find(i => i.type === 'Post-Tax (Roth)')?.costBasis || 0)),
+            'metals': investments.find(i => i.type === 'Metals')?.value || 0,
+            'crypto': investments.find(i => i.type === 'Crypto')?.value || 0,
+            '401k': investments.find(i => i.type === 'Pre-Tax (401k/IRA)')?.value || 0,
+            'heloc': helocs.reduce((sum, h) => sum + (h.limit || 0) - (h.balance || 0), 0)
         };
 
         const preRetirementIncomeSources = income.filter(i => !i.remainsInRetirement);
@@ -161,27 +126,24 @@ export const burndown = {
 
         for (let age = assumptions.currentAge; age <= 100; age++) {
             const isRetired = age >= assumptions.retirementAge;
-            const yearResult = { age, draws: {}, balances: {}, totalDraw: 0, debug: {} };
+            const yearResult = { age, draws: {}, totalDraw: 0, debug: {} };
 
             if (age > assumptions.currentAge) {
                 currentBudget *= (1 + inflationRate);
-                if (age > assumptions.ssStartAge) ssBenefit *= (1 + inflationRate);
-
-                for (const key in balances) {
+                if (age >= assumptions.ssStartAge) ssBenefit *= (1 + inflationRate);
+                Object.keys(balances).forEach(key => {
                     const meta = burndown.assetMeta[key];
-                    if (meta && meta.growthKey) {
-                        const growthRate = (assumptions[meta.growthKey] || 0) / 100;
-                        balances[key] *= (1 + growthRate);
+                    if (meta?.growthKey) {
+                        balances[key] *= (1 + (assumptions[meta.growthKey] || 0) / 100);
                     }
-                }
+                });
             }
             yearResult.budget = currentBudget;
-            yearResult.debug.budget = currentBudget;
 
             let currentYearTotalIncome = 0;
             const incomeSources = isRetired ? postRetirementIncomeSources : preRetirementIncomeSources;
             incomeSources.forEach(inc => {
-                let incomeForYear = inc.annual || (inc.monthly * 12);
+                let incomeForYear = inc.frequency === 'Annual' ? inc.amount : inc.amount * 12;
                 const yearsSinceStart = age - assumptions.currentAge;
                 if (!isRetired && yearsSinceStart > 0 && inc.increase > 0) {
                    incomeForYear *= Math.pow(1 + (inc.increase / 100), yearsSinceStart);
@@ -189,7 +151,6 @@ export const burndown = {
                 currentYearTotalIncome += incomeForYear;
             });
             yearResult.income = currentYearTotalIncome;
-            yearResult.debug.income = currentYearTotalIncome;
 
             const ssIncomeForYear = age >= assumptions.ssStartAge ? ssBenefit : 0;
             yearResult.ss = ssIncomeForYear;
@@ -197,49 +158,28 @@ export const burndown = {
             const cashflow = currentYearTotalIncome + ssIncomeForYear - currentBudget;
             const surplus = Math.max(0, cashflow);
             const requiredDraw = Math.max(0, -cashflow);
-            yearResult.requiredDraw = requiredDraw;
-            yearResult.debug.requiredDraw = requiredDraw;
-            yearResult.debug.surplus = surplus;
-
-            if (surplus > 0) {
-                balances.cash += surplus;
-            }
+            if (surplus > 0) balances.cash += surplus;
 
             const retirementIncomeForSnap = (isRetired ? currentYearTotalIncome : 0) + ssIncomeForYear;
             const snapBenefit = burndown.calculateSnapForYear(retirementIncomeForSnap, benefitsData);
             yearResult.snap = snapBenefit;
-            yearResult.debug.snap = snapBenefit;
 
-            let shortfall = requiredDraw - snapBenefit;
-            if (shortfall < 0) shortfall = 0;
-            yearResult.debug.shortfall = shortfall;
+            let shortfall = Math.max(0, requiredDraw - snapBenefit);
+            
+            Object.assign(yearResult, { requiredDraw, debug: { budget: currentBudget, income: currentYearTotalIncome, ss: ssIncomeForYear, cashflow, surplus, requiredDraw, snap: snapBenefit, shortfall } });
 
             const activePriority = [...burndown.priorityOrder];
-            if (isRetired) {
-                 if (age < 60) {
-                    activePriority.splice(activePriority.indexOf('401k'), 1);
-                    activePriority.splice(activePriority.indexOf('roth-earnings'), 1);
-                } else {
-                    activePriority.splice(activePriority.indexOf('401k-72t'), 1);
-                }
-            } else {
-                const allowedSources = ['cash', 'taxable'];
-                const filteredPriority = activePriority.filter(p => allowedSources.includes(p));
-                 for (const key of activePriority) {
-                    if (!allowedSources.includes(key)) {
-                        const index = activePriority.indexOf(key);
-                        if (index > -1) activePriority.splice(index, 1);
-                    }
-                 }
-            }
+            const disallowedSources = isRetired 
+                ? (age < 60 ? ['401k', 'roth-earnings'] : ['401k-72t']) 
+                : burndown.priorityOrder.filter(p => !['cash', 'taxable'].includes(p));
             
-            for (const key of activePriority) {
+            const drawPriority = activePriority.filter(p => !disallowedSources.includes(p));
+
+            for (const key of drawPriority) {
                 if (shortfall <= 0) break;
                 let balanceKey = key.replace('-72t', '');
                 if (!balances[balanceKey] || balances[balanceKey] <= 0) continue;
-
-                const available = balances[balanceKey];
-                const draw = Math.min(shortfall, available);
+                const draw = Math.min(shortfall, balances[balanceKey]);
                 balances[balanceKey] -= draw;
                 yearResult.draws[key] = (yearResult.draws[key] || 0) + draw;
                 yearResult.totalDraw += draw;
