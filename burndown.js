@@ -30,7 +30,7 @@ export const burndown = {
     assetMeta: {
         'cash': { label: 'Cash', color: '#f472b6', growthKey: null },
         'taxable': { label: 'Taxable Brokerage', color: '#34d399', growthKey: 'stockGrowth' },
-        'roth-basis': { label: 'Roth Basis', color: '#fbbf24', growthKey: null },
+        'roth-basis': { label: 'Roth Basis', color: '#fbbf24', growthKey: 'stockGrowth' }, // Growth applied to combined roth
         'metals': { label: 'Metals', color: '#a78bfa', growthKey: 'metalsGrowth' },
         'crypto': { label: 'Bitcoin', color: '#f97316', growthKey: 'cryptoGrowth' },
         'heloc': { label: 'HELOC', color: '#ef4444', growthKey: null },
@@ -96,7 +96,7 @@ export const burndown = {
         results.forEach(row => {
             html += `<tr class="border-b border-slate-700 font-mono">`;
             html += [row.age, row.debug.budget, row.debug.income, row.debug.ss, row.debug.cashflow, row.debug.surplus, row.debug.requiredDraw, row.debug.snap, row.debug.shortfall, row.totalDraw, row.balances.cash]
-                .map((val, i) => `<td class="p-1 ${[2,4,5].includes(i) ? 'text-green-400' : [6,8].includes(i) ? 'text-red-400' : ''}">${formatter.formatCurrency(val, 0)}</td>`).join('');
+                .map((val, i) => `<td class="p-1 ${[2, 4, 5].includes(i) ? 'text-green-400' : [6, 8].includes(i) ? 'text-red-400' : i === 10 ? 'text-pink-400' : ''}">${formatter.formatCurrency(val, 0)}</td>`).join('');
             html += `</tr>`;
         });
         return html + `</tbody></table>`;
@@ -106,19 +106,17 @@ export const burndown = {
         const { assumptions, investments = [], income = [], budget = {}, helocs = [], benefits: benefitsData } = data;
         const inflationRate = (assumptions.inflation || 3) / 100;
 
+        // Correctly sum all investments by type
         let balances = {
-            'cash': investments.find(i => i.type === 'Cash')?.value || 0,
-            'taxable': investments.find(i => i.type === 'Taxable')?.value || 0,
-            'roth-basis': investments.find(i => i.type === 'Post-Tax (Roth)')?.costBasis || 0,
-            'roth-earnings': Math.max(0, (investments.find(i => i.type === 'Post-Tax (Roth)')?.value || 0) - (investments.find(i => i.type === 'Post-Tax (Roth)')?.costBasis || 0)),
-            'metals': investments.find(i => i.type === 'Metals')?.value || 0,
-            'crypto': investments.find(i => i.type === 'Crypto')?.value || 0,
-            '401k': investments.find(i => i.type === 'Pre-Tax (401k/IRA)')?.value || 0,
+            'cash': investments.filter(i => i.type === 'Cash').reduce((sum, i) => sum + i.value, 0),
+            'taxable': investments.filter(i => i.type === 'Taxable').reduce((sum, i) => sum + i.value, 0),
+            'roth-basis': investments.filter(i => i.type === 'Post-Tax (Roth)').reduce((sum, i) => sum + (i.costBasis || 0), 0),
+            'roth-earnings': investments.filter(i => i.type === 'Post-Tax (Roth)').reduce((sum, i) => sum + Math.max(0, i.value - (i.costBasis || 0)), 0),
+            'metals': investments.filter(i => i.type === 'Metals').reduce((sum, i) => sum + i.value, 0),
+            'crypto': investments.filter(i => i.type === 'Crypto').reduce((sum, i) => sum + i.value, 0),
+            '401k': investments.filter(i => i.type === 'Pre-Tax (401k/IRA)').reduce((sum, i) => sum + i.value, 0),
             'heloc': helocs.reduce((sum, h) => sum + (h.limit || 0) - (h.balance || 0), 0)
         };
-
-        const preRetirementIncomeSources = income.filter(i => !i.remainsInRetirement);
-        const postRetirementIncomeSources = income.filter(i => i.remainsInRetirement);
         
         let currentBudget = (budget.expenses || []).reduce((sum, item) => sum + (item.annual || (item.monthly * 12)), 0);
         let ssBenefit = (assumptions.ssMonthly || 0) * 12;
@@ -128,57 +126,91 @@ export const burndown = {
             const isRetired = age >= assumptions.retirementAge;
             const yearResult = { age, draws: {}, totalDraw: 0, debug: {} };
 
+            // --- Apply Growth/Inflation from previous year ---
             if (age > assumptions.currentAge) {
                 currentBudget *= (1 + inflationRate);
                 if (age >= assumptions.ssStartAge) ssBenefit *= (1 + inflationRate);
+                
+                // Apply growth to each asset class
                 Object.keys(balances).forEach(key => {
                     const meta = burndown.assetMeta[key];
                     if (meta?.growthKey) {
-                        balances[key] *= (1 + (assumptions[meta.growthKey] || 0) / 100);
+                        const growthRate = (assumptions[meta.growthKey] || 0) / 100;
+                        // Special handling for Roth accounts to grow basis and earnings together
+                        if (key === 'roth-basis' || key === 'roth-earnings') {
+                            const totalRoth = balances['roth-basis'] + balances['roth-earnings'];
+                            const grownRoth = totalRoth * (1 + growthRate);
+                            const basisRatio = balances['roth-basis'] / totalRoth;
+                            balances['roth-basis'] = grownRoth * basisRatio;
+                            balances['roth-earnings'] = grownRoth * (1 - basisRatio);
+                        } else {
+                            balances[key] *= (1 + growthRate);
+                        }
                     }
                 });
             }
             yearResult.budget = currentBudget;
 
+            // --- Calculate Total Income for the Year ---
             let currentYearTotalIncome = 0;
-            const incomeSources = isRetired ? postRetirementIncomeSources : preRetirementIncomeSources;
+            const incomeSources = isRetired ? income.filter(i => i.remainsInRetirement) : income;
+
             incomeSources.forEach(inc => {
-                let incomeForYear = inc.frequency === 'Annual' ? inc.amount : inc.amount * 12;
-                const yearsSinceStart = age - assumptions.currentAge;
-                if (!isRetired && yearsSinceStart > 0 && inc.increase > 0) {
-                   incomeForYear *= Math.pow(1 + (inc.increase / 100), yearsSinceStart);
+                // Correctly determine base annual amount from monthly or annual
+                let baseAmount = inc.frequency === 'Annual' ? inc.amount : inc.amount * 12;
+                
+                // Add bonus if applicable
+                if (inc.includeBonus && inc.bonus > 0) {
+                    baseAmount += baseAmount * (inc.bonus / 100);
                 }
-                currentYearTotalIncome += incomeForYear;
+
+                // Subtract write-offs
+                if (inc.writeOffs > 0) {
+                    baseAmount -= inc.writeOffs;
+                }
+
+                // Apply annual increase for pre-retirement years
+                if (!isRetired) {
+                    const yearsSinceStart = age - assumptions.currentAge;
+                    if (yearsSinceStart > 0 && inc.increase > 0) {
+                        baseAmount *= Math.pow(1 + (inc.increase / 100), yearsSinceStart);
+                    }
+                }
+                currentYearTotalIncome += baseAmount;
             });
             yearResult.income = currentYearTotalIncome;
 
             const ssIncomeForYear = age >= assumptions.ssStartAge ? ssBenefit : 0;
             yearResult.ss = ssIncomeForYear;
 
+            // --- Calculate Cashflow, Surplus, and Required Draw ---
             const cashflow = currentYearTotalIncome + ssIncomeForYear - currentBudget;
             const surplus = Math.max(0, cashflow);
             const requiredDraw = Math.max(0, -cashflow);
-            if (surplus > 0) balances.cash += surplus;
+            if (surplus > 0) {
+                balances.cash += surplus;
+            }
 
+            // --- Calculate Benefits and Final Shortfall ---
             const retirementIncomeForSnap = (isRetired ? currentYearTotalIncome : 0) + ssIncomeForYear;
             const snapBenefit = burndown.calculateSnapForYear(retirementIncomeForSnap, benefitsData);
             yearResult.snap = snapBenefit;
-
             let shortfall = Math.max(0, requiredDraw - snapBenefit);
             
+            // Store all debug values
             Object.assign(yearResult, { requiredDraw, debug: { budget: currentBudget, income: currentYearTotalIncome, ss: ssIncomeForYear, cashflow, surplus, requiredDraw, snap: snapBenefit, shortfall } });
 
-            const activePriority = [...burndown.priorityOrder];
+            // --- Execute Drawdown Strategy ---
             const disallowedSources = isRetired 
                 ? (age < 60 ? ['401k', 'roth-earnings'] : ['401k-72t']) 
                 : burndown.priorityOrder.filter(p => !['cash', 'taxable'].includes(p));
-            
-            const drawPriority = activePriority.filter(p => !disallowedSources.includes(p));
+            const drawPriority = burndown.priorityOrder.filter(p => !disallowedSources.includes(p));
 
             for (const key of drawPriority) {
                 if (shortfall <= 0) break;
                 let balanceKey = key.replace('-72t', '');
                 if (!balances[balanceKey] || balances[balanceKey] <= 0) continue;
+                
                 const draw = Math.min(shortfall, balances[balanceKey]);
                 balances[balanceKey] -= draw;
                 yearResult.draws[key] = (yearResult.draws[key] || 0) + draw;
